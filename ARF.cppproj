@@ -131,6 +131,15 @@
     <Compile Include="ARF.cpp">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="ARF.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="test\main.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="test" />
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />
 </Project>

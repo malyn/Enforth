@@ -1,9 +1,6 @@
-#include <string.h>
-
 #include <avr/pgmspace.h>
-#include <avr/io.h>
 
-#define ARF_STACK_SIZE 32
+#include "ARF.h"
 
 typedef int arfInt;
 typedef int arfUnsigned;
@@ -14,12 +11,6 @@ typedef union arfCell
 	arfUnsigned u;
 	void *p;
 } arfCell;
-
-typedef struct arfStack
-{
-	arfCell *top;
-	arfCell base[ARF_STACK_SIZE];
-} arfStack;
 
 typedef enum
 {
@@ -57,11 +48,6 @@ typedef arfCell (*arfSevenArgFFI)(arfCell a, arfCell b, arfCell c, arfCell d,
 typedef arfCell (*arfEightArgFFI)(arfCell a, arfCell b, arfCell c, arfCell d,
 								  arfCell e, arfCell f, arfCell g, arfCell h);
 
-static int favnum(void)
-{
-	return 27;
-}
-
 static int add(int a, int b)
 {
 	return a + b;
@@ -72,16 +58,77 @@ static int sum(int a, int b, int c)
 	return a + b + c;
 }
 
-// RAM
-unsigned char dictionary[1024];
-unsigned char * here;
+ARF::ARF(const uint8_t * dictionary, int dictionarySize)
+ : dictionary(dictionary), dictionarySize(dictionarySize)
+{
+	this->here = const_cast<uint8_t *>(this->dictionary);
+}
 
-arfStack dataStack;
-arfStack returnStack;
+void ARF::go(int (*sketchFn)(void))
+{
+	// TODO Remove this test code.
+	*this->here++ = 'f';
+	*this->here++ = 'o';
+	*this->here++ = 'o';
 
-static void arfInnerInterpreter(arfOpcode *xt)
+	*this->here++ = (char)-3;
+	*this->here++ = 0x00; // LFAhi
+	*this->here++ = 0x00; // LFAlo
+
+#if false
+	*this->here++ = arfOpDUP; // PFA start
+
+	*this->here++ = arfOpZeroArgFFI;
+	*this->here++ = ((unsigned int)sketchFn) & 0xff;
+	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
+	*this->here++ = arfOpZeroArgFFI;
+	*this->here++ = ((unsigned int)sketchFn) & 0xff;
+	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
+	*this->here++ = arfOpTwoArgFFI;
+	*this->here++ = ((unsigned int)add) & 0xff;
+	*this->here++ = (((unsigned int)add) >> 8) & 0xff;
+
+	*this->here++ = arfOpZeroArgFFI;
+	*this->here++ = ((unsigned int)sketchFn) & 0xff;
+	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
+	*this->here++ = arfOpZeroArgFFI;
+	*this->here++ = ((unsigned int)sketchFn) & 0xff;
+	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
+	*this->here++ = arfOpZeroArgFFI;
+	*this->here++ = ((unsigned int)sketchFn) & 0xff;
+	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
+	*this->here++ = arfOpThreeArgFFI;
+	*this->here++ = ((unsigned int)sum) & 0xff;
+	*this->here++ = (((unsigned int)sum) >> 8) & 0xff;
+
+	*this->here++ = arfOpEXIT;
+#else
+	*this->here++ = arfOpZeroArgFFI;
+	*this->here++ = ((unsigned int)sketchFn) & 0xff;
+	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
+	*this->here++ = arfOpDROP;
+
+	*this->here++ = arfOpZeroArgFFI;
+	*this->here++ = ((unsigned int)sketchFn) & 0xff;
+	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
+	*this->here++ = arfOpDROP;
+
+	*this->here++ = arfOpZeroArgFFI;
+	*this->here++ = ((unsigned int)sketchFn) & 0xff;
+	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
+	*this->here++ = arfOpDROP;
+#endif
+
+	this->dataStack[0] = 0x27;
+	this->dataStack[1] = 0x00;
+
+	this->innerInterpreter(const_cast<uint8_t *>(this->dictionary) + 6);
+}
+
+void ARF::innerInterpreter(uint8_t * xt)
 {
 	uint8_t *ip;
+	// TODO Consider storing TOS in a register.
 	arfCell *dataTop;
 	arfCell *returnTop;
 	
@@ -91,8 +138,8 @@ static void arfInnerInterpreter(arfOpcode *xt)
 	
 	// Initialize our local variables.
 	ip = (uint8_t *)xt;
-	dataTop = dataStack.top;
-	returnTop = returnStack.top;
+	dataTop = (arfCell *)this->dataStack;
+	returnTop = (arfCell *)this->returnStack;
 	
 	static const void * const jtb[] PROGMEM = {
 		&&arfOpZeroArgFFI, &&arfOpOneArgFFI, &&arfOpTwoArgFFI,
@@ -213,58 +260,4 @@ static void arfInnerInterpreter(arfOpcode *xt)
 			return;
 		continue;
 	}
-}
-
-int main(void)
-{
-	// Initialize and clear the dictionary.
-	here = dictionary;
-	memset(&dictionary, 0, sizeof(dictionary));
-	
-	// Initialize and clear the stacks.
-	memset(&dataStack.base, 0, sizeof(dataStack.base));
-	dataStack.top = dataStack.base;
-	dataStack.top->i = 0x27;
-
-	memset(&returnStack.base, 0, sizeof(returnStack.base));
-	returnStack.top = returnStack.base;
-	
-	// Put some stuff in the dictionary.
-	// : test FOO test ;
-	memcpy(dictionary, "foo", 3);
-	here += 3;
-
-	*here++ = (char)-3;
-	*here++ = 0x00; // LFAhi
-	*here++ = 0x00; // LFAlo
-
-	*here++ = arfOpDUP; // PFA start
-
-	*here++ = arfOpZeroArgFFI;
-	*here++ = ((unsigned int)favnum) & 0xff;
-	*here++ = (((unsigned int)favnum) >> 8) & 0xff;
-	*here++ = arfOpZeroArgFFI;
-	*here++ = ((unsigned int)favnum) & 0xff;
-	*here++ = (((unsigned int)favnum) >> 8) & 0xff;
-	*here++ = arfOpTwoArgFFI;
-	*here++ = ((unsigned int)add) & 0xff;
-	*here++ = (((unsigned int)add) >> 8) & 0xff;
-
-	*here++ = arfOpZeroArgFFI;
-	*here++ = ((unsigned int)favnum) & 0xff;
-	*here++ = (((unsigned int)favnum) >> 8) & 0xff;
-	*here++ = arfOpZeroArgFFI;
-	*here++ = ((unsigned int)favnum) & 0xff;
-	*here++ = (((unsigned int)favnum) >> 8) & 0xff;
-	*here++ = arfOpZeroArgFFI;
-	*here++ = ((unsigned int)favnum) & 0xff;
-	*here++ = (((unsigned int)favnum) >> 8) & 0xff;
-	*here++ = arfOpThreeArgFFI;
-	*here++ = ((unsigned int)sum) & 0xff;
-	*here++ = (((unsigned int)sum) >> 8) & 0xff;
-
-	*here++ = arfOpEXIT;
-	
-	// Run our inner loop;
-	arfInnerInterpreter((arfOpcode*)(dictionary + 6));
 }
