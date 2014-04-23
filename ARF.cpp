@@ -94,139 +94,124 @@ static void arfInnerInterpreter(arfOpcode *xt)
 	dataTop = dataStack.top;
 	returnTop = returnStack.top;
 	
+	static const void * const jtb[] PROGMEM = {
+		&&arfOpZeroArgFFI, &&arfOpOneArgFFI, &&arfOpTwoArgFFI,
+		&&arfOpThreeArgFFI, &&arfOpFourArgFFI, &&arfOpFiveArgFFI,
+		&&arfOpSixArgFFI, &&arfOpSevenArgFFI, &&arfOpEightArgFFI,
+		&&arfOpDUP, &&arfOpDROP, &&arfOpPLUS, &&arfOpMINUS,
+		&&arfOpONEPLUS, &&arfOpONEMINUS, &&arfOpSWAP, &&arfOpEXIT,
+	};
+
 	while (true)
 	{
-		// Get the next opcode.
+		// Get the next opcode and dispatch to the label.
 		op = *ip++;
-		
-		// Is the high bit set?  If so, then this is the first byte of a
-		// two-byte word that points to a RAM-based indirect-threaded
-		// reference.  Otherwise it's an opcode.
-		if ((unsigned char)op & 0x80)
+		goto *(void *)pgm_read_word(&jtb[op]);
+
+		arfOpZeroArgFFI:
 		{
-			while (true)
-			{
-				// I'm stuck!
-				PORTB = 0x01;
-			}
+			arfZeroArgFFI fn = (arfZeroArgFFI)(((arfCell*)ip)->p);
+			ip += 2;
+			*(++dataTop) = (*fn)();
 		}
-		else
+		continue;
+
+		arfOpOneArgFFI:
 		{
-			static const void * const jtb[] PROGMEM = {
-				&&arfOpZeroArgFFI, &&arfOpOneArgFFI, &&arfOpTwoArgFFI,
-				&&arfOpThreeArgFFI, &&arfOpFourArgFFI,
-				&&arfOpFiveArgFFI, &&arfOpSixArgFFI, &&arfOpSevenArgFFI,
-				&&arfOpEightArgFFI, &&arfOpDUP, &&arfOpDROP,
-				&&arfOpPLUS, &&arfOpMINUS, &&arfOpONEPLUS,
-				&&arfOpONEMINUS, &&arfOpSWAP, &&arfOpEXIT,
-			};
-			void * oplbl = (void *)pgm_read_word(&jtb[op]);
-			goto *oplbl;
-			continue;
-
-			while (0)
-			{
-				arfOpZeroArgFFI:
-				{
-					arfZeroArgFFI fn = (arfZeroArgFFI)(((arfCell*)ip)->p);
-					ip += 2;
-					*(++dataTop) = (*fn)();
-				}
-				break;
-
-				arfOpOneArgFFI:
-				{
-					arfOneArgFFI fn = (arfOneArgFFI)(((arfCell*)ip)->p);
-					ip += 2;
-					*dataTop = (*fn)(*dataTop);
-				}
-				break;
-
-				arfOpTwoArgFFI:
-				{
-					arfTwoArgFFI fn = (arfTwoArgFFI)(((arfCell*)ip)->p);
-					ip += 2;
-					*dataTop = (*fn)(*dataTop--, *dataTop);
-				}
-				break;
-
-				arfOpThreeArgFFI:
-				{
-					arfThreeArgFFI fn = (arfThreeArgFFI)(((arfCell*)ip)->p);
-					ip += 2;
-					*dataTop = (*fn)(*dataTop--, *dataTop--, *dataTop);
-				}
-				break;
-
-				arfOpFourArgFFI:
-				break;
-
-				arfOpFiveArgFFI:
-				break;
-
-				arfOpSixArgFFI:
-				break;
-
-				arfOpSevenArgFFI:
-				break;
-
-				arfOpEightArgFFI:
-				break;
-
-				arfOpDUP:
-				{
-					i = dataTop->i;
-					(++dataTop)->i = i;
-				}
-				break;
-
-				arfOpDROP:
-				{
-					dataTop--;
-				}
-				break;
-
-				arfOpPLUS:
-				{
-					i = (dataTop--)->i;
-					dataTop->i += i;
-				}
-				break;
-
-				arfOpMINUS:
-				{
-					i = (dataTop--)->i;
-					dataTop->i -= i;
-				}
-				break;
-
-				arfOpONEPLUS:
-				{
-					dataTop->i++;
-				}
-				break;
-
-				arfOpONEMINUS:
-				{
-					dataTop->i--;
-				}
-				break;
-
-				arfOpSWAP:
-				{
-					arfCell swap;
-					swap = dataTop[0];
-					dataTop[0] = dataTop[-1];
-					dataTop[-1] = swap;
-				}
-				break;
-
-				arfOpEXIT:
-					// Not really; this is just here for testing.
-					return;
-				break;
-			}
+			arfOneArgFFI fn = (arfOneArgFFI)(((arfCell*)ip)->p);
+			ip += 2;
+			*dataTop = (*fn)(*dataTop);
 		}
+		continue;
+
+		arfOpTwoArgFFI:
+		{
+			arfTwoArgFFI fn = (arfTwoArgFFI)(((arfCell*)ip)->p);
+			ip += 2;
+			arfCell arg1 = *dataTop--;
+			arfCell arg2 = *dataTop;
+			*dataTop = (*fn)(arg1, arg2);
+		}
+		continue;
+
+		arfOpThreeArgFFI:
+		{
+			arfThreeArgFFI fn = (arfThreeArgFFI)(((arfCell*)ip)->p);
+			ip += 2;
+			arfCell arg1 = *dataTop--;
+			arfCell arg2 = *dataTop--;
+			arfCell arg3 = *dataTop;
+			*dataTop = (*fn)(arg1, arg2, arg3);
+		}
+		continue;
+
+		arfOpFourArgFFI:
+		continue;
+
+		arfOpFiveArgFFI:
+		continue;
+
+		arfOpSixArgFFI:
+		continue;
+
+		arfOpSevenArgFFI:
+		continue;
+
+		arfOpEightArgFFI:
+		continue;
+
+		arfOpDUP:
+		{
+			i = dataTop->i;
+			(++dataTop)->i = i;
+		}
+		continue;
+
+		arfOpDROP:
+		{
+			dataTop--;
+		}
+		continue;
+
+		arfOpPLUS:
+		{
+			i = (dataTop--)->i;
+			dataTop->i += i;
+		}
+		continue;
+
+		arfOpMINUS:
+		{
+			i = (dataTop--)->i;
+			dataTop->i -= i;
+		}
+		continue;
+
+		arfOpONEPLUS:
+		{
+			dataTop->i++;
+		}
+		continue;
+
+		arfOpONEMINUS:
+		{
+			dataTop->i--;
+		}
+		continue;
+
+		arfOpSWAP:
+		{
+			arfCell swap;
+			swap = dataTop[0];
+			dataTop[0] = dataTop[-1];
+			dataTop[-1] = swap;
+		}
+		continue;
+
+		arfOpEXIT:
+			// Not really; this is just here for testing.
+			return;
+		continue;
 	}
 }
 
