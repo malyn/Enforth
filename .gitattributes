@@ -1,0 +1,6 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Custom for Atmel Studio
+*.atsln   merge=union
+*.cppproj merge=union
