@@ -1,5 +1,6 @@
 #include <string.h>
 
+#include <avr/pgmspace.h>
 #include <avr/io.h>
 
 #define ARF_STACK_SIZE 32
@@ -22,7 +23,7 @@ typedef struct arfStack
 
 typedef enum
 {
-	arfOpZeroArgFFI = 0x80,
+	arfOpZeroArgFFI = 0x00,
 	arfOpOneArgFFI,
 	arfOpTwoArgFFI,
 	arfOpThreeArgFFI,
@@ -39,7 +40,7 @@ typedef enum
 	arfOpONEMINUS,
 	arfOpSWAP,
 	//...
-	arfOpEXIT = 0xFF,
+	arfOpEXIT,
 } arfOpcode;
 
 typedef arfCell (*arfZeroArgFFI)(void);
@@ -80,9 +81,9 @@ arfStack returnStack;
 
 static void arfInnerInterpreter(arfOpcode *xt)
 {
-	register arfOpcode *ip;
-	register arfCell *dataTop;
-	register arfCell *returnTop;
+	arfOpcode *ip;
+	arfCell *dataTop;
+	arfCell *returnTop;
 	
 	arfOpcode op;
 	
@@ -98,14 +99,34 @@ static void arfInnerInterpreter(arfOpcode *xt)
 		// Get the next opcode.
 		op = *ip++;
 		
-		// Is the high bit set?  If so, then we can dispatch into our opcode
-		// table.  Otherwise this is the first byte of a two-byte word that
-		// indicates a RAM-based indirect-threaded reference.
+		// Is the high bit set?  If so, then this is the first byte of a
+		// two-byte word that points to a RAM-based indirect-threaded
+		// reference.  Otherwise it's an opcode.
 		if ((unsigned char)op & 0x80)
 		{
-			switch (op)
+			while (true)
 			{
-				case arfOpZeroArgFFI:
+				// I'm stuck!
+				PORTB = 0x01;
+			}
+		}
+		else
+		{
+			static const void * const jtb[] PROGMEM = {
+				&&arfOpZeroArgFFI, &&arfOpOneArgFFI, &&arfOpTwoArgFFI,
+				&&arfOpThreeArgFFI, &&arfOpFourArgFFI,
+				&&arfOpFiveArgFFI, &&arfOpSixArgFFI, &&arfOpSevenArgFFI,
+				&&arfOpEightArgFFI, &&arfOpDUP, &&arfOpDROP,
+				&&arfOpPLUS, &&arfOpMINUS, &&arfOpONEPLUS,
+				&&arfOpONEMINUS, &&arfOpSWAP, &&arfOpEXIT,
+			};
+			void * oplbl = (void *)pgm_read_word(&jtb[op]);
+			goto *oplbl;
+			continue;
+
+			while (0)
+			{
+				arfOpZeroArgFFI:
 				{
 					arfZeroArgFFI fn = (arfZeroArgFFI)(((arfCell*)ip)->p);
 					ip += 2;
@@ -113,7 +134,7 @@ static void arfInnerInterpreter(arfOpcode *xt)
 				}
 				break;
 
-				case arfOpOneArgFFI:
+				arfOpOneArgFFI:
 				{
 					arfOneArgFFI fn = (arfOneArgFFI)(((arfCell*)ip)->p);
 					ip += 2;
@@ -121,7 +142,7 @@ static void arfInnerInterpreter(arfOpcode *xt)
 				}
 				break;
 
-				case arfOpTwoArgFFI:
+				arfOpTwoArgFFI:
 				{
 					arfTwoArgFFI fn = (arfTwoArgFFI)(((arfCell*)ip)->p);
 					ip += 2;
@@ -129,7 +150,7 @@ static void arfInnerInterpreter(arfOpcode *xt)
 				}
 				break;
 
-				case arfOpThreeArgFFI:
+				arfOpThreeArgFFI:
 				{
 					arfThreeArgFFI fn = (arfThreeArgFFI)(((arfCell*)ip)->p);
 					ip += 2;
@@ -137,61 +158,61 @@ static void arfInnerInterpreter(arfOpcode *xt)
 				}
 				break;
 
-				case arfOpFourArgFFI:
+				arfOpFourArgFFI:
 				break;
 
-				case arfOpFiveArgFFI:
+				arfOpFiveArgFFI:
 				break;
 
-				case arfOpSixArgFFI:
+				arfOpSixArgFFI:
 				break;
 
-				case arfOpSevenArgFFI:
+				arfOpSevenArgFFI:
 				break;
 
-				case arfOpEightArgFFI:
+				arfOpEightArgFFI:
 				break;
 
-				case arfOpDUP:
+				arfOpDUP:
 				{
 					i = dataTop->i;
 					(++dataTop)->i = i;
 				}
 				break;
 
-				case arfOpDROP:
+				arfOpDROP:
 				{
 					dataTop--;
 				}
 				break;
 
-				case arfOpPLUS:
+				arfOpPLUS:
 				{
 					i = (dataTop--)->i;
 					dataTop->i += i;
 				}
 				break;
 
-				case arfOpMINUS:
+				arfOpMINUS:
 				{
 					i = (dataTop--)->i;
 					dataTop->i -= i;
 				}
 				break;
 
-				case arfOpONEPLUS:
+				arfOpONEPLUS:
 				{
 					dataTop->i++;
 				}
 				break;
 
-				case arfOpONEMINUS:
+				arfOpONEMINUS:
 				{
 					dataTop->i--;
 				}
 				break;
 
-				case arfOpSWAP:
+				arfOpSWAP:
 				{
 					arfCell swap;
 					swap = dataTop[0];
@@ -200,18 +221,10 @@ static void arfInnerInterpreter(arfOpcode *xt)
 				}
 				break;
 
-				case arfOpEXIT:
+				arfOpEXIT:
 					// Not really; this is just here for testing.
 					return;
 				break;
-			}
-		}
-		else
-		{
-			while (true)
-			{
-				// I'm stuck!
-				PORTB = 0x01;
 			}
 		}
 	}
