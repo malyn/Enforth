@@ -81,7 +81,7 @@ arfStack returnStack;
 
 static void arfInnerInterpreter(arfOpcode *xt)
 {
-	arfOpcode *ip;
+	uint8_t *ip;
 	arfCell *dataTop;
 	arfCell *returnTop;
 	
@@ -90,7 +90,7 @@ static void arfInnerInterpreter(arfOpcode *xt)
 	arfInt i;
 	
 	// Initialize our local variables.
-	ip = xt;
+	ip = (uint8_t *)xt;
 	dataTop = dataStack.top;
 	returnTop = returnStack.top;
 	
@@ -105,7 +105,7 @@ static void arfInnerInterpreter(arfOpcode *xt)
 	while (true)
 	{
 		// Get the next opcode and dispatch to the label.
-		op = *ip++;
+		op = (arfOpcode)*ip++;
 		goto *(void *)pgm_read_word(&jtb[op]);
 
 		arfOpZeroArgFFI:
