@@ -75,7 +75,7 @@ void ARF::go(int (*sketchFn)(void))
 	*this->here++ = 0x00; // LFAhi
 	*this->here++ = 0x00; // LFAlo
 
-#if false
+#if true
 	*this->here++ = arfOpDUP; // PFA start
 
 	*this->here++ = arfOpZeroArgFFI;
@@ -127,10 +127,10 @@ void ARF::go(int (*sketchFn)(void))
 
 void ARF::innerInterpreter(uint8_t * xt)
 {
-	uint8_t *ip;
-	// TODO Consider storing TOS in a register.
-	arfCell *dataTop;
-	arfCell *returnTop;
+	register uint8_t *ip;
+	register arfCell tos;
+	register arfCell *restDataStack;
+	register arfCell *returnTop;
 	
 	arfOpcode op;
 	
@@ -138,7 +138,8 @@ void ARF::innerInterpreter(uint8_t * xt)
 	
 	// Initialize our local variables.
 	ip = (uint8_t *)xt;
-	dataTop = (arfCell *)this->dataStack;
+	tos = ((arfCell*)this->dataStack)[0];
+	restDataStack = (arfCell*)this->dataStack[-1];
 	returnTop = (arfCell *)this->returnStack;
 	
 	static const void * const jtb[] PROGMEM = {
@@ -159,7 +160,7 @@ void ARF::innerInterpreter(uint8_t * xt)
 		{
 			arfZeroArgFFI fn = (arfZeroArgFFI)(((arfCell*)ip)->p);
 			ip += 2;
-			*(++dataTop) = (*fn)();
+			tos = (*fn)();
 		}
 		continue;
 
@@ -167,7 +168,7 @@ void ARF::innerInterpreter(uint8_t * xt)
 		{
 			arfOneArgFFI fn = (arfOneArgFFI)(((arfCell*)ip)->p);
 			ip += 2;
-			*dataTop = (*fn)(*dataTop);
+			tos = (*fn)(tos);
 		}
 		continue;
 
@@ -175,9 +176,9 @@ void ARF::innerInterpreter(uint8_t * xt)
 		{
 			arfTwoArgFFI fn = (arfTwoArgFFI)(((arfCell*)ip)->p);
 			ip += 2;
-			arfCell arg1 = *dataTop--;
-			arfCell arg2 = *dataTop;
-			*dataTop = (*fn)(arg1, arg2);
+			arfCell arg2 = tos;
+			arfCell arg1 = *restDataStack--;
+			tos = (*fn)(arg1, arg2);
 		}
 		continue;
 
@@ -185,10 +186,10 @@ void ARF::innerInterpreter(uint8_t * xt)
 		{
 			arfThreeArgFFI fn = (arfThreeArgFFI)(((arfCell*)ip)->p);
 			ip += 2;
-			arfCell arg1 = *dataTop--;
-			arfCell arg2 = *dataTop--;
-			arfCell arg3 = *dataTop;
-			*dataTop = (*fn)(arg1, arg2, arg3);
+			arfCell arg3 = tos;
+			arfCell arg2 = *restDataStack--;
+			arfCell arg1 = *restDataStack--;
+			tos = (*fn)(arg1, arg2, arg3);
 		}
 		continue;
 
@@ -209,49 +210,47 @@ void ARF::innerInterpreter(uint8_t * xt)
 
 		arfOpDUP:
 		{
-			i = dataTop->i;
-			(++dataTop)->i = i;
+			*++restDataStack = tos;
 		}
 		continue;
 
 		arfOpDROP:
 		{
-			dataTop--;
+			tos = *--restDataStack;
 		}
 		continue;
 
 		arfOpPLUS:
 		{
-			i = (dataTop--)->i;
-			dataTop->i += i;
+			i = (restDataStack--)->i;
+			tos.i += i;
 		}
 		continue;
 
 		arfOpMINUS:
 		{
-			i = (dataTop--)->i;
-			dataTop->i -= i;
+			i = (restDataStack--)->i;
+			tos.i -= i;
 		}
 		continue;
 
 		arfOpONEPLUS:
 		{
-			dataTop->i++;
+			tos.i++;
 		}
 		continue;
 
 		arfOpONEMINUS:
 		{
-			dataTop->i--;
+			tos.i--;
 		}
 		continue;
 
 		arfOpSWAP:
 		{
-			arfCell swap;
-			swap = dataTop[0];
-			dataTop[0] = dataTop[-1];
-			dataTop[-1] = swap;
+			arfCell swap = *restDataStack;
+			*restDataStack = tos;
+			tos = swap;
 		}
 		continue;
 
