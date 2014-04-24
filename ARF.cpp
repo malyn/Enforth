@@ -31,8 +31,10 @@ typedef enum
 	arfOpONEPLUS,
 	arfOpONEMINUS,
 	arfOpSWAP,
+	arfOpDOCOLON,
+	arfOpPARENBRANCH,
 	//...
-	arfOpEXIT,
+	arfOpEXIT = 0x7F,
 } arfOpcode;
 
 typedef arfCell (*arfZeroArgFFI)(void);
@@ -68,68 +70,88 @@ ARF::ARF(const uint8_t * dictionary, int dictionarySize)
 void ARF::go(int (*sketchFn)(void))
 {
 	// TODO Remove this test code.
-	*this->here++ = 'f';
-	*this->here++ = 'o';
-	*this->here++ = 'o';
+	int16_t offset;
 
-	*this->here++ = (char)-3;
+	*this->here++ = 'b';
+	*this->here++ = 'l';
+	*this->here++ = 'i';
+	*this->here++ = 'n';
+	*this->here++ = 'k';
+	*this->here++ = (char)-5;
 	*this->here++ = 0x00; // LFAhi
 	*this->here++ = 0x00; // LFAlo
-
-#if true
-	*this->here++ = arfOpPARENLITERAL;
-	*this->here++ = 0x01;
-	*this->here++ = 0x00;
-	*this->here++ = arfOpPARENLITERAL;
-	*this->here++ = 0x02;
-	*this->here++ = 0x00;
-	*this->here++ = arfOpTwoArgFFI;
-	*this->here++ = ((unsigned int)add) & 0xff;
-	*this->here++ = (((unsigned int)add) >> 8) & 0xff;
-	*this->here++ = arfOpDROP;
-
+	uint8_t * blinkCFA = this->here;
+	*this->here++ = arfOpDOCOLON; // CFA
+	*this->here++ = arfOpDROP; // TODO Have sketchFn take an argument.
 	*this->here++ = arfOpZeroArgFFI;
 	*this->here++ = ((unsigned int)sketchFn) & 0xff;
 	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
-	*this->here++ = arfOpDUP;
-	*this->here++ = arfOpTwoArgFFI;
-	*this->here++ = ((unsigned int)add) & 0xff;
-	*this->here++ = (((unsigned int)add) >> 8) & 0xff;
-	*this->here++ = arfOpDROP;
-
-	*this->here++ = arfOpPARENLITERAL;
-	*this->here++ = 0x01;
-	*this->here++ = 0x00;
-	*this->here++ = arfOpPARENLITERAL;
-	*this->here++ = 0x02;
-	*this->here++ = 0x00;
-	*this->here++ = arfOpPARENLITERAL;
-	*this->here++ = 0x03;
-	*this->here++ = 0x00;
-	*this->here++ = arfOpThreeArgFFI;
-	*this->here++ = ((unsigned int)sum) & 0xff;
-	*this->here++ = (((unsigned int)sum) >> 8) & 0xff;
-	*this->here++ = arfOpDROP;
-
 	*this->here++ = arfOpEXIT;
-#else
-	*this->here++ = arfOpZeroArgFFI;
-	*this->here++ = ((unsigned int)sketchFn) & 0xff;
-	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
-	*this->here++ = arfOpDROP;
 
-	*this->here++ = arfOpZeroArgFFI;
-	*this->here++ = ((unsigned int)sketchFn) & 0xff;
-	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
+	*this->here++ = 'g';
+	*this->here++ = 'o';
+	*this->here++ = (char)-2;
+	*this->here++ = 0x00; // LFAhi
+	*this->here++ = 0x00; // LFAlo
+	uint8_t * goCFA = this->here;
+	*this->here++ = arfOpDOCOLON; // CFA
+	*this->here++ = arfOpPARENLITERAL;
+	*this->here++ = 0x64;
+	*this->here++ = 0x00;
+	// FIXM3 Need to store this MSB (and right-shifted one with the high
+	// bit set) otherwise we could match against an opcode.
+	//
+	// FIXME Make this an MSB-first relative offset to the word's CFA.
+	// Note that the offset is as of the address *after* the offset
+	// since that's where the IP will be in the arfWORD handler when we
+	// calculate the address.  Better to just +2 the value here than
+	// have to do a -2 in the inner loop.
+	//
+	// TOD0 Do we even need the "W" register and the "jump" and stuff?
+	// Seems like we could just compile in the opcode (DOCOLON,
+	// DOVARIABLE, etc.) at the call site and then invoke that.  That
+	// would save us loading stuff in DOCOLON, having an extra variable,
+	// etc.  In that respect, this becomes more like an
+	// indirect-threaded Forth.
+	//   This won't work, because the caller doesn't know what kind of
+	//   word is being called.
+	//
+	// TODO We've gotten our names a bit wrong here.  These aren't
+	// "opcodes" as much as they are "primitive words".  Similarly, the
+	// RAM definitions are "user-defined words."  Primitive words are
+	// identified by 0x00-0x7F, whereas user-defined words have their
+	// high bit set and their PFA must be word-aligned (so that we can
+	// shift left the 15-bit value).  Then, in the
+	// arfPrimUserDefinedWord handler we can just read the "word type"
+	// and then jump to a smaller (RAM-resident, for speed!) table for
+	// that type of word.  There is only DOCOLON, DODOES, DOCREATE, etc.
+	// so this can be hard-coded and avoids the need to waste "opcodes"
+	// (now "primitive word ids"?).
+	//
+	// Again the key point here is that the PFA contains a list of
+	// tokens and addresses, with the high bit telling you what you are
+	// looking at.  Either way though, the list is a list of words
+	// (primitive or user-defined).  There is no longer a concept of
+	// "opcode" since ARF is a Forth machine and not a CPU.
+	offset = -((this->here+2) - blinkCFA);
+	*this->here++ = (offset >> 8) & 0xff;
+	*this->here++ = offset & 0xff;
 	*this->here++ = arfOpDROP;
+	// Jump back to the start of this word (i.e., the entire word is in
+	// a BEGIN ... AGAIN loop).  Note that (branch) offsets are 8-bit
+	// relative offsets.  UNLIKE word addresses, the IP points at the
+	// offset in arfOpPARENBRANCH.  Note that this is a positive number,
+	// which is subtracted from the IP, whereas word addresses are
+	// negative numbers that are added to the IP.  They are different
+	// because we need to be able to detect word addresses (high bit
+	// set) from opcodes (high bit clear), whereas for branch offsets we
+	// want to
+	// use the full range of the 8-bit value.
+	*this->here++ = arfOpPARENBRANCH;
+	offset = this->here - (goCFA+1);
+	*this->here++ = offset & 0xff;
 
-	*this->here++ = arfOpZeroArgFFI;
-	*this->here++ = ((unsigned int)sketchFn) & 0xff;
-	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
-	*this->here++ = arfOpDROP;
-#endif
-
-	this->innerInterpreter(const_cast<uint8_t *>(this->dictionary) + 6);
+	this->innerInterpreter(goCFA + 1);
 }
 
 void ARF::innerInterpreter(uint8_t * xt)
@@ -138,29 +160,156 @@ void ARF::innerInterpreter(uint8_t * xt)
 	register arfCell tos;
 	register arfCell *restDataStack; // Points at the second item on the stack.
 	register arfCell *returnTop;
-	
-	arfOpcode op;
-	
+
+	uint8_t op;
+
 	arfInt i;
-	
+	arfCell *w;
+
 	// Initialize our local variables.
 	ip = (uint8_t *)xt;
 	tos.i = 0;
 	restDataStack = (arfCell*)this->dataStack[32];
-	returnTop = (arfCell *)this->returnStack;
-	
-	static const void * const jtb[] PROGMEM = {
-		&&arfOpZeroArgFFI, &&arfOpOneArgFFI, &&arfOpTwoArgFFI,
-		&&arfOpThreeArgFFI, &&arfOpFourArgFFI, &&arfOpFiveArgFFI,
-		&&arfOpSixArgFFI, &&arfOpSevenArgFFI, &&arfOpEightArgFFI,
-		&&arfOpPARENLITERAL, &&arfOpDUP, &&arfOpDROP, &&arfOpPLUS, &&arfOpMINUS,
-		&&arfOpONEPLUS, &&arfOpONEMINUS, &&arfOpSWAP, &&arfOpEXIT,
+	returnTop = (arfCell *)this->returnStack[32];
+
+	static const void * const jtb[256] PROGMEM = {
+		// $00 - $07
+		&&arfOpZeroArgFFI,
+		&&arfOpOneArgFFI,
+		&&arfOpTwoArgFFI,
+		&&arfOpThreeArgFFI,
+
+		&&arfOpFourArgFFI,
+		&&arfOpFiveArgFFI,
+		&&arfOpSixArgFFI,
+		&&arfOpSevenArgFFI,
+
+		// $08 - $0F
+		&&arfOpEightArgFFI,
+		&&arfOpPARENLITERAL,
+		&&arfOpDUP,
+		&&arfOpDROP,
+
+		&&arfOpPLUS,
+		&&arfOpMINUS,
+		&&arfOpONEPLUS,
+		&&arfOpONEMINUS,
+
+		// $10 - $17
+		&&arfOpSWAP,
+		&&arfOpDOCOLON,
+		&&arfOpPARENBRANCH,
+		0,
+
+		0, 0, 0, 0,
+
+		// $18 - $1F
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+
+		// $20 - $27
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+
+		// $28 - $2F
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+
+		// $30 - $37
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+
+		// $38 - $3F
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+
+		// $40 - $47
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+
+		// $48 - $4F
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+
+		// $50 - $57
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+
+		// $58 - $5F
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+
+		// $60 - $67
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+
+		// $68 - $6F
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+
+		// $70 - $77
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+
+		// $78 - $7F
+		0, 0, 0, 0,
+		0, 0, 0,
+		&&arfOpEXIT,
+
+		// $80 - $8F
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+
+		// $90 - $9F
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+
+		// $A0 - $AF
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+
+		// $B0 - $BF
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+
+		// $C0 - $CF
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+
+		// $D0 - $DF
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+
+		// $E0 - $EF
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+
+		// $F0 - $FF
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
+		&&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
 	};
 
 	while (true)
 	{
 		// Get the next opcode and dispatch to the label.
-		op = (arfOpcode)*ip++;
+		op = *ip++;
+OPCODE_DISPATCH:
 		goto *(void *)pgm_read_word(&jtb[op]);
 
 		arfOpZeroArgFFI:
@@ -214,7 +363,7 @@ void ARF::innerInterpreter(uint8_t * xt)
 
 		arfOpEightArgFFI:
 		continue;
-		
+
 		arfOpPARENLITERAL:
 		{
 			*--restDataStack = tos;
@@ -271,9 +420,84 @@ void ARF::innerInterpreter(uint8_t * xt)
 		}
 		continue;
 
+		arfOpPARENBRANCH:
+		{
+			// Relative, because these are entirely within a single word
+			// and so we want it to be relocatable without us having to
+			// do anything.  Note that the offset cannot be larger than
+			// 255 bytes!
+			ip = ip - *ip;
+		}
+		continue;
+
 		arfOpEXIT:
-			// Not really; this is just here for testing.
-			return;
+		{
+			ip = (uint8_t *)((returnTop++)->p);
+		}
+		continue;
+
+		// This is not an opcode, but is instead the code that is run
+		// when a non-opcode byte is detected.  We read the next byte,
+		// which is the absolute RAM address of the CFA of the word that
+		// is being called.  We load the CFA, which will be one of our
+		// opcodes, and go back to the top of the loop in order to
+		// process that opcode.  Note that we do *not* change IP to
+		// point to the CFA, since the called word will either save the
+		// IP itself (in the case of DOCOLON) or continue onwards after
+		// pushing something onto the stack (in the case of DOVARIABLE).
+		// This right here is what makes ARF an indirect-threaded Forth
+		// when processing RAM-based definitions: the CFA contains the
+		// address (opcode, because we're actually a token-threaded
+		// Forth once we're in flash) of the routine that executes the
+		// new thread.
+		arfWORD:
+		{
+			// Get the CFA of the target word.  Note that the CFA is
+			// stored MSB-first so that op goes negative as an
+			// indication that this opcode is the first part of a
+			// two-byte address.  The AVR would normally store values
+			// LSB-first, but we have to bypass that here.
+			// TOD0 We could make this relative from the start of the
+			// dictionary, which would almost certainly guarantee that
+			// it was smaller than 15 bits without having to word-align
+			// things.  The only downside is that it might be slower to
+			// get the address... (since we have to do math now)  But
+			// then we have to do math anyway in order to shift and
+			// stuff.
+			// TODO Or, we could always make these negative offsets
+			// which automatically sets the high bit.  Then we just add
+			// the value to our current IP and that becomes w.  That
+			// seems better.
+			i = (op << 8) | *ip++;
+			w = (arfCell*)(ip + i);
+
+			// Indirect threading: "jump" to the CFA by putting the CFA
+			// opcode into our op variable and then dispatching the
+			// opcode.
+			// TODO Just use a RAM-resident jump table for the CFA.  We
+			// don't need to run that through an opcode since it will
+			// never be used by anyone directly and is instead only
+			// referenced by indirect-threaded arfWORD handler.  This
+			// would also eliminate the need for "w" since we could just
+			// use "i" given how closely-knit this code is right here.
+			// TODO Maybe we should turn the NFA offset byte into a
+			// combination of offset and flags?
+			op = w->i;
+			goto OPCODE_DISPATCH;
+		}
+		continue;
+
+		arfOpDOCOLON:
+		{
+			// IP currently points to the next word in the PFA and that
+			// is the location to which we should return once this new
+			// word has executed.
+			(--returnTop)->p = (void *)ip;
+
+			// Now skip over the CFA and begin executing the thread in
+			// the Parameter Field Address.
+			ip = (uint8_t *)w + 1;
+		}
 		continue;
 	}
 }
