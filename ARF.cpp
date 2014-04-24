@@ -23,6 +23,7 @@ typedef enum
 	arfOpSixArgFFI,
 	arfOpSevenArgFFI,
 	arfOpEightArgFFI,
+	arfOpPARENLITERAL,
 	arfOpDUP,
 	arfOpDROP,
 	arfOpPLUS,
@@ -76,30 +77,39 @@ void ARF::go(int (*sketchFn)(void))
 	*this->here++ = 0x00; // LFAlo
 
 #if true
-	*this->here++ = arfOpDUP; // PFA start
-
-	*this->here++ = arfOpZeroArgFFI;
-	*this->here++ = ((unsigned int)sketchFn) & 0xff;
-	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
-	*this->here++ = arfOpZeroArgFFI;
-	*this->here++ = ((unsigned int)sketchFn) & 0xff;
-	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
+	*this->here++ = arfOpPARENLITERAL;
+	*this->here++ = 0x01;
+	*this->here++ = 0x00;
+	*this->here++ = arfOpPARENLITERAL;
+	*this->here++ = 0x02;
+	*this->here++ = 0x00;
 	*this->here++ = arfOpTwoArgFFI;
 	*this->here++ = ((unsigned int)add) & 0xff;
 	*this->here++ = (((unsigned int)add) >> 8) & 0xff;
+	*this->here++ = arfOpDROP;
 
 	*this->here++ = arfOpZeroArgFFI;
 	*this->here++ = ((unsigned int)sketchFn) & 0xff;
 	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
-	*this->here++ = arfOpZeroArgFFI;
-	*this->here++ = ((unsigned int)sketchFn) & 0xff;
-	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
-	*this->here++ = arfOpZeroArgFFI;
-	*this->here++ = ((unsigned int)sketchFn) & 0xff;
-	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
+	*this->here++ = arfOpDUP;
+	*this->here++ = arfOpTwoArgFFI;
+	*this->here++ = ((unsigned int)add) & 0xff;
+	*this->here++ = (((unsigned int)add) >> 8) & 0xff;
+	*this->here++ = arfOpDROP;
+
+	*this->here++ = arfOpPARENLITERAL;
+	*this->here++ = 0x01;
+	*this->here++ = 0x00;
+	*this->here++ = arfOpPARENLITERAL;
+	*this->here++ = 0x02;
+	*this->here++ = 0x00;
+	*this->here++ = arfOpPARENLITERAL;
+	*this->here++ = 0x03;
+	*this->here++ = 0x00;
 	*this->here++ = arfOpThreeArgFFI;
 	*this->here++ = ((unsigned int)sum) & 0xff;
 	*this->here++ = (((unsigned int)sum) >> 8) & 0xff;
+	*this->here++ = arfOpDROP;
 
 	*this->here++ = arfOpEXIT;
 #else
@@ -119,9 +129,6 @@ void ARF::go(int (*sketchFn)(void))
 	*this->here++ = arfOpDROP;
 #endif
 
-	this->dataStack[0] = 0x27;
-	this->dataStack[1] = 0x00;
-
 	this->innerInterpreter(const_cast<uint8_t *>(this->dictionary) + 6);
 }
 
@@ -129,7 +136,7 @@ void ARF::innerInterpreter(uint8_t * xt)
 {
 	register uint8_t *ip;
 	register arfCell tos;
-	register arfCell *restDataStack;
+	register arfCell *restDataStack; // Points at the second item on the stack.
 	register arfCell *returnTop;
 	
 	arfOpcode op;
@@ -138,15 +145,15 @@ void ARF::innerInterpreter(uint8_t * xt)
 	
 	// Initialize our local variables.
 	ip = (uint8_t *)xt;
-	tos = ((arfCell*)this->dataStack)[0];
-	restDataStack = (arfCell*)this->dataStack[-1];
+	tos.i = 0;
+	restDataStack = (arfCell*)this->dataStack[32];
 	returnTop = (arfCell *)this->returnStack;
 	
 	static const void * const jtb[] PROGMEM = {
 		&&arfOpZeroArgFFI, &&arfOpOneArgFFI, &&arfOpTwoArgFFI,
 		&&arfOpThreeArgFFI, &&arfOpFourArgFFI, &&arfOpFiveArgFFI,
 		&&arfOpSixArgFFI, &&arfOpSevenArgFFI, &&arfOpEightArgFFI,
-		&&arfOpDUP, &&arfOpDROP, &&arfOpPLUS, &&arfOpMINUS,
+		&&arfOpPARENLITERAL, &&arfOpDUP, &&arfOpDROP, &&arfOpPLUS, &&arfOpMINUS,
 		&&arfOpONEPLUS, &&arfOpONEMINUS, &&arfOpSWAP, &&arfOpEXIT,
 	};
 
@@ -177,7 +184,7 @@ void ARF::innerInterpreter(uint8_t * xt)
 			arfTwoArgFFI fn = (arfTwoArgFFI)(((arfCell*)ip)->p);
 			ip += 2;
 			arfCell arg2 = tos;
-			arfCell arg1 = *restDataStack--;
+			arfCell arg1 = *restDataStack++;
 			tos = (*fn)(arg1, arg2);
 		}
 		continue;
@@ -187,8 +194,8 @@ void ARF::innerInterpreter(uint8_t * xt)
 			arfThreeArgFFI fn = (arfThreeArgFFI)(((arfCell*)ip)->p);
 			ip += 2;
 			arfCell arg3 = tos;
-			arfCell arg2 = *restDataStack--;
-			arfCell arg1 = *restDataStack--;
+			arfCell arg2 = *restDataStack++;
+			arfCell arg1 = *restDataStack++;
 			tos = (*fn)(arg1, arg2, arg3);
 		}
 		continue;
@@ -207,29 +214,39 @@ void ARF::innerInterpreter(uint8_t * xt)
 
 		arfOpEightArgFFI:
 		continue;
+		
+		arfOpPARENLITERAL:
+		{
+			*--restDataStack = tos;
+			tos = *(arfCell*)ip;
+			ip += 2;
+		}
+		continue;
 
 		arfOpDUP:
 		{
-			*++restDataStack = tos;
+			// Move rest pointer to empty location, then copy TOS there.
+			*--restDataStack = tos;
 		}
 		continue;
 
 		arfOpDROP:
 		{
-			tos = *--restDataStack;
+			// Make TOS equal to second stack item, then adjust rest pointer.
+			tos = *restDataStack++;
 		}
 		continue;
 
 		arfOpPLUS:
 		{
-			i = (restDataStack--)->i;
+			i = (restDataStack++)->i;
 			tos.i += i;
 		}
 		continue;
 
 		arfOpMINUS:
 		{
-			i = (restDataStack--)->i;
+			i = (restDataStack++)->i;
 			tos.i -= i;
 		}
 		continue;
