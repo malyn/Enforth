@@ -88,7 +88,7 @@ void ARF::go(int (*sketchFn)(void))
 	*this->here++ = 0x00; // LFAhi
 	*this->here++ = 0x00; // LFAlo
 	uint8_t * blinkCFA = this->here;
-	*this->here++ = 0xe4; // CFAlo: DOCOLON
+	*this->here++ = 0xe8; // CFAlo: DOCOLON
 	*this->here++ = 0x01; // CFAhi
 	*this->here++ = arfOpDROP; // TODO Have sketchFn take an argument.
 	*this->here++ = arfOpZeroArgFFI;
@@ -102,7 +102,7 @@ void ARF::go(int (*sketchFn)(void))
 	*this->here++ = 0x00; // LFAhi
 	*this->here++ = 0x00; // LFAlo
 	uint8_t * goCFA = this->here;
-	*this->here++ = 0xe4; // CFAlo: DOCOLON
+	*this->here++ = 0xe8; // CFAlo: DOCOLON
 	*this->here++ = 0x01; // CFAhi
 	*this->here++ = arfOpPARENLITERAL;
 	*this->here++ = 0x64;
@@ -320,6 +320,10 @@ void ARF::innerInterpreter(uint8_t * xt)
 
 		arfOpZeroArgFFI:
 		{
+			// Push TOS, since we're about to get a new TOS.
+			*--restDataStack = tos;
+
+			// Make the call, then make the return value the new TOS.
 			arfZeroArgFFI fn = (arfZeroArgFFI)(((arfCell*)ip)->p);
 			ip += 2;
 			tos = (*fn)();
@@ -467,6 +471,13 @@ void ARF::innerInterpreter(uint8_t * xt)
 
 			// Indirect threading: jump to the CFA.
 			goto *(void *)(w->p);
+
+			// TODO Remove this jump table once we are referencing all
+			// of these labels as part of the normal words.  Until then,
+			// we need the jump table in order to prevent the compiler
+			// from removing what it believes is dead code.
+			static const void * const cfaJumpTable[4] = {
+				&&DOCOLON, &&DOCONSTANT, &&DOCREATE, &&DODOES };
 
 			DOCOLON:
 				// IP currently points to the next word in the PFA and that
