@@ -3,6 +3,21 @@
 
 #include <inttypes.h>
 
+#ifdef __AVR__
+typedef int16_t arfInt;
+typedef uint16_t arfUnsigned;
+#else
+typedef int32_t arfInt;
+typedef uint32_t arfUnsigned;
+#endif
+
+typedef union arfCell
+{
+	arfInt i;
+	arfUnsigned u;
+	void *p;
+} arfCell;
+
 class ARF
 {
 	public:
@@ -14,8 +29,8 @@ class ARF
 		const int dictionarySize;
 		uint8_t * here;
 
-		uint16_t dataStack[32];
-		uint16_t returnStack[32];
+		arfCell dataStack[32];
+		arfCell returnStack[32];
 		
 		void innerInterpreter(uint8_t * xt);
 };

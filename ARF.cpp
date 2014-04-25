@@ -1,16 +1,15 @@
+#ifdef __AVR__
 #include <avr/pgmspace.h>
+#else
+#define PROGMEM
+#define pgm_read_word(p) (*p)
+#endif
 
 #include "ARF.h"
 
-typedef int arfInt;
-typedef int arfUnsigned;
-
-typedef union arfCell
-{
-	arfInt i;
-	arfUnsigned u;
-	void *p;
-} arfCell;
+#define CFASZ (sizeof(void*))
+#define FFIPROCSZ (sizeof(void*))
+#define CELLSZ (sizeof(arfCell))
 
 typedef enum
 {
@@ -79,6 +78,7 @@ void ARF::go(int (*sketchFn)(void))
 	// TODO Remove this test code.
 	int16_t offset;
 
+#if false
 	*this->here++ = 'b';
 	*this->here++ = 'l';
 	*this->here++ = 'i';
@@ -146,6 +146,21 @@ void ARF::go(int (*sketchFn)(void))
 	*this->here++ = (offset >> 8) & 0xff;
 	*this->here++ = offset & 0xff;
 	*this->here++ = arfOpDROP;
+#else
+	*this->here++ = 'g';
+	*this->here++ = 'o';
+	*this->here++ = (char)-2;
+	*this->here++ = 0x00; // LFAhi
+	*this->here++ = 0x00; // LFAlo
+	uint8_t * goCFA = this->here;
+	this->here += CFASZ; // CFA
+	*this->here++ = arfOpZeroArgFFI;
+	*this->here++ = ((unsigned int)sketchFn) & 0xff;
+	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
+	*this->here++ = (((unsigned int)sketchFn) >> 16) & 0xff;
+	*this->here++ = (((unsigned int)sketchFn) >> 24) & 0xff;
+	*this->here++ = arfOpDROP;
+#endif
 	// Jump back to the start of this word (i.e., the entire word is in
 	// a BEGIN ... AGAIN loop).  Note that (branch) offsets are 8-bit
 	// relative offsets.  UNLIKE word addresses, the IP points at the
@@ -157,10 +172,10 @@ void ARF::go(int (*sketchFn)(void))
 	// want to
 	// use the full range of the 8-bit value.
 	*this->here++ = arfOpPARENBRANCH;
-	offset = this->here - (goCFA+2);
+	offset = this->here - (goCFA+CFASZ);
 	*this->here++ = offset & 0xff;
 
-	this->innerInterpreter(goCFA + 2);
+	this->innerInterpreter(goCFA + CFASZ);
 }
 
 void ARF::innerInterpreter(uint8_t * xt)
@@ -173,12 +188,13 @@ void ARF::innerInterpreter(uint8_t * xt)
 	uint8_t op;
 
 	arfInt i;
+	arfCell * w;
 
 	// Initialize our local variables.
 	ip = (uint8_t *)xt;
 	tos.i = 0;
-	restDataStack = (arfCell*)this->dataStack[32];
-	returnTop = (arfCell *)this->returnStack[32];
+	restDataStack = (arfCell*)&this->dataStack[32];
+	returnTop = (arfCell *)&this->returnStack[32];
 
 	static const void * const jtb[256] PROGMEM = {
 		// $00 - $07
@@ -325,7 +341,7 @@ void ARF::innerInterpreter(uint8_t * xt)
 
 			// Make the call, then make the return value the new TOS.
 			arfZeroArgFFI fn = (arfZeroArgFFI)(((arfCell*)ip)->p);
-			ip += 2;
+			ip += FFIPROCSZ;
 			tos = (*fn)();
 		}
 		continue;
@@ -333,7 +349,7 @@ void ARF::innerInterpreter(uint8_t * xt)
 		arfOpOneArgFFI:
 		{
 			arfOneArgFFI fn = (arfOneArgFFI)(((arfCell*)ip)->p);
-			ip += 2;
+			ip += FFIPROCSZ;
 			tos = (*fn)(tos);
 		}
 		continue;
@@ -341,7 +357,7 @@ void ARF::innerInterpreter(uint8_t * xt)
 		arfOpTwoArgFFI:
 		{
 			arfTwoArgFFI fn = (arfTwoArgFFI)(((arfCell*)ip)->p);
-			ip += 2;
+			ip += FFIPROCSZ;
 			arfCell arg2 = tos;
 			arfCell arg1 = *restDataStack++;
 			tos = (*fn)(arg1, arg2);
@@ -351,7 +367,7 @@ void ARF::innerInterpreter(uint8_t * xt)
 		arfOpThreeArgFFI:
 		{
 			arfThreeArgFFI fn = (arfThreeArgFFI)(((arfCell*)ip)->p);
-			ip += 2;
+			ip += FFIPROCSZ;
 			arfCell arg3 = tos;
 			arfCell arg2 = *restDataStack++;
 			arfCell arg1 = *restDataStack++;
@@ -378,7 +394,7 @@ void ARF::innerInterpreter(uint8_t * xt)
 		{
 			*--restDataStack = tos;
 			tos = *(arfCell*)ip;
-			ip += 2;
+			ip += CELLSZ;
 		}
 		continue;
 
@@ -466,8 +482,10 @@ void ARF::innerInterpreter(uint8_t * xt)
 			// Using a relative offset automatically makes this value
 			// negative, which differentiates it (high bit set) from
 			// opcodes, which are all less than $80 (high bit clear).
+			// Note that offsets are 16-bit values regardless of the
+			// platform's word size.
 			i = (op << 8) | *ip++;
-			arfCell * w = (arfCell*)(ip + i);
+			w = (arfCell*)(ip + i);
 
 			// Indirect threading: jump to the CFA.
 			goto *(void *)(w->p);
@@ -487,7 +505,7 @@ void ARF::innerInterpreter(uint8_t * xt)
 
 				// Now skip over the CFA and begin executing the thread in
 				// the Parameter Field Address.
-				ip = (uint8_t *)w + 2;
+				ip = (uint8_t *)w + CFASZ;
 
 				// Start processing instructions in this thread.
 				continue;
