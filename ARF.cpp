@@ -31,11 +31,18 @@ typedef enum
 	arfOpONEPLUS,
 	arfOpONEMINUS,
 	arfOpSWAP,
-	arfOpDOCOLON,
 	arfOpPARENBRANCH,
 	//...
 	arfOpEXIT = 0x7F,
 } arfOpcode;
+
+typedef enum
+{
+	arfCFADOCOLON = 0,
+	arfCFADOCONSTANT,
+	arfCFADOCREATE,
+	arfCFADODOES,
+} arfCFA;
 
 typedef arfCell (*arfZeroArgFFI)(void);
 typedef arfCell (*arfOneArgFFI)(arfCell a);
@@ -81,7 +88,7 @@ void ARF::go(int (*sketchFn)(void))
 	*this->here++ = 0x00; // LFAhi
 	*this->here++ = 0x00; // LFAlo
 	uint8_t * blinkCFA = this->here;
-	*this->here++ = arfOpDOCOLON; // CFA
+	*this->here++ = arfCFADOCOLON; // CFA
 	*this->here++ = arfOpDROP; // TODO Have sketchFn take an argument.
 	*this->here++ = arfOpZeroArgFFI;
 	*this->here++ = ((unsigned int)sketchFn) & 0xff;
@@ -94,7 +101,7 @@ void ARF::go(int (*sketchFn)(void))
 	*this->here++ = 0x00; // LFAhi
 	*this->here++ = 0x00; // LFAlo
 	uint8_t * goCFA = this->here;
-	*this->here++ = arfOpDOCOLON; // CFA
+	*this->here++ = arfCFADOCOLON; // CFA
 	*this->here++ = arfOpPARENLITERAL;
 	*this->here++ = 0x64;
 	*this->here++ = 0x00;
@@ -164,7 +171,6 @@ void ARF::innerInterpreter(uint8_t * xt)
 	uint8_t op;
 
 	arfInt i;
-	arfCell *w;
 
 	// Initialize our local variables.
 	ip = (uint8_t *)xt;
@@ -197,9 +203,8 @@ void ARF::innerInterpreter(uint8_t * xt)
 
 		// $10 - $17
 		&&arfOpSWAP,
-		&&arfOpDOCOLON,
 		&&arfOpPARENBRANCH,
-		0,
+		0, 0,
 
 		0, 0, 0, 0,
 
@@ -309,7 +314,6 @@ void ARF::innerInterpreter(uint8_t * xt)
 	{
 		// Get the next opcode and dispatch to the label.
 		op = *ip++;
-OPCODE_DISPATCH:
 		goto *(void *)pgm_read_word(&jtb[op]);
 
 		arfOpZeroArgFFI:
@@ -452,52 +456,45 @@ OPCODE_DISPATCH:
 		// new thread.
 		arfWORD:
 		{
-			// Get the CFA of the target word.  Note that the CFA is
-			// stored MSB-first so that op goes negative as an
-			// indication that this opcode is the first part of a
-			// two-byte address.  The AVR would normally store values
-			// LSB-first, but we have to bypass that here.
-			// TOD0 We could make this relative from the start of the
-			// dictionary, which would almost certainly guarantee that
-			// it was smaller than 15 bits without having to word-align
-			// things.  The only downside is that it might be slower to
-			// get the address... (since we have to do math now)  But
-			// then we have to do math anyway in order to shift and
-			// stuff.
-			// TODO Or, we could always make these negative offsets
-			// which automatically sets the high bit.  Then we just add
-			// the value to our current IP and that becomes w.  That
-			// seems better.
+			// Get the relative offset to the CFA of the target word.
+			// Using a relative offset automatically makes this value
+			// negative, which differentiates it (high bit set) from
+			// opcodes, which are all less than $80 (high bit clear).
 			i = (op << 8) | *ip++;
-			w = (arfCell*)(ip + i);
+			arfCell * w = (arfCell*)(ip + i);
 
-			// Indirect threading: "jump" to the CFA by putting the CFA
-			// opcode into our op variable and then dispatching the
-			// opcode.
-			// TODO Just use a RAM-resident jump table for the CFA.  We
-			// don't need to run that through an opcode since it will
-			// never be used by anyone directly and is instead only
-			// referenced by indirect-threaded arfWORD handler.  This
-			// would also eliminate the need for "w" since we could just
-			// use "i" given how closely-knit this code is right here.
-			// TODO Maybe we should turn the NFA offset byte into a
-			// combination of offset and flags?
+			// Load the CFA.
 			op = w->i;
-			goto OPCODE_DISPATCH;
-		}
-		continue;
 
-		arfOpDOCOLON:
-		{
-			// IP currently points to the next word in the PFA and that
-			// is the location to which we should return once this new
-			// word has executed.
-			(--returnTop)->p = (void *)ip;
+			// Indirect threading: jump to the CFA.  Note that this jump
+			// table is stored in RAM -- it's tiny and we need to access
+			// it quickly.  We want to access the main jump table
+			// quickly as well, but it is too large to store in RAM.
+			static const void * const cfaJumpTable[4] = {
+				&&DOCOLON, &&DOCONSTANT, &&DOCREATE, &&DODOES };
+			goto *(void *)cfaJumpTable[op];
 
-			// Now skip over the CFA and begin executing the thread in
-			// the Parameter Field Address.
-			ip = (uint8_t *)w + 1;
+			DOCOLON:
+				// IP currently points to the next word in the PFA and that
+				// is the location to which we should return once this new
+				// word has executed.
+				(--returnTop)->p = (void *)ip;
+
+				// Now skip over the CFA and begin executing the thread in
+				// the Parameter Field Address.
+				ip = (uint8_t *)w + 1;
+
+				// Start processing instructions in this thread.
+				continue;
+
+			DOCONSTANT:
+				continue;
+
+			DOCREATE:
+				continue;
+
+			DODOES:
+				continue;
 		}
-		continue;
 	}
 }
