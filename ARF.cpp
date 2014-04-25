@@ -88,7 +88,8 @@ void ARF::go(int (*sketchFn)(void))
 	*this->here++ = 0x00; // LFAhi
 	*this->here++ = 0x00; // LFAlo
 	uint8_t * blinkCFA = this->here;
-	*this->here++ = arfCFADOCOLON; // CFA
+	*this->here++ = 0xe4; // CFAlo: DOCOLON
+	*this->here++ = 0x01; // CFAhi
 	*this->here++ = arfOpDROP; // TODO Have sketchFn take an argument.
 	*this->here++ = arfOpZeroArgFFI;
 	*this->here++ = ((unsigned int)sketchFn) & 0xff;
@@ -101,7 +102,8 @@ void ARF::go(int (*sketchFn)(void))
 	*this->here++ = 0x00; // LFAhi
 	*this->here++ = 0x00; // LFAlo
 	uint8_t * goCFA = this->here;
-	*this->here++ = arfCFADOCOLON; // CFA
+	*this->here++ = 0xe4; // CFAlo: DOCOLON
+	*this->here++ = 0x01; // CFAhi
 	*this->here++ = arfOpPARENLITERAL;
 	*this->here++ = 0x64;
 	*this->here++ = 0x00;
@@ -155,10 +157,10 @@ void ARF::go(int (*sketchFn)(void))
 	// want to
 	// use the full range of the 8-bit value.
 	*this->here++ = arfOpPARENBRANCH;
-	offset = this->here - (goCFA+1);
+	offset = this->here - (goCFA+2);
 	*this->here++ = offset & 0xff;
 
-	this->innerInterpreter(goCFA + 1);
+	this->innerInterpreter(goCFA + 2);
 }
 
 void ARF::innerInterpreter(uint8_t * xt)
@@ -463,16 +465,8 @@ void ARF::innerInterpreter(uint8_t * xt)
 			i = (op << 8) | *ip++;
 			arfCell * w = (arfCell*)(ip + i);
 
-			// Load the CFA.
-			op = w->i;
-
-			// Indirect threading: jump to the CFA.  Note that this jump
-			// table is stored in RAM -- it's tiny and we need to access
-			// it quickly.  We want to access the main jump table
-			// quickly as well, but it is too large to store in RAM.
-			static const void * const cfaJumpTable[4] = {
-				&&DOCOLON, &&DOCONSTANT, &&DOCREATE, &&DODOES };
-			goto *(void *)cfaJumpTable[op];
+			// Indirect threading: jump to the CFA.
+			goto *(void *)(w->p);
 
 			DOCOLON:
 				// IP currently points to the next word in the PFA and that
@@ -482,7 +476,7 @@ void ARF::innerInterpreter(uint8_t * xt)
 
 				// Now skip over the CFA and begin executing the thread in
 				// the Parameter Field Address.
-				ip = (uint8_t *)w + 1;
+				ip = (uint8_t *)w + 2;
 
 				// Start processing instructions in this thread.
 				continue;
