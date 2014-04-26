@@ -1,8 +1,12 @@
+#include <ctype.h>
+
 #ifdef __AVR__
 #include <avr/pgmspace.h>
 #else
 #define PROGMEM
+#include <string.h>
 #define pgm_read_word(p) (*p)
+#define memcpy_P memcpy
 #endif
 
 #include "ARF.h"
@@ -11,7 +15,24 @@
 #define FFIPROCSZ (sizeof(void*))
 #define CELLSZ (sizeof(arfCell))
 
-typedef enum
+// TODO We've gotten our names a bit wrong here.  These aren't
+// "opcodes" as much as they are "primitive words".  Similarly, the
+// RAM definitions are "user-defined words."  Primitive words are
+// identified by 0x00-0x7F, whereas user-defined words have their
+// high bit set and their PFA must be word-aligned (so that we can
+// shift left the 15-bit value).  Then, in the
+// arfPrimUserDefinedWord handler we can just read the "word type"
+// and then jump to a smaller (RAM-resident, for speed!) table for
+// that type of word.  There is only DOCOLON, DODOES, DOCREATE, etc.
+// so this can be hard-coded and avoids the need to waste "opcodes"
+// (now "primitive word ids"?).
+//
+// Again the key point here is that the PFA contains a list of
+// tokens and addresses, with the high bit telling you what you are
+// looking at.  Either way though, the list is a list of words
+// (primitive or user-defined).  There is no longer a concept of
+// "opcode" since ARF is a Forth machine and not a CPU.
+enum arfOpcode
 {
 	arfOpZeroArgFFI = 0x00,
 	arfOpOneArgFFI,
@@ -22,7 +43,7 @@ typedef enum
 	arfOpSixArgFFI,
 	arfOpSevenArgFFI,
 	arfOpEightArgFFI,
-	arfOpPARENLITERAL,
+	arfOpLIT,
 	arfOpDUP,
 	arfOpDROP,
 	arfOpPLUS,
@@ -30,10 +51,42 @@ typedef enum
 	arfOpONEPLUS,
 	arfOpONEMINUS,
 	arfOpSWAP,
-	arfOpPARENBRANCH,
+	arfOpBRANCH,
+	arfOpABORT,
+	arfOpCHARLIT,
+	arfOpCOMPILECOMMA,
+	arfOpCR,
+	arfOpEMIT,
+	arfOpEXECUTE,
+	arfOpFETCH,
+	arfOpLITERAL,
+	arfOpNUMBERQ,
+	arfOpOR,
+	arfOpWORD,
+	arfOpFIND,
+	arfOpQDUP,
+	arfOpSPACE,
+	arfOpSTATE,
+	arfOpSTORE,
+	arfOpTOIN,
+	arfOpTWODROP,
+	arfOpTYPE,
+	arfOpZBRANCH,
+	arfOpZERO,
+	arfOpZEROEQUALS,
+	arfOpQUIT,
+	arfOpTIB,
+	arfOpTIBSIZE,
+	arfOpACCEPT,
+	arfOpINTERPRET,
+	arfOpPSQUOTE,
+	arfOpBL,
+	arfOpCFETCH,
+	arfOpCOUNT,
+	arfOpTONUMBER,
 	//...
 	arfOpEXIT = 0x7F,
-} arfOpcode;
+};
 
 typedef enum
 {
@@ -57,128 +110,240 @@ typedef arfCell (*arfSevenArgFFI)(arfCell a, arfCell b, arfCell c, arfCell d,
 typedef arfCell (*arfEightArgFFI)(arfCell a, arfCell b, arfCell c, arfCell d,
 								  arfCell e, arfCell f, arfCell g, arfCell h);
 
-static int add(int a, int b)
-{
-	return a + b;
-}
-
-static int sum(int a, int b, int c)
-{
-	return a + b + c;
-}
-
-ARF::ARF(const uint8_t * dictionary, int dictionarySize)
- : dictionary(dictionary), dictionarySize(dictionarySize)
+ARF::ARF(const uint8_t * dictionary, int dictionarySize,
+		arfKeyQuestion keyQ, arfKey key, arfEmit emit)
+ : dictionary(dictionary), dictionarySize(dictionarySize),
+   state(0),
+   keyQ(keyQ), key(key), emit(emit)
 {
 	this->here = const_cast<uint8_t *>(this->dictionary);
 }
 
-void ARF::go(int (*sketchFn)(void))
+void ARF::compileParenInterpret()
 {
-	// TODO Remove this test code.
-	int16_t offset;
+	// -----------------------------------------------------------------
+	// INTERPRET [ARF] ( i*x -- j*x )
+	//
+	// Interpret the string stored in the input buffer.
+	//
+	// : INTERPRET ( i*x -- j*x )
+	//   0 >IN !
+	//   BEGIN  BL WORD  DUP C@  WHILE
+	//       FIND ( ca 0=notfound | xt 1=imm | xt -1=interp)
+	//       ?DUP IF ( xt 1=imm | xt -1=interp)
+	//           1+  STATE @ 0=  OR ( xt 2=imm | xt 0=interp)
+	//           IF EXECUTE ELSE COMPILE, THEN
+	//       ELSE
+	//           COUNT NUMBER? IF
+	//               STATE @ IF POSTPONE LITERAL THEN
+	//               -- Interpreting; leave number on stack.
+	//           ELSE
+	//               TYPE  SPACE  [CHAR] ? EMIT  CR  ABORT
+	//           THEN
+	//       THEN
+	//   REPEAT ( j*x ca) DROP ;
 
-#if false
-	*this->here++ = 'b';
-	*this->here++ = 'l';
-	*this->here++ = 'i';
-	*this->here++ = 'n';
-	*this->here++ = 'k';
-	*this->here++ = (char)-5;
-	*this->here++ = 0x00; // LFAhi
-	*this->here++ = 0x00; // LFAlo
-	uint8_t * blinkCFA = this->here;
-	*this->here++ = 0xe8; // CFAlo: DOCOLON
-	*this->here++ = 0x01; // CFAhi
-	*this->here++ = arfOpDROP; // TODO Have sketchFn take an argument.
-	*this->here++ = arfOpZeroArgFFI;
-	*this->here++ = ((unsigned int)sketchFn) & 0xff;
-	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
-	*this->here++ = arfOpEXIT;
+	((arfCell*)this->here)->p = this->docolonCFA;
+	this->here += CFASZ;
 
-	*this->here++ = 'g';
-	*this->here++ = 'o';
-	*this->here++ = (char)-2;
-	*this->here++ = 0x00; // LFAhi
-	*this->here++ = 0x00; // LFAlo
-	uint8_t * goCFA = this->here;
-	*this->here++ = 0xe8; // CFAlo: DOCOLON
-	*this->here++ = 0x01; // CFAhi
-	*this->here++ = arfOpPARENLITERAL;
-	*this->here++ = 0x64;
-	*this->here++ = 0x00;
-	// FIXM3 Need to store this MSB (and right-shifted one with the high
-	// bit set) otherwise we could match against an opcode.
-	//
-	// FIXME Make this an MSB-first relative offset to the word's CFA.
-	// Note that the offset is as of the address *after* the offset
-	// since that's where the IP will be in the arfWORD handler when we
-	// calculate the address.  Better to just +2 the value here than
-	// have to do a -2 in the inner loop.
-	//
-	// TOD0 Do we even need the "W" register and the "jump" and stuff?
-	// Seems like we could just compile in the opcode (DOCOLON,
-	// DOVARIABLE, etc.) at the call site and then invoke that.  That
-	// would save us loading stuff in DOCOLON, having an extra variable,
-	// etc.  In that respect, this becomes more like an
-	// indirect-threaded Forth.
-	//   This won't work, because the caller doesn't know what kind of
-	//   word is being called.
-	//
-	// TODO We've gotten our names a bit wrong here.  These aren't
-	// "opcodes" as much as they are "primitive words".  Similarly, the
-	// RAM definitions are "user-defined words."  Primitive words are
-	// identified by 0x00-0x7F, whereas user-defined words have their
-	// high bit set and their PFA must be word-aligned (so that we can
-	// shift left the 15-bit value).  Then, in the
-	// arfPrimUserDefinedWord handler we can just read the "word type"
-	// and then jump to a smaller (RAM-resident, for speed!) table for
-	// that type of word.  There is only DOCOLON, DODOES, DOCREATE, etc.
-	// so this can be hard-coded and avoids the need to waste "opcodes"
-	// (now "primitive word ids"?).
-	//
-	// Again the key point here is that the PFA contains a list of
-	// tokens and addresses, with the high bit telling you what you are
-	// looking at.  Either way though, the list is a list of words
-	// (primitive or user-defined).  There is no longer a concept of
-	// "opcode" since ARF is a Forth machine and not a CPU.
-	offset = -((this->here+2) - blinkCFA);
-	*this->here++ = (offset >> 8) & 0xff;
-	*this->here++ = offset & 0xff;
-	*this->here++ = arfOpDROP;
-#else
-	*this->here++ = 'g';
-	*this->here++ = 'o';
-	*this->here++ = (char)-2;
-	*this->here++ = 0x00; // LFAhi
-	*this->here++ = 0x00; // LFAlo
-	uint8_t * goCFA = this->here;
-	this->here += CFASZ; // CFA
-	*this->here++ = arfOpZeroArgFFI;
-	*this->here++ = ((unsigned int)sketchFn) & 0xff;
-	*this->here++ = (((unsigned int)sketchFn) >> 8) & 0xff;
-	*this->here++ = (((unsigned int)sketchFn) >> 16) & 0xff;
-	*this->here++ = (((unsigned int)sketchFn) >> 24) & 0xff;
-	*this->here++ = arfOpDROP;
-#endif
-	// Jump back to the start of this word (i.e., the entire word is in
-	// a BEGIN ... AGAIN loop).  Note that (branch) offsets are 8-bit
-	// relative offsets.  UNLIKE word addresses, the IP points at the
-	// offset in arfOpPARENBRANCH.  Note that this is a positive number,
-	// which is subtracted from the IP, whereas word addresses are
-	// negative numbers that are added to the IP.  They are different
-	// because we need to be able to detect word addresses (high bit
-	// set) from opcodes (high bit clear), whereas for branch offsets we
-	// want to
-	// use the full range of the 8-bit value.
-	*this->here++ = arfOpPARENBRANCH;
-	offset = this->here - (goCFA+CFASZ);
-	*this->here++ = offset & 0xff;
+	static const uint8_t interpret[] PROGMEM = {
+		arfOpZERO, arfOpTOIN, arfOpSTORE,
+		arfOpBL, arfOpWORD, arfOpDUP, arfOpCFETCH, arfOpZBRANCH, 38,
+		arfOpFIND, arfOpQDUP, arfOpZBRANCH, 14,
+		arfOpONEPLUS, arfOpSTATE, arfOpFETCH, arfOpZEROEQUALS, arfOpOR,
+			arfOpZBRANCH, 4,
+		arfOpEXECUTE, arfOpBRANCH, 22,
+		arfOpCOMPILECOMMA, arfOpBRANCH, 19,
+		arfOpCOUNT, arfOpNUMBERQ, arfOpZBRANCH, 8,
+		arfOpSTATE, arfOpFETCH, arfOpZBRANCH, 11,
+		arfOpLITERAL, arfOpBRANCH, 8,
+		arfOpTYPE, arfOpSPACE, arfOpCHARLIT, '?', arfOpEMIT, arfOpCR,
+			arfOpABORT,
+		arfOpBRANCH, -42,
+		arfOpDROP,
+		arfOpEXIT,
+	};
 
-	this->innerInterpreter(goCFA + CFASZ);
+	memcpy_P(this->here, interpret, sizeof(interpret));
+	this->here += sizeof(interpret);
 }
 
-void ARF::innerInterpreter(uint8_t * xt)
+void ARF::compileParenQuit()
+{
+	// -----------------------------------------------------------------
+	// (QUIT) [ARF] ( -- )
+	//
+	// Repeat the following:
+	//   - Accept a line from the input source into the input buffer,
+	//     set >IN to zero, and interpret.
+	//   - Display the implementation-defined system prompt if in
+	//     interpretation state, all processing has been completed, and
+	//     no ambiguous condition exists.
+	//
+	// ---
+	// : (QUIT)  ( --)
+	//   BEGIN
+	//       TIB  DUP TIBSIZE ACCEPT  SPACE
+	//       INTERPRET
+	//       CR  STATE @ 0= IF ." ok " THEN
+	//   AGAIN ;
+
+	((arfCell*)this->here)->p = this->docolonCFA;
+	this->here += CFASZ;
+
+	static const uint8_t quit[] PROGMEM = {
+		arfOpTIB, arfOpDUP, arfOpTIBSIZE, arfOpACCEPT, arfOpSPACE,
+		arfOpINTERPRET,
+		arfOpCR, arfOpSTATE, arfOpFETCH, arfOpZEROEQUALS, arfOpZBRANCH, 7,
+		arfOpPSQUOTE, 3, 'o', 'k', ' ', arfOpTYPE,
+		arfOpBRANCH, -20
+	};
+
+	memcpy_P(this->here, quit, sizeof(quit));
+	this->here += sizeof(quit);
+}
+
+void ARF::compileParenEvaluate()
+{
+}
+
+arfUnsigned ARF::parenAccept(uint8_t * caddr, arfUnsigned n1)
+{
+	uint8_t * p = caddr;
+	arfUnsigned n2 = 0;
+	uint8_t ch;
+
+	// Read characters until we get a linefeed.
+	while ((ch = this->key()) != '\n')
+	{
+		// Is our buffer full?  If so, ignore this character.
+		if (n2 == n1)
+		{
+			continue;
+		}
+
+		// TODO Deal with backspace.
+
+		// Emit the character.
+		this->emit(ch);
+
+		// Append the character to our buffer.
+		*p++ = ch;
+		n2++;
+	}
+
+	// Return the number of characters that were read.
+	return n2;
+}
+
+// NUMBER? [ARF] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
+//
+// Attempt to convert a string at c-addr of length u into digits, using
+// the radix in BASE.  The number and -1 is returned if the conversion
+// was successful, otherwise 0 is returned.
+bool ARF::parenNumberQ(uint8_t * caddr, arfUnsigned u, arfInt &n)
+{
+	// Store the sign as a value to be multipled against the final
+	// number.
+	arfInt sign = 1;
+	if (*caddr == '-')
+	{
+		sign = -1;
+		caddr++;
+		u--;
+	}
+
+	// Try to convert the (rest of, if we found a sign) number.
+	arfUnsigned ud = 0;
+	this->parenToNumber(ud, caddr, u);
+	if (u == 0)
+	{
+		n = (arfInt)ud * sign;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+// >NUMBER [CORE] 6.1.0567 "to-number" ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 )
+//
+// ud2 is the unsigned result of converting the characters within the
+// string specified by c-addr1 u1 into digits, using the number in BASE,
+// and adding each into ud1 after multiplying ud1 by the number in BASE.
+// Conversion continues left-to-right until a character that is not
+// convertible, including any "+" or "-", is encountered or the string
+// is entirely converted.  c-addr2 is the location of the first
+// unconverted character or the first character past the end of the
+// string if the string was entirely converted.  u2 is the number of
+// unconverted characters in the string.  An ambiguous condition exists
+// if ud2 overflows during the conversion.
+void ARF::parenToNumber(arfUnsigned &ud, uint8_t * &caddr, arfUnsigned &u)
+{
+	while (u > 0)
+	{
+		uint8_t ch = *caddr;
+		if (ch < '0')
+		{
+			break;
+		}
+
+		arfUnsigned digit = ch - '0';
+		if (digit > 9)
+		{
+			digit = tolower(ch) - 'a' + 10;
+		}
+
+		if (digit >= this->base)
+		{
+			break;
+		}
+
+		ud = (ud * this->base) + digit;
+		caddr++;
+		u--;
+	}
+}
+
+void ARF::parenWord(uint8_t delim)
+{
+	// Skip over the start of the string until we find a non-delimiter
+	// character or we hit the end of the parse area.
+	while ((*(this->source + this->toIn) == delim)
+			&& (this->toIn < this->sourceLen))
+	{
+		this->toIn++;
+	}
+
+	// We're either pointing to a non-delimiter character or we're at
+	// the end of the parse area; copy characters until we hit another
+	// delimiter, we exhaust the maximum word length, or we exhaust the
+	// parse area.
+	uint8_t * pParse = this->source + this->toIn;
+	uint8_t * pWord = this->word + 1;
+	uint8_t wordLen = 0;
+	while ((*pParse != delim)
+			&& ((wordLen + 1) < sizeof(this->word)) // +1 for trailing BL
+			&& (this->toIn < this->sourceLen))
+	{
+		*pWord++ = *pParse++;
+		this->toIn++;
+		wordLen++;
+	}
+
+	// Tack on the trailing delimiter, but only if we copied at least
+	// one other character.
+	if (wordLen > 0)
+	{
+		*pWord++ = ' ';
+	}
+
+	// Set the word length.
+	this->word[0] = wordLen;
+}
+
+void ARF::go()
 {
 	register uint8_t *ip;
 	register arfCell tos;
@@ -190,8 +355,30 @@ void ARF::innerInterpreter(uint8_t * xt)
 	arfInt i;
 	arfCell * w;
 
+	// Store the location of the CFAs.
+	this->docolonCFA = &&DOCOLON;
+
+	// Compile our RAM definitions.
+	uint8_t * parenInterpret = this->here;
+	this->compileParenInterpret();
+
+	uint8_t * parenQuit = this->here;
+	this->compileParenQuit();
+
+	uint8_t * parenEvaluate = this->here;
+	this->compileParenEvaluate();
+
+	// Print the banner.
+	if (this->emit != NULL)
+	{
+		this->emit('H');
+		this->emit('i');
+		this->emit('\n');
+	}
+
 	// Initialize our local variables.
-	ip = (uint8_t *)xt;
+	uint8_t abort = arfOpABORT;
+	ip = &abort;
 	tos.i = 0;
 	restDataStack = (arfCell*)&this->dataStack[32];
 	returnTop = (arfCell *)&this->returnStack[32];
@@ -210,7 +397,7 @@ void ARF::innerInterpreter(uint8_t * xt)
 
 		// $08 - $0F
 		&&arfOpEightArgFFI,
-		&&arfOpPARENLITERAL,
+		&&arfOpLIT,
 		&&arfOpDUP,
 		&&arfOpDROP,
 
@@ -221,25 +408,52 @@ void ARF::innerInterpreter(uint8_t * xt)
 
 		// $10 - $17
 		&&arfOpSWAP,
-		&&arfOpPARENBRANCH,
-		0, 0,
+		&&arfOpBRANCH,
+		&&arfOpABORT,
+		&&arfOpCHARLIT,
 
-		0, 0, 0, 0,
+		&&arfOpCOMPILECOMMA,
+		&&arfOpCR,
+		&&arfOpEMIT,
+		&&arfOpEXECUTE,
 
 		// $18 - $1F
-		0, 0, 0, 0,
-		0, 0, 0, 0,
+		&&arfOpFETCH,
+		&&arfOpLITERAL,
+		&&arfOpNUMBERQ,
+		&&arfOpOR,
+
+		&&arfOpWORD,
+		&&arfOpFIND,
+		&&arfOpQDUP,
+		&&arfOpSPACE,
 
 		// $20 - $27
-		0, 0, 0, 0,
-		0, 0, 0, 0,
+		&&arfOpSTATE,
+		&&arfOpSTORE,
+		&&arfOpTOIN,
+		&&arfOpTWODROP,
+
+		&&arfOpTYPE,
+		&&arfOpZBRANCH,
+		&&arfOpZERO,
+		&&arfOpZEROEQUALS,
 
 		// $28 - $2F
-		0, 0, 0, 0,
-		0, 0, 0, 0,
+		&&arfOpQUIT,
+		&&arfOpTIB,
+		&&arfOpTIBSIZE,
+		&&arfOpACCEPT,
+
+		&&arfOpINTERPRET,
+		&&arfOpPSQUOTE,
+		&&arfOpBL,
+		&&arfOpCFETCH,
 
 		// $30 - $37
-		0, 0, 0, 0,
+		&&arfOpCOUNT,
+		&&arfOpTONUMBER,
+		0, 0,
 		0, 0, 0, 0,
 
 		// $38 - $3F
@@ -390,7 +604,7 @@ void ARF::innerInterpreter(uint8_t * xt)
 		arfOpEightArgFFI:
 		continue;
 
-		arfOpPARENLITERAL:
+		arfOpLIT:
 		{
 			*--restDataStack = tos;
 			tos = *(arfCell*)ip;
@@ -414,6 +628,7 @@ void ARF::innerInterpreter(uint8_t * xt)
 
 		arfOpPLUS:
 		{
+			// FIXME Feels like this ++ should not be in parens?
 			i = (restDataStack++)->i;
 			tos.i += i;
 		}
@@ -421,6 +636,7 @@ void ARF::innerInterpreter(uint8_t * xt)
 
 		arfOpMINUS:
 		{
+			// FIXME Feels like this ++ should not be in parens?
 			i = (restDataStack++)->i;
 			tos.i -= i;
 		}
@@ -446,13 +662,413 @@ void ARF::innerInterpreter(uint8_t * xt)
 		}
 		continue;
 
-		arfOpPARENBRANCH:
+		// TODO Add docs re: Note that (branch) and (0branch) offsets
+		// are 8-bit relative offsets.  UNLIKE word addresses, the IP
+		// points at the offset in arfOpBRANCH/arfOpZBRANCH.  These
+		// offsets can be positive or negative because branches can go
+		// both forwards and backwards.
+		arfOpBRANCH:
 		{
 			// Relative, because these are entirely within a single word
 			// and so we want it to be relocatable without us having to
 			// do anything.  Note that the offset cannot be larger than
-			// 255 bytes!
-			ip = ip - *ip;
+			// +/- 127 bytes!
+			ip = ip + *(int8_t*)ip;
+		}
+		continue;
+
+		// -------------------------------------------------------------
+		// ABORT [CORE] 6.1.0670 ( i*x -- ) ( R: j*x -- )
+		//
+		// Empty the data stack and perform the function of QUIT, which
+		// includes emptying the return stack, without displaying a
+		// message.
+		arfOpABORT:
+		{
+			tos.i = 0;
+			restDataStack = (arfCell*)&this->dataStack[32];
+			this->base = 10;
+			goto arfOpQUIT;
+		}
+		continue;
+
+		arfOpCHARLIT:
+		{
+			*--restDataStack = tos;
+			tos.i = *ip++;
+		}
+		continue;
+
+		arfOpCOMPILECOMMA:
+		{
+			// TODO Needs to differentiate between an opcode on the
+			// stack (high bit clear) and an address and compile either
+			// a one-byte or two-byte value.
+			// Note that this is an MSB-first relative offset to the
+			// word's CFA and that the offset is as of the address
+			// *after* the offset since that's where the IP will be in
+			// the arfWORD handler when we calculate the address.
+			// Better to just +2 the value here than have to do a -2 in
+			// the inner loop.
+			tos = *restDataStack++; // POP
+		}
+		continue;
+
+		arfOpCR:
+		{
+			if (this->emit != NULL)
+			{
+				this->emit('\n');
+			}
+		}
+		continue;
+
+		arfOpEMIT:
+		{
+			if (this->emit != NULL)
+			{
+				this->emit(tos.i);
+			}
+
+			tos = *restDataStack++; // POP
+		}
+		continue;
+
+		arfOpEXECUTE:
+		{
+			// TODO Implement this.
+			tos = *restDataStack++; // POP
+		}
+		continue;
+
+		arfOpFETCH:
+		{
+			tos = *(arfCell*)tos.p;
+		}
+		continue;
+
+		arfOpLITERAL:
+		{
+			// TODO Implement this.
+		}
+		continue;
+
+		// -------------------------------------------------------------
+		// NUMBER? [ARF] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
+		//
+		// Attempt to convert a string at c-addr of length u into
+		// digits, using the radix in BASE.  The number and -1 is
+		// returned if the conversion was successful, otherwise 0 is
+		// returned.
+		arfOpNUMBERQ:
+		{
+			arfUnsigned u = tos.u;
+			uint8_t * caddr = (uint8_t*)restDataStack->p;
+
+			arfInt n;
+			if (this->parenNumberQ(caddr, u, n))
+			{
+				// Stack still contains c-addr u; rewrite to n -1.
+				restDataStack->i = n;
+				tos.i = -1;
+			}
+			else
+			{
+				// Stack still contains c-addr u, so just push 0.
+				*--restDataStack = tos;
+				tos.i = 0;
+			}
+		}
+		continue;
+
+		arfOpOR:
+		{
+			// FIXME Feels like this ++ should not be in parens?
+			i = (restDataStack++)->i;
+			tos.i |= i;
+		}
+		continue;
+
+		// -------------------------------------------------------------
+		// WORD [CORE] 6.1.2450 ( char "<chars>ccc<char>" -- c-addr )
+		//
+		// Skip leading delimiters.  Parse characters ccc delimited by
+		// char.  An ambiguous condition exists if the length of the
+		// parsed string is greater than the implementation-defined
+		// length of a counted string.
+		//
+		// c-addr is the address of a transient region containing the
+		// parsed word as a counted string.  If the parse area was empty
+		// or contained no characters other than the delimiter, the
+		// resulting string has a zero length.  A space, not included in
+		// the length, follows the string.  A program may replace
+		// characters within the string.
+		//
+		// Note: The requirement to follow the string with a space is
+		// obsolescent and is included as a concession to existing
+		// programs that use CONVERT.  A program shall not depend on the
+		// existence of the space.
+		arfOpWORD:
+		{
+			uint8_t delim = (uint8_t)tos.u;
+			parenWord(delim);
+			tos.p = &this->word;
+		}
+		continue;
+
+		// -------------------------------------------------------------
+		// FIND [CORE] 6.1.1550 ( c-addr -- c-addr 0 | xt 1 | xt -1 )
+		//
+		// Find the definition named in the counted string at c-addr.
+		// If the definition is not found, return c addr and zero.  If
+		// the definition is found, return its execution token xt.  If
+		// the definition is immediate, also return one (1), otherwise
+		// also return minus-one (-1).  For a given string, the values
+		// returned by FIND while compiling may differ from those
+		// returned while not compiling.
+		arfOpFIND:
+		{
+			// TODO We never find anything...
+			*--restDataStack = tos;
+			tos.i = 0;
+		}
+		continue;
+
+		arfOpQDUP:
+		{
+			if (tos.i != 0)
+			{
+				*--restDataStack = tos;
+			}
+		}
+		continue;
+
+		arfOpSPACE:
+		{
+			if (this->emit != NULL)
+			{
+				this->emit(' ');
+			}
+		}
+		continue;
+
+		arfOpSTATE:
+		{
+			*--restDataStack = tos;
+			tos.p = &this->state;
+		}
+		continue;
+
+		// -------------------------------------------------------------
+		// ! [CORE] 6.1.0010 "store" ( x a-addr -- )
+		//
+		// Store x at a-addr.
+		arfOpSTORE:
+		{
+			*(arfCell*)tos.p = *restDataStack++;
+			tos = *restDataStack++;
+		}
+		continue;
+
+		// -------------------------------------------------------------
+		// >IN [CORE] 6.1.0560 "to-in" ( -- a-addr )
+		//
+		// a-addr is the address of a cell containing the offset in
+		// characters from the start of the input buffer to the start of
+		// the parse area.
+		arfOpTOIN:
+		{
+			*--restDataStack = tos;
+			tos.p = &this->toIn;
+		}
+		continue;
+
+		arfOpTWODROP:
+		{
+			restDataStack++;
+			tos = *restDataStack++;
+		}
+		continue;
+
+		arfOpTYPE:
+		{
+			if (this->emit != NULL)
+			{
+				for (i = 0; i < tos.i; i++)
+				{
+					this->emit(*((uint8_t*)restDataStack->p + i));
+				}
+			}
+
+			restDataStack++;
+			tos = *restDataStack++;
+		}
+		continue;
+
+		arfOpZBRANCH:
+		{
+			if (tos.i == 0)
+			{
+				ip = ip + *(int8_t*)ip;
+			}
+			else
+			{
+				ip++;
+			}
+
+			tos = *restDataStack++;
+		}
+		continue;
+
+		arfOpZERO:
+		{
+			*--restDataStack = tos;
+			tos.i = 0;
+		}
+		continue;
+
+		arfOpZEROEQUALS:
+		{
+			tos.i = tos.i == 0 ? -1 : 0;
+		}
+		continue;
+
+		// -------------------------------------------------------------
+		// QUIT [CORE] 6.1.2050 ( -- ) ( R:  i*x -- )
+		//
+		// Empty the return stack, store zero in SOURCE-ID if it is
+		// present, make the user input device the input source, and
+		// enter interpretation state.  Do not display a message.
+		// Repeat the following:
+		//   - Accept a line from the input source into the input
+		//     buffer, set >IN to zero, and interpret.
+		//   - Display the implementation-defined system prompt if in
+		//     interpretation state, all processing has been completed,
+		//     and no ambiguous condition exists.
+		arfOpQUIT:
+		{
+			returnTop = (arfCell *)&this->returnStack[32];
+			this->state = 0;
+			ip = parenQuit + CFASZ;
+		}
+		continue;
+
+		arfOpTIB:
+		{
+			*--restDataStack = tos;
+			tos.p = &this->tib;
+		}
+		continue;
+
+		arfOpTIBSIZE:
+		{
+			*--restDataStack = tos;
+			tos.u = sizeof(this->tib);
+		}
+		continue;
+
+		// -------------------------------------------------------------
+		// ACCEPT [CORE] 6.1.0695 ( c-addr +n1 -- +n2 )
+		//
+		// Receive a string of at most +n1 characters.  An ambiguous
+		// condition exists if +n1 is zero or greater than 32,767.
+		// Display graphic characters as they are received.  A program
+		// that depends on the presence or absence of non-graphic
+		// characters in the string has an environmental dependency.
+		// The editing functions, if any, that the system performs in
+		// order to construct the string are implementation-defined.
+		//
+		// Input terminates when an implementation-defined line
+		// terminator is received.  When input terminates, nothing is
+		// appended to the string, and the display is maintained in an
+		// implementation-defined way.
+		//
+		// +n2 is the length of the string stored at c-addr.
+		arfOpACCEPT:
+		{
+			arfCell n1 = tos;
+			arfCell caddr = *restDataStack++;
+			tos.u = parenAccept((uint8_t *)caddr.p, n1.u);
+		}
+		continue;
+
+		arfOpINTERPRET: // ( i*x c-addr u -- j*x)
+		{
+			this->source = (uint8_t *)restDataStack++->p;
+			this->sourceLen = tos.u;
+			tos = *restDataStack++;
+			(--returnTop)->p = (void *)ip;
+			ip = parenInterpret + CFASZ;
+		}
+		continue;
+
+		// -------------------------------------------------------------
+		// (s") [ARF] "paren-s-quote-paren" ( -- c-addr u )
+		//
+		// Runtime behavior of S": return c-addr and u.
+		arfOpPSQUOTE:
+		{
+			// Push existing TOS onto the stack.
+			*--restDataStack = tos;
+
+			// Instruction stream contains the length of the string as a
+			// byte and then the string itself.  Start out by pushing
+			// the address of the string (ip+1) onto the stack.
+			(--restDataStack)->p = ip + 1;
+
+			// Now get the string length into TOS.
+			tos.i = *ip++;
+
+			// Advance IP over the string.
+			ip = ip + tos.i;
+		}
+		continue;
+
+		arfOpBL:
+		{
+			*--restDataStack = tos;
+			tos.u = ' ';
+		}
+		continue;
+
+		arfOpCFETCH:
+		{
+			tos.u = *(uint8_t*)tos.p;
+		}
+		continue;
+
+		arfOpCOUNT:
+		{
+			(--restDataStack)->p = (uint8_t*)tos.p + 1;
+			tos.u = *(uint8_t*)tos.p;
+		}
+		continue;
+
+		// -------------------------------------------------------------
+		// >NUMBER [CORE] 6.1.0567 "to-number" ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 )
+		//
+		// ud2 is the unsigned result of converting the characters
+		// within the string specified by c-addr1 u1 into digits, using
+		// the number in BASE, and adding each into ud1 after
+		// multiplying ud1 by the number in BASE.  Conversion continues
+		// left-to-right until a character that is not convertible,
+		// including any "+" or "-", is encountered or the string is
+		// entirely converted.  c-addr2 is the location of the first
+		// unconverted character or the first character past the end of
+		// the string if the string was entirely converted.  u2 is the
+		// number of unconverted characters in the string.  An ambiguous
+		// condition exists if ud2 overflows during the conversion.
+		arfOpTONUMBER:
+		{
+			arfUnsigned u = tos.u;
+			uint8_t * caddr = (uint8_t*)restDataStack[0].p;
+			arfUnsigned ud = restDataStack[-1].u;
+
+			parenToNumber(ud, caddr, u);
+
+			restDataStack[-1].u = ud;
+			restDataStack[0].p = caddr;
+			tos.u = u;
 		}
 		continue;
 
@@ -489,13 +1105,6 @@ void ARF::innerInterpreter(uint8_t * xt)
 
 			// Indirect threading: jump to the CFA.
 			goto *(void *)(w->p);
-
-			// TODO Remove this jump table once we are referencing all
-			// of these labels as part of the normal words.  Until then,
-			// we need the jump table in order to prevent the compiler
-			// from removing what it believes is dead code.
-			static const void * const cfaJumpTable[4] = {
-				&&DOCOLON, &&DOCONSTANT, &&DOCREATE, &&DODOES };
 
 			DOCOLON:
 				// IP currently points to the next word in the PFA and that

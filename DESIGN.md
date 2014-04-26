@@ -25,6 +25,61 @@ Provided as an Arduino Library with a small handful of entry points.  Two key en
   * Ideally we would only use 128/160/192 flash words for the kernel and then make 96/64/32 available for FFI primitives.
   * 128 looks possible, which then gives us 96 for FFI (which should be fine for a huge number of Arduino Libraries and stuff) and 32 for RAM.
 
+# Primitives vs. Definitions
+
+**Primitives** are part of the ARF kernel and are Forth words written in C.  They can block if necessary (for I/O, although that would not be ideal if we ever implement multitasking), but they cannot reenter the ARF kernel.  That is because the kernel needs a thread of words to follow and that thread effectively stops at the point where a C word has been invoked.
+
+**Definitions** are Forth words that are located in RAM and participate in the threading process.  This allows those words to reenter the interpreter, change between interpretation and compilation states, etc.
+
+This distinction between the two types of words works fine in almost all cases except for `EVALUATE` and `QUIT`, which loop and/or reenter the address interpreter.  Those two words need to be present in RAM so that they can participate in the threading flow.
+
+In order to do that, the initialization phase for a blank dictionary will compile those two words into the dictionary so that they are available in RAM.  This does take up dictionary space, but is unavoidable if we want to offer an interactive Forth environment.  Note that we could choose to optionally exclude those words from the dictionary, but then the Forth kernel would only be capable of executing turnkey applications that do not require the text interpreter.
+
+Another option would be to use the C stack for these words by invoking a C function and then looping in there, calling back into the inner interpreter as necessary.  That is what Ficl does, but then it needs setjmp/longjmp.  Without those we would potentially blow up the stack.
+
+The ARF approach sacrifices a very small amount of RAM for performance (no need to determine if the IP is pointing at RAM or flash) and the conservation of the C stack (no recursion in the interpreter).
+
+*I wonder if we'll eventually need to support Flash-based definitions though?  The RAM-based approach puts a permanent limit on the size of a Forth application that you can create since all of your definitions have to fit in RAM...  Maybe people would rather trade speed (IP lookup in RAM vs. Flash) for the convenience of getting to stay in Forth (as opposed to having to constantly rewrite Forth in C as your program gets larger).  Having the IP be smart would let us do the whole DUMP-WORD thing to produce #defines or the equivalent PROGMEM string.*
+
+This is going to be hard to do though... Both Flash and RAM use the same numerical address space because they are accessed with different words.  That means that IP has to go into "Flash mode" and stay there until we return from the word that put us into Flash mode.  We should leave this until a later release.
+
+# Execution Tokens
+
+An Execution Tokens (XT) in ARF can refer either to an ARF primitive or user definition.  We need to be able to tell these two things apart in a couple of different scenarios:
+
+1. Inner Interpreter
+   The inner interpreter will pull instructions out of the current word's thread and needs to know if a value represents a one-byte primitive or a two-byte address reference.
+2. `EXECUTE`, `COMPILE,`, etc.
+   These words expect an XT on the stack and will then do something with that XT.  Note that in at least one case (`COMPILE,`) this stack-based XT will be later used by the inner interpreter.
+
+We have already decided that the Inner Interpreter will identify primitives by a clear high bit -- values 0-127 -- and use a set high bit to identify a relative (negative) offset to the user-defined word in the dictionary that is being referenced.
+
+This same thing will not work for stack-based XTs though, because the stack pointer of course has no relation to the IP.  This means that XTs on the stack need to be different from compiled XTs.  I recommend that we continue to use the high bit to decide between primitives and user definitions, but that the actual XT is a positive offset from the start of the dictionary and we just clear the high bit before trying to use the offset.
+
+`COMPILE,` then calculates the offset from `HERE` to that offset (after including the dictionary start), `EXECUTE` just sets IP to the dictionary start plus the offset, etc.
+
+# Relocation
+
+ARF programs are created interactively.  The program manifests itself as a dictionary image.  The dictionary image can be copied verbatim into EEPROM for turnkey applications and is then copied back into RAM to execute the turnkey application.
+
+This works for the following reasons:
+
+* Branch addresses are 8-bit relative offsets and so relocate with the word, even if the word was to change its starting location (which doesn't happen).
+* Indirect threaded references are 16-bit relative offsets into prior parts of the dictionary and so the entire dictionary is relocatable.
+* The only absolute addresses are CFA addresses, which point at jump locations in program memory for the four `DO*` words.  EEPROM dictionaries are only valid for a specific build of ARF, so this is fine as well.
+
+In theory we could rewrite CFA addresses after copying the dictionary from RAM, although to do that we would need to add a flag to each word's header that specified the type of CFA.
+
+The other option would be to go to a tokenized CFA and offset through a `DO`-specific jump table, but that would slow down all word invocations.  Rewriting-during-load is much more efficient and only costs us two bits in the flag field (since there are four `DO` words).
+
+# Initialization
+
+ARF is initialized with an array.  ARF takes over that array and uses it for the dictionary and stacks (the latter which are configurable in the constructor).  The stacks start at the end of the array and the dictionary at the beginning.  At the very beginning of the array are the RAM definitions for `EVALUATE` and `QUIT` per the discussion earlier.
+
+`go()` takes the name of the word to find and execute and, by default, that word is `COLD`.  `COLD` compiles `EVALUATE` and `QUIT` into the dictionary and then calls `ABORT` (which calls `QUIT`).  The caller could also specify `WARM-EEPROM` which copies the dictionary from EEPROM to RAM and then calls `ABORT` (since the EEPROM would already have to contain `EVALUATE` and `QUIT`).
+
+Later, we will allow people to specify `WARM-EEPROM` which loads and verifies the EEPROM and then calls `ABORT`.  Finally, people will eventually be able to specify their own turnkey word (which of course also requires the EEPROM to be loaded).
+
 ## Kernel
 
 * Rules:
