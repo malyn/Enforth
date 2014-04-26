@@ -1,2 +1,2 @@
-* Implement `FIND` so that we can look up primitive words.
+* Test on Arduino.
 * Implement `.S` so that we can dump the stack.

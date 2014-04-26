@@ -84,8 +84,194 @@ enum arfOpcode
 	arfOpCFETCH,
 	arfOpCOUNT,
 	arfOpTONUMBER,
+	arfOpDEPTH,
+	arfOpDOT,
 	//...
 	arfOpEXIT = 0x7F,
+};
+
+struct arfPrimitiveWord {
+	uint8_t opcode;
+	uint8_t nameLen;
+	const char * PROGMEM name;
+};
+
+static arfPrimitiveWord primitives[128] PROGMEM = {
+	// $00 - $07
+	{ arfOpZeroArgFFI,		0,	NULL },
+	{ arfOpOneArgFFI,		0,	NULL },
+	{ arfOpTwoArgFFI,		0,	NULL },
+	{ arfOpThreeArgFFI,		0,	NULL },
+
+	{ arfOpFourArgFFI,		0,	NULL },
+	{ arfOpFiveArgFFI,		0,	NULL },
+	{ arfOpSixArgFFI,		0,	NULL },
+	{ arfOpSevenArgFFI,		0,	NULL },
+
+	// $08 - $0F
+	{ arfOpEightArgFFI,		0,	NULL },
+	{ arfOpLIT,				0,	NULL },
+	{ arfOpDUP,				3,	"DUP" },
+	{ arfOpDROP,			4,	"DROP" },
+
+	{ arfOpPLUS,			1,	"+" },
+	{ arfOpMINUS,			1,	"-" },
+	{ arfOpONEPLUS,			2,	"1+" },
+	{ arfOpONEMINUS,		2,	"1+" },
+
+	// $10 - $17
+	{ arfOpSWAP,			4,	"SWAP" },
+	{ arfOpBRANCH,			0,	NULL },
+	{ arfOpABORT,			5,	"ABORT" },
+	{ arfOpCHARLIT,			0,	NULL },
+
+	{ arfOpCOMPILECOMMA,	8,	"COMPILE," },
+	{ arfOpCR,				2,	"CR" },
+	{ arfOpEMIT,			4,	"EMIT" },
+	{ arfOpEXECUTE,			7,	"EXECUTE" },
+
+	// $18 - $1F
+	{ arfOpFETCH,			1,	"@" },
+	{ arfOpLITERAL,			7,	"LITERAL" },
+	{ arfOpNUMBERQ,			7,	"NUMBER?" },
+	{ arfOpOR,				2,	"OR" },
+
+	{ arfOpWORD,			4,	"WORD" },
+	{ arfOpFIND,			4,	"FIND" },
+	{ arfOpQDUP,			4,	"?DUP" },
+	{ arfOpSPACE,			5,	"SPACE" },
+
+	// $20 - $27
+	{ arfOpSTATE,			5,	"STATE" },
+	{ arfOpSTORE,			5,	"STORE" },
+	{ arfOpTOIN,			3,	">IN" },
+	{ arfOpTWODROP,			5,	"2DROP" },
+
+	{ arfOpTYPE,			4,	"TYPE" },
+	{ arfOpZBRANCH,			0,	NULL },
+	{ arfOpZERO,			1,	"0" },
+	{ arfOpZEROEQUALS,		2,	"0=" },
+
+	// $28 - $2F
+	{ arfOpQUIT,			4,	"QUIT" },
+	{ arfOpTIB,				3,	"TIB" },
+	{ arfOpTIBSIZE,			7,	"TIBSIZE" },
+	{ arfOpACCEPT,			6,	"ACCEPT" },
+
+	{ arfOpINTERPRET,		0,	NULL },
+	{ arfOpPSQUOTE,			0,	NULL },
+	{ arfOpBL,				2,	"BL" },
+	{ arfOpCFETCH,			2,	"C@" },
+
+	// $30 - $37
+	{ arfOpCOUNT,			5,	"COUNT" },
+	{ arfOpTONUMBER,		7,	">NUMBER" },
+	{ arfOpDEPTH,			5,	"DEPTH" },
+	{ arfOpDOT,				1,	"." },
+
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+
+	// $38 - $3F
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+
+	// $40 - $47
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+
+	// $48 - $4F
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+
+	// $50 - $57
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+
+	// $58 - $5F
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+
+	// $60 - $67
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+
+	// $68 - $6F
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+
+	// $70 - $77
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+
+	// $78 - $7F
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ 0,					0,	NULL },
+	{ arfOpEXIT,			0,	NULL },
 };
 
 typedef enum
@@ -234,6 +420,48 @@ arfUnsigned ARF::parenAccept(uint8_t * caddr, arfUnsigned n1)
 
 	// Return the number of characters that were read.
 	return n2;
+}
+
+bool ARF::parenFind(uint8_t * caddr, arfUnsigned &xt, bool &isImmediate)
+{
+	uint8_t searchLen = *caddr;
+	uint8_t * searchName = caddr + 1;
+
+	// Search through the opcodes for a match against this search name.
+	for (int op = 0; op < 128; op++)
+	{
+		// Get a reference to this primitive.
+		arfPrimitiveWord &prim = primitives[op];
+
+		// Ignore this opcode if its length is not the same as our
+		// search length.
+		if (prim.nameLen != searchLen)
+		{
+			continue;
+		}
+
+		// Compare the characters.
+		bool isMatch = true;
+		for (int i = 0; i < searchLen; i++)
+		{
+			if (*(prim.name + i) != toupper(*(searchName + i)))
+			{
+				isMatch = false;
+				break;
+			}
+		}
+
+		// We're done if we found a match.
+		if (isMatch)
+		{
+			xt = prim.opcode;
+			isImmediate = false;
+			return true;
+		}
+	}
+
+	// No match.
+	return false;
 }
 
 // NUMBER? [ARF] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
@@ -453,7 +681,9 @@ void ARF::go()
 		// $30 - $37
 		&&arfOpCOUNT,
 		&&arfOpTONUMBER,
-		0, 0,
+		&&arfOpDEPTH,
+		&&arfOpDOT,
+
 		0, 0, 0, 0,
 
 		// $38 - $3F
@@ -546,6 +776,7 @@ void ARF::go()
 	{
 		// Get the next opcode and dispatch to the label.
 		op = *ip++;
+DISPATCH_OPCODE:
 		goto *(void *)pgm_read_word(&jtb[op]);
 
 		arfOpZeroArgFFI:
@@ -734,10 +965,27 @@ void ARF::go()
 		}
 		continue;
 
+		// -------------------------------------------------------------
+		// EXECUTE [CORE] 6.1.1370 ( i*x xt -- j*x )
+		//
+		// Remove xt from the stack and perform the semantics identified
+		// by it.  Other stack effects are due to the word EXECUTEd.
 		arfOpEXECUTE:
 		{
-			// TODO Implement this.
-			tos = *restDataStack++; // POP
+			// Is this an opcode?  If so, dispatch the opcode.  If not,
+			// set W to the CFA of the address of the CFA and jump to
+			// the CFA.
+			if (tos.u < 128)
+			{
+				op = tos.u;
+				tos = *restDataStack++;
+				goto DISPATCH_OPCODE;
+			}
+			else
+			{
+				// TODO Implement this.
+				tos = *restDataStack++; // POP
+			}
 		}
 		continue;
 
@@ -783,7 +1031,7 @@ void ARF::go()
 
 		arfOpOR:
 		{
-			// FIXME Feels like this ++ should not be in parens?
+			// FIXME This works, but it feels weird.
 			i = (restDataStack++)->i;
 			tos.i |= i;
 		}
@@ -828,9 +1076,20 @@ void ARF::go()
 		// returned while not compiling.
 		arfOpFIND:
 		{
-			// TODO We never find anything...
-			*--restDataStack = tos;
-			tos.i = 0;
+			arfCell caddr = tos;
+
+			arfUnsigned xt;
+			bool isImmediate;
+			if (parenFind((uint8_t *)caddr.p, xt, isImmediate))
+			{
+				(--restDataStack)->u = xt;
+				tos.i = isImmediate ? 1 : -1;
+			}
+			else
+			{
+				*--restDataStack = tos;
+				tos.i = 0;
+			}
 		}
 		continue;
 
@@ -1069,6 +1328,43 @@ void ARF::go()
 			restDataStack[-1].u = ud;
 			restDataStack[0].p = caddr;
 			tos.u = u;
+		}
+		continue;
+
+		// -------------------------------------------------------------
+		// DEPTH [CORE] 6.1.1200 ( -- +n )
+		//
+		// +n is the number of single-cell values contained in the data
+		// stack before +n was placed on the stack.
+		arfOpDEPTH:
+		{
+			*--restDataStack = tos;
+			tos.i = &this->dataStack[32] - restDataStack - 1;
+		}
+		continue;
+
+		// -------------------------------------------------------------
+		// . [CORE] 6.1.0180 "dot" ( n -- )
+		//
+		// Display n in free field format.
+		arfOpDOT:
+		{
+			if (this->emit != NULL)
+			{
+				// FIXME These numbers are printing backwards; we
+				// probably need to implement pictured numeric output.
+				// FIXME Use BASE.
+				do
+				{
+					i = tos.i - ((tos.i / 10) * 10);
+					this->emit('0' + i);
+					tos.i = tos.i / 10;
+				} while (tos.i != 0);
+
+				this->emit(' ');
+			}
+
+			tos = *restDataStack++;
 		}
 		continue;
 
