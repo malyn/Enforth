@@ -5,8 +5,10 @@
 #else
 #define PROGMEM
 #include <string.h>
+#define pgm_read_byte(p) (*p)
 #define pgm_read_word(p) (*p)
 #define memcpy_P memcpy
+#define strncasecmp_P strncasecmp
 #endif
 
 #include "ARF.h"
@@ -93,10 +95,22 @@ enum arfOpcode
 struct arfPrimitiveWord {
 	uint8_t opcode;
 	uint8_t nameLen;
-	const char * PROGMEM name;
+	const char * name;
 };
 
-static arfPrimitiveWord primitives[128] PROGMEM = {
+// FIXME These strings are somehow landing in both PROGMEM and in RAM
+// so we must be initializing this incorrectly.  Probably we need to
+// use PSTR on the strings, but that doesn't work inside of an array
+// initializer like this, so we'll need to define each string as its
+// own variable and then store that pointer in the array.
+static const char arfOpNameABORT[] PROGMEM = "ABORT";
+static const char arfOpNameDEPTH[] PROGMEM = "DEPTH";
+static const char arfOpNameDOT[] PROGMEM = ".";
+static const char arfOpNameDROP[] PROGMEM = "DROP";
+static const char arfOpNameDUP[] PROGMEM = "DUP";
+static const char arfOpNamePLUS[] PROGMEM = "+";
+static const char arfOpNameSWAP[] PROGMEM = "SWAP";
+static const arfPrimitiveWord primitives[128] PROGMEM = {
 	// $00 - $07
 	{ arfOpZeroArgFFI,		0,	NULL },
 	{ arfOpOneArgFFI,		0,	NULL },
@@ -111,18 +125,18 @@ static arfPrimitiveWord primitives[128] PROGMEM = {
 	// $08 - $0F
 	{ arfOpEightArgFFI,		0,	NULL },
 	{ arfOpLIT,				0,	NULL },
-	{ arfOpDUP,				3,	"DUP" },
-	{ arfOpDROP,			4,	"DROP" },
+	{ arfOpDUP,				3,	arfOpNameDUP },
+	{ arfOpDROP,			4,	arfOpNameDROP },
 
-	{ arfOpPLUS,			1,	"+" },
+	{ arfOpPLUS,			1,	arfOpNamePLUS },
 	{ arfOpMINUS,			1,	"-" },
 	{ arfOpONEPLUS,			2,	"1+" },
 	{ arfOpONEMINUS,		2,	"1+" },
 
 	// $10 - $17
-	{ arfOpSWAP,			4,	"SWAP" },
+	{ arfOpSWAP,			4,	arfOpNameSWAP },
 	{ arfOpBRANCH,			0,	NULL },
-	{ arfOpABORT,			5,	"ABORT" },
+	{ arfOpABORT,			5,	arfOpNameABORT },
 	{ arfOpCHARLIT,			0,	NULL },
 
 	{ arfOpCOMPILECOMMA,	8,	"COMPILE," },
@@ -166,8 +180,8 @@ static arfPrimitiveWord primitives[128] PROGMEM = {
 	// $30 - $37
 	{ arfOpCOUNT,			5,	"COUNT" },
 	{ arfOpTONUMBER,		7,	">NUMBER" },
-	{ arfOpDEPTH,			5,	"DEPTH" },
-	{ arfOpDOT,				1,	"." },
+	{ arfOpDEPTH,			5,	arfOpNameDEPTH },
+	{ arfOpDOT,				1,	arfOpNameDOT },
 
 	{ 0,					0,	NULL },
 	{ 0,					0,	NULL },
@@ -298,9 +312,9 @@ typedef arfCell (*arfEightArgFFI)(arfCell a, arfCell b, arfCell c, arfCell d,
 
 ARF::ARF(const uint8_t * dictionary, int dictionarySize,
 		arfKeyQuestion keyQ, arfKey key, arfEmit emit)
- : dictionary(dictionary), dictionarySize(dictionarySize),
-   state(0),
-   keyQ(keyQ), key(key), emit(emit)
+ : keyQ(keyQ), key(key), emit(emit),
+   dictionary(dictionary), dictionarySize(dictionarySize),
+   state(0)
 {
 	this->here = const_cast<uint8_t *>(this->dictionary);
 }
@@ -332,7 +346,7 @@ void ARF::compileParenInterpret()
 	((arfCell*)this->here)->p = this->docolonCFA;
 	this->here += CFASZ;
 
-	static const uint8_t interpret[] PROGMEM = {
+	static const int8_t interpret[] PROGMEM = {
 		arfOpZERO, arfOpTOIN, arfOpSTORE,
 		arfOpBL, arfOpWORD, arfOpDUP, arfOpCFETCH, arfOpZBRANCH, 38,
 		arfOpFIND, arfOpQDUP, arfOpZBRANCH, 14,
@@ -377,7 +391,7 @@ void ARF::compileParenQuit()
 	((arfCell*)this->here)->p = this->docolonCFA;
 	this->here += CFASZ;
 
-	static const uint8_t quit[] PROGMEM = {
+	static const int8_t quit[] PROGMEM = {
 		arfOpTIB, arfOpDUP, arfOpTIBSIZE, arfOpACCEPT, arfOpSPACE,
 		arfOpINTERPRET,
 		arfOpCR, arfOpSTATE, arfOpFETCH, arfOpZEROEQUALS, arfOpZBRANCH, 7,
@@ -425,36 +439,25 @@ arfUnsigned ARF::parenAccept(uint8_t * caddr, arfUnsigned n1)
 bool ARF::parenFind(uint8_t * caddr, arfUnsigned &xt, bool &isImmediate)
 {
 	uint8_t searchLen = *caddr;
-	uint8_t * searchName = caddr + 1;
+	char * searchName = (char *)caddr + 1;
 
 	// Search through the opcodes for a match against this search name.
 	for (int op = 0; op < 128; op++)
 	{
 		// Get a reference to this primitive.
-		arfPrimitiveWord &prim = primitives[op];
+		const arfPrimitiveWord &prim = primitives[op];
 
 		// Ignore this opcode if its length is not the same as our
 		// search length.
-		if (prim.nameLen != searchLen)
+		if (pgm_read_byte(&prim.nameLen) != searchLen)
 		{
 			continue;
 		}
 
 		// Compare the characters.
-		bool isMatch = true;
-		for (int i = 0; i < searchLen; i++)
+		if (strncasecmp_P(searchName, (char *)pgm_read_word(&prim.name), searchLen) == 0)
 		{
-			if (*(prim.name + i) != toupper(*(searchName + i)))
-			{
-				isMatch = false;
-				break;
-			}
-		}
-
-		// We're done if we found a match.
-		if (isMatch)
-		{
-			xt = prim.opcode;
+			xt = pgm_read_byte(&prim.opcode);
 			isImmediate = false;
 			return true;
 		}
@@ -550,7 +553,7 @@ void ARF::parenWord(uint8_t delim)
 	// parse area.
 	uint8_t * pParse = this->source + this->toIn;
 	uint8_t * pWord = this->word + 1;
-	uint8_t wordLen = 0;
+	arfUnsigned wordLen = 0;
 	while ((*pParse != delim)
 			&& ((wordLen + 1) < sizeof(this->word)) // +1 for trailing BL
 			&& (this->toIn < this->sourceLen))

@@ -49,7 +49,7 @@ class ARF
 		uint8_t word[32];
 
 		uint8_t * source;
-		arfUnsigned sourceLen;
+		arfInt sourceLen;
 		arfInt toIn;
 
 		void * docolonCFA;
