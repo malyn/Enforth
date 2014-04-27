@@ -1,2 +1,2 @@
-* Test on Arduino.
-* Implement `.S` so that we can dump the stack.
+* Clean up source files, convert tabs to spaces.
+* Implement compilation (`:`, `COMPILE,`, `;`, etc.).

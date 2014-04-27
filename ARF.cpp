@@ -98,18 +98,42 @@ struct arfPrimitiveWord {
 	const char * name;
 };
 
-// FIXME These strings are somehow landing in both PROGMEM and in RAM
-// so we must be initializing this incorrectly.  Probably we need to
-// use PSTR on the strings, but that doesn't work inside of an array
-// initializer like this, so we'll need to define each string as its
-// own variable and then store that pointer in the array.
 static const char arfOpNameABORT[] PROGMEM = "ABORT";
+static const char arfOpNameACCEPT[] PROGMEM = "ACCEPT";
+static const char arfOpNameBL[] PROGMEM = "BL";
+static const char arfOpNameCFETCH[] PROGMEM = "C@";
+static const char arfOpNameCOMPILECOMMA[] PROGMEM = "COMPILE,";
+static const char arfOpNameCOUNT[] PROGMEM = "COUNT";
+static const char arfOpNameCR[] PROGMEM = "CR";
 static const char arfOpNameDEPTH[] PROGMEM = "DEPTH";
 static const char arfOpNameDOT[] PROGMEM = ".";
 static const char arfOpNameDROP[] PROGMEM = "DROP";
 static const char arfOpNameDUP[] PROGMEM = "DUP";
+static const char arfOpNameEMIT[] PROGMEM = "EMIT";
+static const char arfOpNameEXECUTE[] PROGMEM = "EXECUTE";
+static const char arfOpNameFETCH[] PROGMEM = "@";
+static const char arfOpNameFIND[] PROGMEM = "FIND";
+static const char arfOpNameLITERAL[] PROGMEM = "LITERAL";
+static const char arfOpNameMINUS[] PROGMEM = "-";
+static const char arfOpNameNUMBERQ[] PROGMEM = "NUMBER?";
+static const char arfOpNameONEMINUS[] PROGMEM = "1+";
+static const char arfOpNameONEPLUS[] PROGMEM = "1+";
+static const char arfOpNameOR[] PROGMEM = "OR";
 static const char arfOpNamePLUS[] PROGMEM = "+";
+static const char arfOpNameQDUP[] PROGMEM = "?DUP";
+static const char arfOpNameQUIT[] PROGMEM = "QUIT";
+static const char arfOpNameSPACE[] PROGMEM = "SPACE";
+static const char arfOpNameSTATE[] PROGMEM = "STATE";
+static const char arfOpNameSTORE[] PROGMEM = "STORE";
 static const char arfOpNameSWAP[] PROGMEM = "SWAP";
+static const char arfOpNameTOIN[] PROGMEM = ">IN";
+static const char arfOpNameTONUMBER[] PROGMEM = ">NUMBER";
+static const char arfOpNameTWODROP[] PROGMEM = "2DROP";
+static const char arfOpNameTYPE[] PROGMEM = "TYPE";
+static const char arfOpNameWORD[] PROGMEM = "WORD";
+static const char arfOpNameZERO[] PROGMEM = "0";
+static const char arfOpNameZEROEQUALS[] PROGMEM = "0=";
+
 static const arfPrimitiveWord primitives[128] PROGMEM = {
 	// $00 - $07
 	{ arfOpZeroArgFFI,		0,	NULL },
@@ -129,9 +153,9 @@ static const arfPrimitiveWord primitives[128] PROGMEM = {
 	{ arfOpDROP,			4,	arfOpNameDROP },
 
 	{ arfOpPLUS,			1,	arfOpNamePLUS },
-	{ arfOpMINUS,			1,	"-" },
-	{ arfOpONEPLUS,			2,	"1+" },
-	{ arfOpONEMINUS,		2,	"1+" },
+	{ arfOpMINUS,			1,	arfOpNameMINUS },
+	{ arfOpONEPLUS,			2,	arfOpNameONEPLUS },
+	{ arfOpONEMINUS,		2,	arfOpNameONEMINUS },
 
 	// $10 - $17
 	{ arfOpSWAP,			4,	arfOpNameSWAP },
@@ -139,47 +163,47 @@ static const arfPrimitiveWord primitives[128] PROGMEM = {
 	{ arfOpABORT,			5,	arfOpNameABORT },
 	{ arfOpCHARLIT,			0,	NULL },
 
-	{ arfOpCOMPILECOMMA,	8,	"COMPILE," },
-	{ arfOpCR,				2,	"CR" },
-	{ arfOpEMIT,			4,	"EMIT" },
-	{ arfOpEXECUTE,			7,	"EXECUTE" },
+	{ arfOpCOMPILECOMMA,	8,	arfOpNameCOMPILECOMMA },
+	{ arfOpCR,				2,	arfOpNameCR },
+	{ arfOpEMIT,			4,	arfOpNameEMIT },
+	{ arfOpEXECUTE,			7,	arfOpNameEXECUTE },
 
 	// $18 - $1F
-	{ arfOpFETCH,			1,	"@" },
-	{ arfOpLITERAL,			7,	"LITERAL" },
-	{ arfOpNUMBERQ,			7,	"NUMBER?" },
-	{ arfOpOR,				2,	"OR" },
+	{ arfOpFETCH,			1,	arfOpNameFETCH },
+	{ arfOpLITERAL,			7,	arfOpNameLITERAL },
+	{ arfOpNUMBERQ,			7,	arfOpNameNUMBERQ },
+	{ arfOpOR,				2,	arfOpNameOR },
 
-	{ arfOpWORD,			4,	"WORD" },
-	{ arfOpFIND,			4,	"FIND" },
-	{ arfOpQDUP,			4,	"?DUP" },
-	{ arfOpSPACE,			5,	"SPACE" },
+	{ arfOpWORD,			4,	arfOpNameWORD },
+	{ arfOpFIND,			4,	arfOpNameFIND },
+	{ arfOpQDUP,			4,	arfOpNameQDUP },
+	{ arfOpSPACE,			5,	arfOpNameSPACE },
 
 	// $20 - $27
-	{ arfOpSTATE,			5,	"STATE" },
-	{ arfOpSTORE,			5,	"STORE" },
-	{ arfOpTOIN,			3,	">IN" },
-	{ arfOpTWODROP,			5,	"2DROP" },
+	{ arfOpSTATE,			5,	arfOpNameSTATE },
+	{ arfOpSTORE,			5,	arfOpNameSTORE },
+	{ arfOpTOIN,			3,	arfOpNameTOIN },
+	{ arfOpTWODROP,			5,	arfOpNameTWODROP },
 
-	{ arfOpTYPE,			4,	"TYPE" },
+	{ arfOpTYPE,			4,	arfOpNameTYPE },
 	{ arfOpZBRANCH,			0,	NULL },
-	{ arfOpZERO,			1,	"0" },
-	{ arfOpZEROEQUALS,		2,	"0=" },
+	{ arfOpZERO,			1,	arfOpNameZERO },
+	{ arfOpZEROEQUALS,		2,	arfOpNameZEROEQUALS },
 
 	// $28 - $2F
-	{ arfOpQUIT,			4,	"QUIT" },
-	{ arfOpTIB,				3,	"TIB" },
-	{ arfOpTIBSIZE,			7,	"TIBSIZE" },
-	{ arfOpACCEPT,			6,	"ACCEPT" },
+	{ arfOpQUIT,			4,	arfOpNameQUIT },
+	{ arfOpTIB,				3,	NULL },
+	{ arfOpTIBSIZE,			7,	NULL },
+	{ arfOpACCEPT,			6,	arfOpNameACCEPT },
 
 	{ arfOpINTERPRET,		0,	NULL },
 	{ arfOpPSQUOTE,			0,	NULL },
-	{ arfOpBL,				2,	"BL" },
-	{ arfOpCFETCH,			2,	"C@" },
+	{ arfOpBL,				2,	arfOpNameBL },
+	{ arfOpCFETCH,			2,	arfOpNameCFETCH },
 
 	// $30 - $37
-	{ arfOpCOUNT,			5,	"COUNT" },
-	{ arfOpTONUMBER,		7,	">NUMBER" },
+	{ arfOpCOUNT,			5,	arfOpNameCOUNT },
+	{ arfOpTONUMBER,		7,	arfOpNameTONUMBER },
 	{ arfOpDEPTH,			5,	arfOpNameDEPTH },
 	{ arfOpDOT,				1,	arfOpNameDOT },
 
