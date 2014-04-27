@@ -72,6 +72,13 @@ In theory we could rewrite CFA addresses after copying the dictionary from RAM, 
 
 The other option would be to go to a tokenized CFA and offset through a `DO`-specific jump table, but that would slow down all word invocations.  Rewriting-during-load is much more efficient and only costs us two bits in the flag field (since there are four `DO` words).
 
+# Optimizations
+
+RAM is the most precious resource in the system and so a handful of optimizations/decisions have been made in order to conserve that resource:
+
+* We do not implement `WORD` or `FIND` since those require a separate word buffer.  Instead, we use MFORTH's `PARSE-WORD` and `FIND-WORD` functions, which expect `c-addr u` and thus can point directly at the terminal input buffer.
+* The hidden definitions (`EVALUATE`, `INTERPRET`, and `QUIT`) are stored in flash and a dedicated CFA is used to switch the interpreter into PROGMEM threading mode on the AVR.  This slows down the inner interpreter since it has to know which mode it is in, but the benefit is that we do not need so spend 100 or so bytes on these hidden definitions.
+
 # Initialization
 
 ARF is initialized with an array.  ARF takes over that array and uses it for the dictionary and stacks (the latter which are configurable in the constructor).  The stacks start at the end of the array and the dictionary at the beginning.  At the very beginning of the array are the RAM definitions for `EVALUATE` and `QUIT` per the discussion earlier.
