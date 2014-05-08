@@ -1,4 +1,3 @@
-* Remove `WORD` -- requires us to have a separate word buffer -- and replace it with MFORTH's `PARSE-WORD`.  Also requires/allows us to remove `FIND` and replace it with MFORTH's `(FIND)`, which we'll call `FIND-WORD`.  Should allow the word buffer to go away.
 * Create macros for pushing, popping, replacing TOS, etc.
 * Add optional stack-checking macros (probably just for non-microcontroller builds).
 * Fix up all of the types; sometimes we use uint8_t, sometimes we use arfInteger, etc.

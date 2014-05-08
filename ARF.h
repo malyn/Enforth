@@ -79,7 +79,6 @@ class ARF
         arfCell returnStack[32];
 
         uint8_t tib[64];
-        uint8_t word[32];
 
         uint8_t * source;
         arfInt sourceLen;
@@ -92,10 +91,10 @@ class ARF
         void compileParenEvaluate();
 
         arfUnsigned parenAccept(uint8_t * caddr, arfUnsigned n1);
-        bool parenFind(uint8_t * caddr, arfUnsigned &xt, bool &isImmediate);
+        bool parenFindWord(uint8_t * caddr, arfUnsigned u, arfUnsigned &xt, bool &isImmediate);
         bool parenNumberQ(uint8_t * caddr, arfUnsigned u, arfInt &n);
         void parenToNumber(arfUnsigned &ud, uint8_t * &caddr, arfUnsigned &u);
-        void parenWord(uint8_t delim);
+        void parenParseWord(uint8_t delim, uint8_t * &caddr, arfUnsigned &u);
 };
 
 #endif /* ARF_H_ */

@@ -97,8 +97,8 @@ enum arfOpcode
     arfOpLITERAL,
     arfOpNUMBERQ,
     arfOpOR,
-    arfOpWORD,
-    arfOpFIND,
+    arfOpPARSEWORD,
+    arfOpFINDWORD,
     arfOpQDUP,
     arfOpSPACE,
     arfOpSTATE,
@@ -145,7 +145,6 @@ static const char arfOpNameDUP[] PROGMEM = "DUP";
 static const char arfOpNameEMIT[] PROGMEM = "EMIT";
 static const char arfOpNameEXECUTE[] PROGMEM = "EXECUTE";
 static const char arfOpNameFETCH[] PROGMEM = "@";
-static const char arfOpNameFIND[] PROGMEM = "FIND";
 static const char arfOpNameLITERAL[] PROGMEM = "LITERAL";
 static const char arfOpNameMINUS[] PROGMEM = "-";
 static const char arfOpNameNUMBERQ[] PROGMEM = "NUMBER?";
@@ -163,7 +162,6 @@ static const char arfOpNameTOIN[] PROGMEM = ">IN";
 static const char arfOpNameTONUMBER[] PROGMEM = ">NUMBER";
 static const char arfOpNameTWODROP[] PROGMEM = "2DROP";
 static const char arfOpNameTYPE[] PROGMEM = "TYPE";
-static const char arfOpNameWORD[] PROGMEM = "WORD";
 static const char arfOpNameZERO[] PROGMEM = "0";
 static const char arfOpNameZEROEQUALS[] PROGMEM = "0=";
 
@@ -215,8 +213,8 @@ static const arfPrimitiveWord primitives[128] PROGMEM = {
     { arfOpNUMBERQ,         7,  arfOpNameNUMBERQ },
     { arfOpOR,              2,  arfOpNameOR },
 
-    { arfOpWORD,            4,  arfOpNameWORD },
-    { arfOpFIND,            4,  arfOpNameFIND },
+    { arfOpPARSEWORD,       0,  NULL },
+    { arfOpFINDWORD,        0,  NULL },
     { arfOpQDUP,            4,  arfOpNameQDUP },
     { arfOpSPACE,           5,  arfOpNameSPACE },
 
@@ -393,39 +391,39 @@ void ARF::compileParenInterpret()
     //
     // : INTERPRET ( i*x -- j*x )
     //   0 >IN !
-    //   BEGIN  BL WORD  DUP C@  WHILE
-    //       FIND ( ca 0=notfound | xt 1=imm | xt -1=interp)
+    //   BEGIN  PARSE-WORD  DUP WHILE
+    //       FIND-WORD ( ca u 0=notfound | xt 1=imm | xt -1=interp)
     //       ?DUP IF ( xt 1=imm | xt -1=interp)
     //           1+  STATE @ 0=  OR ( xt 2=imm | xt 0=interp)
     //           IF EXECUTE ELSE COMPILE, THEN
     //       ELSE
-    //           COUNT NUMBER? IF
+    //           NUMBER? IF
     //               STATE @ IF POSTPONE LITERAL THEN
     //               -- Interpreting; leave number on stack.
     //           ELSE
     //               TYPE  SPACE  [CHAR] ? EMIT  CR  ABORT
     //           THEN
     //       THEN
-    //   REPEAT ( j*x ca) DROP ;
+    //   REPEAT ( j*x ca u) 2DROP ;
 
     ((arfCell*)this->here)->p = this->docolonCFA;
     this->here += CFASZ;
 
     static const int8_t interpret[] PROGMEM = {
         arfOpZERO, arfOpTOIN, arfOpSTORE,
-        arfOpBL, arfOpWORD, arfOpDUP, arfOpCFETCH, arfOpZBRANCH, 38,
-        arfOpFIND, arfOpQDUP, arfOpZBRANCH, 14,
+        arfOpPARSEWORD, arfOpDUP, arfOpZBRANCH, 37,
+        arfOpFINDWORD, arfOpQDUP, arfOpZBRANCH, 14,
         arfOpONEPLUS, arfOpSTATE, arfOpFETCH, arfOpZEROEQUALS, arfOpOR,
             arfOpZBRANCH, 4,
-        arfOpEXECUTE, arfOpBRANCH, 22,
-        arfOpCOMPILECOMMA, arfOpBRANCH, 19,
-        arfOpCOUNT, arfOpNUMBERQ, arfOpZBRANCH, 8,
+        arfOpEXECUTE, arfOpBRANCH, 21,
+        arfOpCOMPILECOMMA, arfOpBRANCH, 18,
+        arfOpNUMBERQ, arfOpZBRANCH, 8,
         arfOpSTATE, arfOpFETCH, arfOpZBRANCH, 11,
         arfOpLITERAL, arfOpBRANCH, 8,
         arfOpTYPE, arfOpSPACE, arfOpCHARLIT, '?', arfOpEMIT, arfOpCR,
             arfOpABORT,
-        arfOpBRANCH, -42,
-        arfOpDROP,
+        arfOpBRANCH, -39,
+        arfOpTWODROP,
         arfOpEXIT,
     };
 
@@ -501,10 +499,10 @@ arfUnsigned ARF::parenAccept(uint8_t * caddr, arfUnsigned n1)
     return n2;
 }
 
-bool ARF::parenFind(uint8_t * caddr, arfUnsigned &xt, bool &isImmediate)
+bool ARF::parenFindWord(uint8_t * caddr, arfUnsigned u, arfUnsigned &xt, bool &isImmediate)
 {
-    uint8_t searchLen = *caddr;
-    char * searchName = (char *)caddr + 1;
+    uint8_t searchLen = u;
+    char * searchName = (char *)caddr;
 
     // Search through the opcodes for a match against this search name.
     for (int op = 0; op < 128; op++)
@@ -602,7 +600,7 @@ void ARF::parenToNumber(arfUnsigned &ud, uint8_t * &caddr, arfUnsigned &u)
     }
 }
 
-void ARF::parenWord(uint8_t delim)
+void ARF::parenParseWord(uint8_t delim, uint8_t * &caddr, arfUnsigned &u)
 {
     // Skip over the start of the string until we find a non-delimiter
     // character or we hit the end of the parse area.
@@ -613,30 +611,18 @@ void ARF::parenWord(uint8_t delim)
     }
 
     // We're either pointing to a non-delimiter character or we're at
-    // the end of the parse area; copy characters until we hit another
-    // delimiter, we exhaust the maximum word length, or we exhaust the
-    // parse area.
-    uint8_t * pParse = this->source + this->toIn;
-    uint8_t * pWord = this->word + 1;
-    arfUnsigned wordLen = 0;
-    while ((*pParse != delim)
-            && ((wordLen + 1) < sizeof(this->word)) // +1 for trailing BL
-            && (this->toIn < this->sourceLen))
+    // the end of the parse area; point caddr at the current location
+    // and then scan forwards until we hit another delimiter or we
+    // exhaust the parse area.
+    uint8_t * pParse = caddr = this->source + this->toIn;
+    while ((*pParse != delim) && (this->toIn < this->sourceLen))
     {
-        *pWord++ = *pParse++;
+        pParse++;
         this->toIn++;
-        wordLen++;
     }
 
-    // Tack on the trailing delimiter, but only if we copied at least
-    // one other character.
-    if (wordLen > 0)
-    {
-        *pWord++ = ' ';
-    }
-
-    // Set the word length.
-    this->word[0] = wordLen;
+    // Set the string length.
+    u = pParse - caddr;
 }
 
 void ARF::go()
@@ -719,8 +705,8 @@ void ARF::go()
         &&arfOpNUMBERQ,
         &&arfOpOR,
 
-        &&arfOpWORD,
-        &&arfOpFIND,
+        &&arfOpPARSEWORD,
+        &&arfOpFINDWORD,
         &&arfOpQDUP,
         &&arfOpSPACE,
 
@@ -1106,51 +1092,45 @@ DISPATCH_OPCODE:
         continue;
 
         // -------------------------------------------------------------
-        // WORD [CORE] 6.1.2450 ( char "<chars>ccc<char>" -- c-addr )
+        // PARSE-WORD [ARF] ( "<spaces>name<space>" -- c-addr u )
         //
-        // Skip leading delimiters.  Parse characters ccc delimited by
-        // char.  An ambiguous condition exists if the length of the
-        // parsed string is greater than the implementation-defined
-        // length of a counted string.
-        //
-        // c-addr is the address of a transient region containing the
-        // parsed word as a counted string.  If the parse area was empty
-        // or contained no characters other than the delimiter, the
-        // resulting string has a zero length.  A space, not included in
-        // the length, follows the string.  A program may replace
-        // characters within the string.
-        //
-        // Note: The requirement to follow the string with a space is
-        // obsolescent and is included as a concession to existing
-        // programs that use CONVERT.  A program shall not depend on the
-        // existence of the space.
-        arfOpWORD:
+        // Skip leading spaces and parse name delimited by a space.
+        // c-addr is the address within the input buffer and u is the
+        // length of the selected string. If the parse area is empty,
+        // the resulting string has a zero length.
+        arfOpPARSEWORD:
         {
-            uint8_t delim = (uint8_t)tos.u;
-            parenWord(delim);
-            tos.p = &this->word;
+            *--restDataStack = tos;
+
+            uint8_t * caddr;
+            arfUnsigned u;
+            parenParseWord(' ', caddr, u);
+            (--restDataStack)->p = caddr;
+            tos.u = u;
         }
         continue;
 
         // -------------------------------------------------------------
-        // FIND [CORE] 6.1.1550 ( c-addr -- c-addr 0 | xt 1 | xt -1 )
+        // FIND-WORD [ARF] "paren-find-paren" ( c-addr u -- c-addr u 0 | xt 1 | xt -1 )
         //
-        // Find the definition named in the counted string at c-addr.
-        // If the definition is not found, return c addr and zero.  If
-        // the definition is found, return its execution token xt.  If
-        // the definition is immediate, also return one (1), otherwise
-        // also return minus-one (-1).  For a given string, the values
-        // returned by FIND while compiling may differ from those
-        // returned while not compiling.
-        arfOpFIND:
+        // Find the definition named in the string at c-addr with length
+        // u in the word list whose latest definition is pointed to by
+        // nfa.  If the definition is not found, return the string and
+        // zero.  If the definition is found, return its execution token
+        // xt.  If the definition is immediate, also return one (1),
+        // otherwise also return minus-one (-1).  For a given string,
+        // the values returned by FIND-WORD while compiling may differ
+        // from those returned while not compiling.
+        arfOpFINDWORD:
         {
-            arfCell caddr = tos;
+            uint8_t * caddr = (uint8_t *)restDataStack->p;
+            arfUnsigned u = tos.u;
 
             arfUnsigned xt;
             bool isImmediate;
-            if (parenFind((uint8_t *)caddr.p, xt, isImmediate))
+            if (parenFindWord(caddr, u, xt, isImmediate))
             {
-                (--restDataStack)->u = xt;
+                restDataStack->u = xt;
                 tos.i = isImmediate ? 1 : -1;
             }
             else
