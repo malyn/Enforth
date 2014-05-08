@@ -461,7 +461,7 @@ void ARF::compileParenQuit()
         arfOpINTERPRET,
         arfOpCR, arfOpSTATE, arfOpFETCH, arfOpZEROEQUALS, arfOpZBRANCH, 7,
         arfOpPSQUOTE, 3, 'o', 'k', ' ', arfOpTYPE,
-        arfOpBRANCH, -20
+        arfOpBRANCH, -19
     };
 
     memcpy_P(this->here, quit, sizeof(quit));
