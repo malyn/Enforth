@@ -233,8 +233,8 @@ static const arfPrimitiveWord primitives[128] PROGMEM = {
 
     // $28 - $2F
     { arfOpQUIT,            4,  arfOpNameQUIT },
-    { arfOpTIB,             3,  NULL },
-    { arfOpTIBSIZE,         7,  NULL },
+    { arfOpTIB,             0,  NULL },
+    { arfOpTIBSIZE,         0,  NULL },
     { arfOpACCEPT,          6,  arfOpNameACCEPT },
 
     { arfOpINTERPRET,       0,  NULL },
