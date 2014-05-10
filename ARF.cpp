@@ -914,7 +914,7 @@ DISPATCH_OPCODE:
 
         arfOpMINUS:
         {
-            tos.i -= restDataStack++->i;
+            tos.i = restDataStack++->i - tos.i;
         }
         continue;
 
