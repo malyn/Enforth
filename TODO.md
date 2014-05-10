@@ -1,4 +1,3 @@
-* Create macros for pushing, popping, replacing TOS, etc.
 * Add optional stack-checking macros (probably just for non-microcontroller builds).
 * Fix up all of the types; sometimes we use uint8_t, sometimes we use arfInteger, etc.
 * Turn `dictionary` constructor parameter into a generic `vm` parameter.  Put data stack and return stack at the end of the `vm` buffer.  Put TIB at the start of the buffer (before the dictionary, just like MFORTH).  Allow stack sizes and TIB size to be configured in the constructor.  TIB can be zero if you do not need the text interpreter.

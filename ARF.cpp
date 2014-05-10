@@ -634,9 +634,6 @@ void ARF::go()
 
     uint8_t op;
 
-    arfInt i;
-    arfCell * w;
-
     // Store the location of the CFAs.
     this->docolonCFA = &&DOCOLON;
 
@@ -835,12 +832,10 @@ DISPATCH_OPCODE:
 
         arfOpZeroArgFFI:
         {
-            // Push TOS, since we're about to get a new TOS.
-            *--restDataStack = tos;
-
-            // Make the call, then make the return value the new TOS.
             arfZeroArgFFI fn = (arfZeroArgFFI)(((arfCell*)ip)->p);
             ip += FFIPROCSZ;
+
+            *--restDataStack = tos;
             tos = (*fn)();
         }
         continue;
@@ -849,6 +844,7 @@ DISPATCH_OPCODE:
         {
             arfOneArgFFI fn = (arfOneArgFFI)(((arfCell*)ip)->p);
             ip += FFIPROCSZ;
+
             tos = (*fn)(tos);
         }
         continue;
@@ -857,6 +853,7 @@ DISPATCH_OPCODE:
         {
             arfTwoArgFFI fn = (arfTwoArgFFI)(((arfCell*)ip)->p);
             ip += FFIPROCSZ;
+
             arfCell arg2 = tos;
             arfCell arg1 = *restDataStack++;
             tos = (*fn)(arg1, arg2);
@@ -899,31 +896,25 @@ DISPATCH_OPCODE:
 
         arfOpDUP:
         {
-            // Move rest pointer to empty location, then copy TOS there.
             *--restDataStack = tos;
         }
         continue;
 
         arfOpDROP:
         {
-            // Make TOS equal to second stack item, then adjust rest pointer.
             tos = *restDataStack++;
         }
         continue;
 
         arfOpPLUS:
         {
-            // FIXME Feels like this ++ should not be in parens?
-            i = (restDataStack++)->i;
-            tos.i += i;
+            tos.i += restDataStack++->i;
         }
         continue;
 
         arfOpMINUS:
         {
-            // FIXME Feels like this ++ should not be in parens?
-            i = (restDataStack++)->i;
-            tos.i -= i;
+            tos.i -= restDataStack++->i;
         }
         continue;
 
@@ -941,8 +932,8 @@ DISPATCH_OPCODE:
 
         arfOpSWAP:
         {
-            arfCell swap = *restDataStack;
-            *restDataStack = tos;
+            arfCell swap = restDataStack[0];
+            restDataStack[0] = tos;
             tos = swap;
         }
         continue;
@@ -995,7 +986,8 @@ DISPATCH_OPCODE:
             // the arfWORD handler when we calculate the address.
             // Better to just +2 the value here than have to do a -2 in
             // the inner loop.
-            tos = *restDataStack++; // POP
+            // TODO Implement this
+            tos = *restDataStack++;
         }
         continue;
 
@@ -1015,7 +1007,7 @@ DISPATCH_OPCODE:
                 this->emit(tos.i);
             }
 
-            tos = *restDataStack++; // POP
+            tos = *restDataStack++;
         }
         continue;
 
@@ -1038,7 +1030,7 @@ DISPATCH_OPCODE:
             else
             {
                 // TODO Implement this.
-                tos = *restDataStack++; // POP
+                tos = *restDataStack++;
             }
         }
         continue;
@@ -1085,9 +1077,7 @@ DISPATCH_OPCODE:
 
         arfOpOR:
         {
-            // FIXME This works, but it feels weird.
-            i = (restDataStack++)->i;
-            tos.i |= i;
+            tos.i |= restDataStack++->i;
         }
         continue;
 
@@ -1130,11 +1120,13 @@ DISPATCH_OPCODE:
             bool isImmediate;
             if (parenFindWord(caddr, u, xt, isImmediate))
             {
+                // Stack still contains c-addr u; rewrite to xt 1|-1.
                 restDataStack->u = xt;
                 tos.i = isImmediate ? 1 : -1;
             }
             else
             {
+                // Stack still contains c-addr u, so just push 0.
                 *--restDataStack = tos;
                 tos.i = 0;
             }
@@ -1201,7 +1193,7 @@ DISPATCH_OPCODE:
         {
             if (this->emit != NULL)
             {
-                for (i = 0; i < tos.i; i++)
+                for (int i = 0; i < tos.i; i++)
                 {
                     this->emit(*((uint8_t*)restDataStack->p + i));
                 }
@@ -1404,7 +1396,7 @@ DISPATCH_OPCODE:
                 // FIXME Use BASE.
                 do
                 {
-                    i = tos.i - ((tos.i / 10) * 10);
+                    arfInt i = tos.i - ((tos.i / 10) * 10);
                     this->emit('0' + i);
                     tos.i = tos.i / 10;
                 } while (tos.i != 0);
@@ -1444,8 +1436,8 @@ DISPATCH_OPCODE:
             // opcodes, which are all less than $80 (high bit clear).
             // Note that offsets are 16-bit values regardless of the
             // platform's word size.
-            i = (op << 8) | *ip++;
-            w = (arfCell*)(ip + i);
+            arfInt relativeOffset = (op << 8) | *ip++;
+            arfCell * w = (arfCell*)(ip + relativeOffset);
 
             // Indirect threading: jump to the CFA.
             goto *(void *)(w->p);
