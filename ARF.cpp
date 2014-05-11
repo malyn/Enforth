@@ -634,6 +634,22 @@ void ARF::go()
 
     uint8_t op;
 
+#if ENABLE_STACK_CHECKING
+    // Check for available stack space and abort with a message if this
+    // operation would run out of space.
+    // FIXME The overflow logic seems slightly too aggressive -- it
+    // probably needs a "- 1" in there given that we store TOS in a
+    // register.
+#define CHECK_STACK(numArgs, numResults) \
+    { \
+        if ((&this->dataStack[32] - restDataStack) < numArgs) { \
+            goto STACK_UNDERFLOW; \
+        } else if (((&this->dataStack[32] - restDataStack) - numArgs) + numResults > 32) { \
+            goto STACK_OVERFLOW; \
+        } \
+    }
+#endif
+
     // Store the location of the CFAs.
     this->docolonCFA = &&DOCOLON;
 
@@ -832,6 +848,8 @@ DISPATCH_OPCODE:
 
         arfOpZeroArgFFI:
         {
+            CHECK_STACK(0, 1);
+
             arfZeroArgFFI fn = (arfZeroArgFFI)(((arfCell*)ip)->p);
             ip += FFIPROCSZ;
 
@@ -842,6 +860,8 @@ DISPATCH_OPCODE:
 
         arfOpOneArgFFI:
         {
+            CHECK_STACK(1, 1);
+
             arfOneArgFFI fn = (arfOneArgFFI)(((arfCell*)ip)->p);
             ip += FFIPROCSZ;
 
@@ -851,6 +871,8 @@ DISPATCH_OPCODE:
 
         arfOpTwoArgFFI:
         {
+            CHECK_STACK(2, 1);
+
             arfTwoArgFFI fn = (arfTwoArgFFI)(((arfCell*)ip)->p);
             ip += FFIPROCSZ;
 
@@ -862,6 +884,8 @@ DISPATCH_OPCODE:
 
         arfOpThreeArgFFI:
         {
+            CHECK_STACK(3, 1);
+
             arfThreeArgFFI fn = (arfThreeArgFFI)(((arfCell*)ip)->p);
             ip += FFIPROCSZ;
             arfCell arg3 = tos;
@@ -872,22 +896,28 @@ DISPATCH_OPCODE:
         continue;
 
         arfOpFourArgFFI:
+            CHECK_STACK(4, 1);
         continue;
 
         arfOpFiveArgFFI:
+            CHECK_STACK(5, 1);
         continue;
 
         arfOpSixArgFFI:
+            CHECK_STACK(6, 1);
         continue;
 
         arfOpSevenArgFFI:
+            CHECK_STACK(7, 1);
         continue;
 
         arfOpEightArgFFI:
+            CHECK_STACK(8, 1);
         continue;
 
         arfOpLIT:
         {
+            CHECK_STACK(0, 1);
             *--restDataStack = tos;
             tos = *(arfCell*)ip;
             ip += CELLSZ;
@@ -896,42 +926,49 @@ DISPATCH_OPCODE:
 
         arfOpDUP:
         {
+            CHECK_STACK(1, 2);
             *--restDataStack = tos;
         }
         continue;
 
         arfOpDROP:
         {
+            CHECK_STACK(1, 0);
             tos = *restDataStack++;
         }
         continue;
 
         arfOpPLUS:
         {
+            CHECK_STACK(2, 1);
             tos.i += restDataStack++->i;
         }
         continue;
 
         arfOpMINUS:
         {
+            CHECK_STACK(2, 1);
             tos.i = restDataStack++->i - tos.i;
         }
         continue;
 
         arfOpONEPLUS:
         {
+            CHECK_STACK(1, 1);
             tos.i++;
         }
         continue;
 
         arfOpONEMINUS:
         {
+            CHECK_STACK(1, 1);
             tos.i--;
         }
         continue;
 
         arfOpSWAP:
         {
+            CHECK_STACK(2, 2);
             arfCell swap = restDataStack[0];
             restDataStack[0] = tos;
             tos = swap;
@@ -945,6 +982,8 @@ DISPATCH_OPCODE:
         // both forwards and backwards.
         arfOpBRANCH:
         {
+            CHECK_STACK(0, 0);
+
             // Relative, because these are entirely within a single word
             // and so we want it to be relocatable without us having to
             // do anything.  Note that the offset cannot be larger than
@@ -953,6 +992,35 @@ DISPATCH_OPCODE:
         }
         continue;
 
+#if ENABLE_STACK_CHECKING
+        STACK_OVERFLOW:
+        {
+            if (this->emit != NULL)
+            {
+                this->emit('\n');
+                this->emit('!');
+                this->emit('O');
+                this->emit('V');
+                this->emit('\n');
+            }
+            goto arfOpABORT;
+        }
+        continue;
+
+        STACK_UNDERFLOW:
+        {
+            if (this->emit != NULL)
+            {
+                this->emit('\n');
+                this->emit('!');
+                this->emit('U');
+                this->emit('N');
+                this->emit('\n');
+            }
+            goto arfOpABORT;
+        }
+        continue;
+#endif
         // -------------------------------------------------------------
         // ABORT [CORE] 6.1.0670 ( i*x -- ) ( R: j*x -- )
         //
@@ -970,6 +1038,7 @@ DISPATCH_OPCODE:
 
         arfOpCHARLIT:
         {
+            CHECK_STACK(0, 1);
             *--restDataStack = tos;
             tos.i = *ip++;
         }
@@ -993,6 +1062,8 @@ DISPATCH_OPCODE:
 
         arfOpCR:
         {
+            CHECK_STACK(0, 0);
+
             if (this->emit != NULL)
             {
                 this->emit('\n');
@@ -1002,6 +1073,8 @@ DISPATCH_OPCODE:
 
         arfOpEMIT:
         {
+            CHECK_STACK(1, 0);
+
             if (this->emit != NULL)
             {
                 this->emit(tos.i);
@@ -1018,6 +1091,8 @@ DISPATCH_OPCODE:
         // by it.  Other stack effects are due to the word EXECUTEd.
         arfOpEXECUTE:
         {
+            CHECK_STACK(1, 0);
+
             // Is this an opcode?  If so, dispatch the opcode.  If not,
             // set W to the CFA of the address of the CFA and jump to
             // the CFA.
@@ -1037,6 +1112,7 @@ DISPATCH_OPCODE:
 
         arfOpFETCH:
         {
+            CHECK_STACK(1, 1);
             tos = *(arfCell*)tos.p;
         }
         continue;
@@ -1056,6 +1132,8 @@ DISPATCH_OPCODE:
         // returned.
         arfOpNUMBERQ:
         {
+            CHECK_STACK(2, 3);
+
             arfUnsigned u = tos.u;
             uint8_t * caddr = (uint8_t*)restDataStack->p;
 
@@ -1077,6 +1155,7 @@ DISPATCH_OPCODE:
 
         arfOpOR:
         {
+            CHECK_STACK(2, 1);
             tos.i |= restDataStack++->i;
         }
         continue;
@@ -1090,6 +1169,8 @@ DISPATCH_OPCODE:
         // the resulting string has a zero length.
         arfOpPARSEWORD:
         {
+            CHECK_STACK(0, 2);
+
             *--restDataStack = tos;
 
             uint8_t * caddr;
@@ -1113,6 +1194,8 @@ DISPATCH_OPCODE:
         // from those returned while not compiling.
         arfOpFINDWORD:
         {
+            CHECK_STACK(2, 3);
+
             uint8_t * caddr = (uint8_t *)restDataStack->p;
             arfUnsigned u = tos.u;
 
@@ -1135,6 +1218,8 @@ DISPATCH_OPCODE:
 
         arfOpQDUP:
         {
+            CHECK_STACK(1, 2);
+
             if (tos.i != 0)
             {
                 *--restDataStack = tos;
@@ -1144,6 +1229,8 @@ DISPATCH_OPCODE:
 
         arfOpSPACE:
         {
+            CHECK_STACK(0, 0);
+
             if (this->emit != NULL)
             {
                 this->emit(' ');
@@ -1153,6 +1240,7 @@ DISPATCH_OPCODE:
 
         arfOpSTATE:
         {
+            CHECK_STACK(0, 1);
             *--restDataStack = tos;
             tos.p = &this->state;
         }
@@ -1164,6 +1252,7 @@ DISPATCH_OPCODE:
         // Store x at a-addr.
         arfOpSTORE:
         {
+            CHECK_STACK(2, 0);
             *(arfCell*)tos.p = *restDataStack++;
             tos = *restDataStack++;
         }
@@ -1177,6 +1266,7 @@ DISPATCH_OPCODE:
         // the parse area.
         arfOpTOIN:
         {
+            CHECK_STACK(0, 1);
             *--restDataStack = tos;
             tos.p = &this->toIn;
         }
@@ -1184,6 +1274,7 @@ DISPATCH_OPCODE:
 
         arfOpTWODROP:
         {
+            CHECK_STACK(2, 0);
             restDataStack++;
             tos = *restDataStack++;
         }
@@ -1191,6 +1282,8 @@ DISPATCH_OPCODE:
 
         arfOpTYPE:
         {
+            CHECK_STACK(2, 0);
+
             if (this->emit != NULL)
             {
                 for (int i = 0; i < tos.i; i++)
@@ -1206,6 +1299,8 @@ DISPATCH_OPCODE:
 
         arfOpZBRANCH:
         {
+            CHECK_STACK(1, 0);
+
             if (tos.i == 0)
             {
                 ip = ip + *(int8_t*)ip;
@@ -1221,6 +1316,7 @@ DISPATCH_OPCODE:
 
         arfOpZERO:
         {
+            CHECK_STACK(0, 1);
             *--restDataStack = tos;
             tos.i = 0;
         }
@@ -1228,6 +1324,7 @@ DISPATCH_OPCODE:
 
         arfOpZEROEQUALS:
         {
+            CHECK_STACK(1, 1);
             tos.i = tos.i == 0 ? -1 : 0;
         }
         continue;
@@ -1246,6 +1343,7 @@ DISPATCH_OPCODE:
         //     and no ambiguous condition exists.
         arfOpQUIT:
         {
+            CHECK_STACK(0, 0);
             returnTop = (arfCell *)&this->returnStack[32];
             this->state = 0;
             ip = parenQuit + CFASZ;
@@ -1254,6 +1352,7 @@ DISPATCH_OPCODE:
 
         arfOpTIB:
         {
+            CHECK_STACK(0, 1);
             *--restDataStack = tos;
             tos.p = &this->tib;
         }
@@ -1261,6 +1360,7 @@ DISPATCH_OPCODE:
 
         arfOpTIBSIZE:
         {
+            CHECK_STACK(0, 1);
             *--restDataStack = tos;
             tos.u = sizeof(this->tib);
         }
@@ -1285,6 +1385,7 @@ DISPATCH_OPCODE:
         // +n2 is the length of the string stored at c-addr.
         arfOpACCEPT:
         {
+            CHECK_STACK(2, 1);
             arfCell n1 = tos;
             arfCell caddr = *restDataStack++;
             tos.u = parenAccept((uint8_t *)caddr.p, n1.u);
@@ -1293,6 +1394,7 @@ DISPATCH_OPCODE:
 
         arfOpINTERPRET: // ( i*x c-addr u -- j*x)
         {
+            CHECK_STACK(2, 0);
             this->source = (uint8_t *)restDataStack++->p;
             this->sourceLen = tos.u;
             tos = *restDataStack++;
@@ -1307,6 +1409,8 @@ DISPATCH_OPCODE:
         // Runtime behavior of S": return c-addr and u.
         arfOpPSQUOTE:
         {
+            CHECK_STACK(0, 2);
+
             // Push existing TOS onto the stack.
             *--restDataStack = tos;
 
@@ -1325,6 +1429,7 @@ DISPATCH_OPCODE:
 
         arfOpBL:
         {
+            CHECK_STACK(0, 1);
             *--restDataStack = tos;
             tos.u = ' ';
         }
@@ -1332,12 +1437,14 @@ DISPATCH_OPCODE:
 
         arfOpCFETCH:
         {
+            CHECK_STACK(1, 1);
             tos.u = *(uint8_t*)tos.p;
         }
         continue;
 
         arfOpCOUNT:
         {
+            CHECK_STACK(1, 2);
             (--restDataStack)->p = (uint8_t*)tos.p + 1;
             tos.u = *(uint8_t*)tos.p;
         }
@@ -1359,6 +1466,8 @@ DISPATCH_OPCODE:
         // condition exists if ud2 overflows during the conversion.
         arfOpTONUMBER:
         {
+            CHECK_STACK(3, 3);
+
             arfUnsigned u = tos.u;
             uint8_t * caddr = (uint8_t*)restDataStack[0].p;
             arfUnsigned ud = restDataStack[-1].u;
@@ -1378,6 +1487,13 @@ DISPATCH_OPCODE:
         // stack before +n was placed on the stack.
         arfOpDEPTH:
         {
+            CHECK_STACK(0, 1);
+
+            // Save TOS, then calculate the stack depth.  The return
+            // value should be the number of items on the stack *before*
+            // DEPTH was called and so we have to subtract one from the
+            // count given that we calculate the depth *after* pushing
+            // the old TOS onto the stack.
             *--restDataStack = tos;
             tos.i = &this->dataStack[32] - restDataStack - 1;
         }
@@ -1389,6 +1505,8 @@ DISPATCH_OPCODE:
         // Display n in free field format.
         arfOpDOT:
         {
+            CHECK_STACK(1, 0);
+
             if (this->emit != NULL)
             {
                 // FIXME These numbers are printing backwards; we

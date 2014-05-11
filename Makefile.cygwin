@@ -1,4 +1,4 @@
 all: test/arfsimple
 
 test/arfsimple: ARF.h ARF.cpp test/arfsimple.cpp
-	c++ -g -I. -o $@ ARF.cpp test/arfsimple.cpp
+	c++ -g -I. -o $@ -DENABLE_STACK_CHECKING=1 ARF.cpp test/arfsimple.cpp
