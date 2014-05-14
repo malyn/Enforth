@@ -648,6 +648,8 @@ void ARF::go()
             goto STACK_OVERFLOW; \
         } \
     }
+#else
+#define CHECK_STACK(numArgs, numResults)
 #endif
 
     // Store the location of the CFAs.
