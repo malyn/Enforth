@@ -6,6 +6,11 @@ Arduino-based Forth: embraces the Arduino ecosystem and libraries, while allow F
 
 Provided as an Arduino Library with a small handful of entry points.  Two key entry points are KEY and EMIT.  Using these, Technomancy could have KEY receive input from the keyboard matrix and EMIT send characters out to the USB host.  This way you could program the device by firing up Notepad and then typing into your keyboard!  No need for a serial console or anything like that.
 
+# Design Goals
+
+1. Minimize RAM usage.  When faced with a design decision, the option that minimizes RAM usage is almost always the one that was taken.
+2. Ensure that the entire dictionary and all values therein are relocatable without requiring values to be rewritten.  This allows us to copy the dictionary as-is back and forth between RAM, EEPROM, and flash.  In addition to supporting on-device development -- build up your code and then copy it to EEPROM for a turn-key app -- this may allow us to dump the contents of the dictionary as a C-style (PROGMEM) array and then compile that into flash.  Note that there are subtleties here: XTs must also be relocatable since you could get the XT for a word and then store that in a CONSTANT or array in the dictionary.
+
 # Operation
 
 * Flash contains your Arduino sketch, which includes the ARF "kernel" (just another Arduino Library), any linked-in libraries, and all of your predefined words.  The flash dictionary is stored here.
@@ -20,16 +25,15 @@ Provided as an Arduino Library with a small handful of entry points.  Two key en
 
 * 16-bit Forth
 * Token-threaded Forth with 8-bit tokens.
-  * 32 words (5 bits) may be defined in RAM and require a 128-byte RAM lookup table.
-  * Remaining words (224) are in flash.
-  * Ideally we would only use 128/160/192 flash words for the kernel and then make 96/64/32 available for FFI primitives.
-  * 128 looks possible, which then gives us 96 for FFI (which should be fine for a huge number of Arduino Libraries and stuff) and 32 for RAM.
+* Tokens reference primitive words; user-defined words are invoked with `DO*` tokens that get the PFA of the callee from the instruction stream (in the same manner as how `LIT` works).
 
 # Primitives vs. Definitions
 
-**Primitives** are part of the ARF kernel and are Forth words written in C.  They can block if necessary (for I/O, although that would not be ideal if we ever implement multitasking), but they cannot reenter the ARF kernel.  That is because the kernel needs a thread of words to follow and that thread effectively stops at the point where a C word has been invoked.
+**Primitives** are part of the ARF kernel and are Forth words written in C or Forth.  C-based words can block if necessary (for I/O, although that would not be ideal if we ever implement multitasking), but they cannot reenter the ARF kernel.  That is because the kernel needs a thread of words to follow and that thread effectively stops at the point where a C word has been invoked.  Reentrant primitives must be written in Forth and are then dispatched by way of the `DOPRIM` primitive, which tells the inner interpreter that the IP points into ROM, for those processors (AVR) that must use different instructions to access ROM and RAM.
 
-**Definitions** are Forth words that are located in RAM and participate in the threading process.  This allows those words to reenter the interpreter, change between interpretation and compilation states, etc.
+**User-defined words** are Forth words written by the user and are executed from RAM.  These words can reenter the interpreter, change between interpretation and compilation states, etc.
+
+## Deprecated content, now that we are going to support ROM-based words
 
 This distinction between the two types of words works fine in almost all cases except for `EVALUATE` and `QUIT`, which loop and/or reenter the address interpreter.  Those two words need to be present in RAM so that they can participate in the threading flow.
 
@@ -45,18 +49,11 @@ This is going to be hard to do though... Both Flash and RAM use the same numeric
 
 # Execution Tokens
 
-An Execution Tokens (XT) in ARF can refer either to an ARF primitive or user definition.  We need to be able to tell these two things apart in a couple of different scenarios:
+Execution Tokens (XT) in ARF are not the same thing as the contents of the Parameter Field in a definition.  The latter always consists of a series of tokens that reference ROM-based primitives.  XTs, on the other hand, are only ever seen on the stack (although they could be stored in constants or arrays as well).
 
-1. Inner Interpreter
-   The inner interpreter will pull instructions out of the current word's thread and needs to know if a value represents a one-byte primitive or a two-byte address reference.
-2. `EXECUTE`, `COMPILE,`, etc.
-   These words expect an XT on the stack and will then do something with that XT.  Note that in at least one case (`COMPILE,`) this stack-based XT will be later used by the inner interpreter.
+An XT can point to one of two things: a ROM-based primitive or a user-defined word.  The high bit of the XT indicates the type of thing that is being referenced: ROM-based primitives have a clear high bit and user-defined words have the high bit set.
 
-We have already decided that the Inner Interpreter will identify primitives by a clear high bit -- values 0-127 -- and use a set high bit to identify a relative (negative) offset to the user-defined word in the dictionary that is being referenced.
-
-This same thing will not work for stack-based XTs though, because the stack pointer of course has no relation to the IP.  This means that XTs on the stack need to be different from compiled XTs.  I recommend that we continue to use the high bit to decide between primitives and user definitions, but that the actual XT is a positive offset from the start of the dictionary and we just clear the high bit before trying to use the offset.
-
-`COMPILE,` then calculates the offset from `HERE` to that offset (after including the dictionary start), `EXECUTE` just sets IP to the dictionary start plus the offset, etc.
+XTs are used by `EXECUTE` and `COMPILE,`, which must be able to determine the type of XT -- primitive or user-defined -- and then invoke the appropriate `DO*` primitive If the XT references a user-defined word.  This creates additional work for `EXECUTE` and `COMPILE,`, but the benefit to ARF is that the inner interpreter only ever needs to deal with tokens and so its register usage can be optimized for that operation.
 
 # Relocation
 
@@ -65,12 +62,8 @@ ARF programs are created interactively.  The program manifests itself as a dicti
 This works for the following reasons:
 
 * Branch addresses are 8-bit relative offsets and so relocate with the word, even if the word was to change its starting location (which doesn't happen).
-* Indirect threaded references are 16-bit relative offsets into prior parts of the dictionary and so the entire dictionary is relocatable.
-* The only absolute addresses are CFA addresses, which point at jump locations in program memory for the four `DO*` words.  EEPROM dictionaries are only valid for a specific build of ARF, so this is fine as well.
-
-In theory we could rewrite CFA addresses after copying the dictionary from RAM, although to do that we would need to add a flag to each word's header that specified the type of CFA.
-
-The other option would be to go to a tokenized CFA and offset through a `DO`-specific jump table, but that would slow down all word invocations.  Rewriting-during-load is much more efficient and only costs us two bits in the flag field (since there are four `DO` words).
+* References to user-defined words are relative offsets into prior parts of the dictionary and so the entire dictionary is relocatable.
+* XTs are relative references from the start of the dictionary and so are relocatable as well.
 
 # Optimizations
 
@@ -102,6 +95,7 @@ Later, we will allow people to specify `WARM-EEPROM` which loads and verifies th
 * Note:
   * Things like BEGIN, AGAIN, REPEAT, etc. are actually immediate words and don't require opcodes.
   * Same thing with HERE (no opcode).
+  * Can probably relax some of these things now that we can reference 256 primitives.
 
 CORE (implemented)
 

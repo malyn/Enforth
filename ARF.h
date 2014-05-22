@@ -84,8 +84,6 @@ class ARF
         arfInt sourceLen;
         arfInt toIn;
 
-        void * docolonCFA;
-
         void compileParenInterpret();
         void compileParenQuit();
         void compileParenEvaluate();

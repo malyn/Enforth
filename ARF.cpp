@@ -46,27 +46,16 @@
 
 #include "ARF.h"
 
-#define CFASZ (sizeof(void*))
 #define FFIPROCSZ (sizeof(void*))
 #define CELLSZ (sizeof(arfCell))
 
 // TODO We've gotten our names a bit wrong here.  These aren't
 // "opcodes" as much as they are "primitive words".  Similarly, the
-// RAM definitions are "user-defined words."  Primitive words are
-// identified by 0x00-0x7F, whereas user-defined words have their
-// high bit set and their PFA must be word-aligned (so that we can
-// shift left the 15-bit value).  Then, in the
-// arfPrimUserDefinedWord handler we can just read the "word type"
-// and then jump to a smaller (RAM-resident, for speed!) table for
-// that type of word.  There is only DOCOLON, DODOES, DOCREATE, etc.
-// so this can be hard-coded and avoids the need to waste "opcodes"
-// (now "primitive word ids"?).
+// RAM definitions are "user-defined words."
 //
-// Again the key point here is that the PFA contains a list of
-// tokens and addresses, with the high bit telling you what you are
-// looking at.  Either way though, the list is a list of words
-// (primitive or user-defined).  There is no longer a concept of
-// "opcode" since ARF is a Forth machine and not a CPU.
+// The key point here is that the PFA contains a list of tokens to
+// primitive words.  There is no longer a concept of "opcode" since ARF
+// is a Forth machine and not a CPU.
 enum arfOpcode
 {
     arfOpZeroArgFFI = 0x00,
@@ -122,6 +111,7 @@ enum arfOpcode
     arfOpDEPTH,
     arfOpDOT,
     //...
+    arfOpDOCOLON = 0x7E,
     arfOpEXIT = 0x7F,
 };
 
@@ -347,10 +337,14 @@ static const arfPrimitiveWord primitives[128] PROGMEM = {
 
     { 0,                    0,  NULL },
     { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
+    { arfOpDOCOLON,         0,  NULL },
     { arfOpEXIT,            0,  NULL },
 };
 
+#if 0
+// TODO Consider using a similar enum as part of a definition's flags
+// field, since we'll need a way to figure out what kind of definition
+// this is (COLON, CONSTANT, CREATE, DOES).
 typedef enum
 {
     arfCFADOCOLON = 0,
@@ -358,6 +352,7 @@ typedef enum
     arfCFADOCREATE,
     arfCFADODOES,
 } arfCFA;
+#endif
 
 typedef arfCell (*arfZeroArgFFI)(void);
 typedef arfCell (*arfOneArgFFI)(arfCell a);
@@ -406,9 +401,6 @@ void ARF::compileParenInterpret()
     //       THEN
     //   REPEAT ( j*x ca u) 2DROP ;
 
-    ((arfCell*)this->here)->p = this->docolonCFA;
-    this->here += CFASZ;
-
     static const int8_t interpret[] PROGMEM = {
         arfOpZERO, arfOpTOIN, arfOpSTORE,
         arfOpPARSEWORD, arfOpDUP, arfOpZBRANCH, 37,
@@ -450,9 +442,6 @@ void ARF::compileParenQuit()
     //       INTERPRET
     //       CR  STATE @ 0= IF ." ok " THEN
     //   AGAIN ;
-
-    ((arfCell*)this->here)->p = this->docolonCFA;
-    this->here += CFASZ;
 
     static const int8_t quit[] PROGMEM = {
         arfOpTIB, arfOpDUP, arfOpTIBSIZE, arfOpACCEPT, arfOpSPACE,
@@ -499,6 +488,9 @@ arfUnsigned ARF::parenAccept(uint8_t * caddr, arfUnsigned n1)
     return n2;
 }
 
+// TODO This will need to return 16-bit XTs (which might be an opcode or
+// might be a relative reference to the word -- with the high bit set --
+// from the start of the dictionary) once we support user-defined words.
 bool ARF::parenFindWord(uint8_t * caddr, arfUnsigned u, arfUnsigned &xt, bool &isImmediate)
 {
     uint8_t searchLen = u;
@@ -652,9 +644,6 @@ void ARF::go()
 #define CHECK_STACK(numArgs, numResults)
 #endif
 
-    // Store the location of the CFAs.
-    this->docolonCFA = &&DOCOLON;
-
     // Compile our RAM definitions.
     uint8_t * parenInterpret = this->here;
     this->compileParenInterpret();
@@ -680,7 +669,7 @@ void ARF::go()
     restDataStack = (arfCell*)&this->dataStack[32];
     returnTop = (arfCell *)&this->returnStack[32];
 
-    static const void * const jtb[256] PROGMEM = {
+    static const void * const jtb[128] PROGMEM = {
         // $00 - $07
         &&arfOpZeroArgFFI,
         &&arfOpOneArgFFI,
@@ -789,56 +778,9 @@ void ARF::go()
 
         // $78 - $7F
         0, 0, 0, 0,
-        0, 0, 0,
+        0, 0,
+        &&arfOpDOCOLON,
         &&arfOpEXIT,
-
-        // $80 - $8F
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-
-        // $90 - $9F
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-
-        // $A0 - $AF
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-
-        // $B0 - $BF
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-
-        // $C0 - $CF
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-
-        // $D0 - $DF
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-
-        // $E0 - $EF
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-
-        // $F0 - $FF
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
-        &&arfWORD, &&arfWORD, &&arfWORD, &&arfWORD,
     };
 
     while (true)
@@ -1048,15 +990,31 @@ DISPATCH_OPCODE:
 
         arfOpCOMPILECOMMA:
         {
-            // TODO Needs to differentiate between an opcode on the
-            // stack (high bit clear) and an address and compile either
-            // a one-byte or two-byte value.
-            // Note that this is an MSB-first relative offset to the
-            // word's CFA and that the offset is as of the address
-            // *after* the offset since that's where the IP will be in
-            // the arfWORD handler when we calculate the address.
-            // Better to just +2 the value here than have to do a -2 in
-            // the inner loop.
+            // TODO Needs to differentiate between XTs for primitive
+            // words and user-defined words.  The latter will be encoded
+            // as a 16-bit value with the high bit set and the remaining
+            // 15 bits specifying the relative offset to the target word
+            // from the start of the dictionary (so that XTs relocate
+            // with the dictionary).  XTs for user-defined words will
+            // then be converted into a DO* opcode and a relative offset
+            // from the current call site (IP).  Initially these offsets
+            // will be 16-bits, but we can create DO*8 opcodes that are
+            // used if the range fits into 8 bits.  COMPILECOMMA will
+            // need to look up the type of word that is being targed and
+            // compile in the appropriate DO* opcode.  This creates
+            // additional work for COMPILECOMMA, but the benefit is that
+            // XTs can use the entire 15-bit range and do not need any
+            // flag bits.
+            //
+            // XTs that reference primitive words will just be compiled
+            // as-is.
+            //
+            // Note that the compiled offset is a native endian relative
+            // offset to the word's PFA (no CFAs in ARF) and that the
+            // offset is as of the address *after* the opcode and
+            // *before* the offset since that's where the IP will be in
+            // the DO* opcode when we calculate the address.
+            //
             // TODO Implement this
             tos = *restDataStack++;
         }
@@ -1095,9 +1053,32 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(1, 0);
 
-            // Is this an opcode?  If so, dispatch the opcode.  If not,
-            // set W to the CFA of the address of the CFA and jump to
-            // the CFA.
+            // Does this XT reference a primitive word or a user-defined
+            // word?  If the former, just dispatch to the primitive.  If
+            // the latter, look up the type of user-defined word and
+            // jump to the appropriate DO* primitive.
+            //
+            // TODO < 128 is no longer correct; instead we should use
+            // the high bit of the 16-bit value to differentiate opcodes
+            // vs. words.  We then look up the type of word (which will
+            // be in the flags for the definition) and jump to the
+            // appropriate DO* primitive.  This is less efficient than
+            // encoding the DO* primitive in the XT, but EXECUTE is not
+            // necessarily something that we need to make speedy in my
+            // opinion, so it is better if the XTs on the stack are are
+            // more flexible.
+            //
+            // Note that stack XTs will need to be absolute *from the
+            // start of the dictionary* (so that they are relative to
+            // the dictionary itself is someone decides to store them in
+            // a constant) since the IP isn't relevant when invoking
+            // EXECUTE.  COMPILECOMMA will also need to look up the DO*
+            // opcode from the target word's flags, calculate a relative
+            // offset from the call site, etc.
+            //
+            // Note that primitive words are only ever identified by
+            // opcode; 16-bit XTs are only ever used for user-defined
+            // words.
             if (tos.u < 128)
             {
                 op = tos.u;
@@ -1348,7 +1329,7 @@ DISPATCH_OPCODE:
             CHECK_STACK(0, 0);
             returnTop = (arfCell *)&this->returnStack[32];
             this->state = 0;
-            ip = parenQuit + CFASZ;
+            ip = parenQuit;
         }
         continue;
 
@@ -1401,7 +1382,7 @@ DISPATCH_OPCODE:
             this->sourceLen = tos.u;
             tos = *restDataStack++;
             (--returnTop)->p = (void *)ip;
-            ip = parenInterpret + CFASZ;
+            ip = parenInterpret;
         }
         continue;
 
@@ -1528,61 +1509,30 @@ DISPATCH_OPCODE:
         }
         continue;
 
+        arfOpDOCOLON:
+        {
+            // IP currently points to the relative offset of the PFA of
+            // the target word.  Read that offset and advance IP to the
+            // opcode after the offset.
+            arfInt relativeOffset = ((arfCell*)ip)->i;
+            uint8_t * w = ip + relativeOffset;
+            ip += CELLSZ;
+
+            // IP now points to the next word in the PFA and that is the
+            // location to which we should return once this new word has
+            // executed.
+            (--returnTop)->p = (void *)ip;
+
+            // Now set the IP to the PFA of the word that is being
+            // called and continue execution inside of that word.
+            ip = w;
+        }
+        continue;
+
         arfOpEXIT:
         {
             ip = (uint8_t *)((returnTop++)->p);
         }
         continue;
-
-        // This is not an opcode, but is instead the code that is run
-        // when a non-opcode byte is detected.  We read the next byte,
-        // which is the absolute RAM address of the CFA of the word that
-        // is being called.  We load the CFA, which will be one of our
-        // opcodes, and go back to the top of the loop in order to
-        // process that opcode.  Note that we do *not* change IP to
-        // point to the CFA, since the called word will either save the
-        // IP itself (in the case of DOCOLON) or continue onwards after
-        // pushing something onto the stack (in the case of DOVARIABLE).
-        // This right here is what makes ARF an indirect-threaded Forth
-        // when processing RAM-based definitions: the CFA contains the
-        // address (opcode, because we're actually a token-threaded
-        // Forth once we're in flash) of the routine that executes the
-        // new thread.
-        arfWORD:
-        {
-            // Get the relative offset to the CFA of the target word.
-            // Using a relative offset automatically makes this value
-            // negative, which differentiates it (high bit set) from
-            // opcodes, which are all less than $80 (high bit clear).
-            // Note that offsets are 16-bit values regardless of the
-            // platform's word size.
-            arfInt relativeOffset = (op << 8) | *ip++;
-            arfCell * w = (arfCell*)(ip + relativeOffset);
-
-            // Indirect threading: jump to the CFA.
-            goto *(void *)(w->p);
-
-            DOCOLON:
-                // IP currently points to the next word in the PFA and that
-                // is the location to which we should return once this new
-                // word has executed.
-                (--returnTop)->p = (void *)ip;
-
-                // Now skip over the CFA and begin executing the thread in
-                // the Parameter Field Address.
-                ip = (uint8_t *)w + CFASZ;
-
-                // Start processing instructions in this thread.
-                continue;
-
-            DOCONSTANT:
-                continue;
-
-            DOCREATE:
-                continue;
-
-            DODOES:
-                continue;
-        }
     }
 }
