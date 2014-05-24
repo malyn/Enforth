@@ -662,13 +662,6 @@ void ARF::go()
         this->emit('\n');
     }
 
-    // Initialize our local variables.
-    uint8_t abort = arfOpABORT;
-    ip = &abort;
-    tos.i = 0;
-    restDataStack = (arfCell*)&this->dataStack[32];
-    returnTop = (arfCell *)&this->returnStack[32];
-
     static const void * const jtb[128] PROGMEM = {
         // $00 - $07
         &&arfOpZeroArgFFI,
@@ -783,6 +776,10 @@ void ARF::go()
         &&arfOpEXIT,
     };
 
+    // Jump to ABORT, which initializes the IP, our stacks, etc.
+    goto arfOpABORT;
+
+    // The inner interpreter.
     while (true)
     {
         // Get the next opcode and dispatch to the label.
