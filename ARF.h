@@ -84,10 +84,6 @@ class ARF
         arfInt sourceLen;
         arfInt toIn;
 
-        void compileParenInterpret();
-        void compileParenQuit();
-        void compileParenEvaluate();
-
         arfUnsigned parenAccept(uint8_t * caddr, arfUnsigned n1);
         bool parenFindWord(uint8_t * caddr, arfUnsigned u, arfUnsigned &xt, bool &isImmediate);
         bool parenNumberQ(uint8_t * caddr, arfUnsigned u, arfInt &n);

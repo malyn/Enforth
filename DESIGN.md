@@ -33,19 +33,35 @@ Provided as an Arduino Library with a small handful of entry points.  Two key en
 
 **User-defined words** are Forth words written by the user and are executed from RAM.  These words can reenter the interpreter, change between interpretation and compilation states, etc.
 
-## Deprecated content, now that we are going to support ROM-based words
+# Instruction Pointer and Harvard Architectures
 
-This distinction between the two types of words works fine in almost all cases except for `EVALUATE` and `QUIT`, which loop and/or reenter the address interpreter.  Those two words need to be present in RAM so that they can participate in the threading flow.
+## Option 1
 
-In order to do that, the initialization phase for a blank dictionary will compile those two words into the dictionary so that they are available in RAM.  This does take up dictionary space, but is unavoidable if we want to offer an interactive Forth environment.  Note that we could choose to optionally exclude those words from the dictionary, but then the Forth kernel would only be capable of executing turnkey applications that do not require the text interpreter.
+The Instruction Pointer (IP) takes one of two forms depending on where it is being used: in the Inner Interpreter the IP is the address of the next token in either program space or data space (and a boolean is used to differentiate between the two); on the return stack -- the only other place where an absolute IP can exist -- the low bit of the IP is used to differentiate between program space and data space.
 
-Another option would be to use the C stack for these words by invoking a C function and then looping in there, calling back into the inner interpreter as necessary.  That is what Ficl does, but then it needs setjmp/longjmp.  Without those we would potentially blow up the stack.
+This means that IP values must be converted on their way to/from the return stack.  The benefit to this approach (instead of using the flag-encumbered IP) is that the IP is a numeric value inside of the Inner Interpreter and can be manipulated with standard math functions.  Only the pushing or popping of an IP on the return stack requires any encoding or decoding of the value.  Meanwhile, things like branch operations can operate on the unencumbered IP.
 
-The ARF approach sacrifices a very small amount of RAM for performance (no need to determine if the IP is pointing at RAM or flash) and the conservation of the C stack (no recursion in the interpreter).
+Note that this approach means that words cannot use the full range of the processor's address space since we will be shifting the real IP by one bit in order to make room for the flag bit.  This should be fine on all of the processors that we are using though (RAM is under the 2GB barrier on ARM processors and AVR processors cannot access more than 24 bits of address space).
 
-*I wonder if we'll eventually need to support Flash-based definitions though?  The RAM-based approach puts a permanent limit on the size of a Forth application that you can create since all of your definitions have to fit in RAM...  Maybe people would rather trade speed (IP lookup in RAM vs. Flash) for the convenience of getting to stay in Forth (as opposed to having to constantly rewrite Forth in C as your program gets larger).  Having the IP be smart would let us do the whole DUMP-WORD thing to produce #defines or the equivalent PROGMEM string.*
+## Option 2
 
-This is going to be hard to do though... Both Flash and RAM use the same numerical address space because they are accessed with different words.  That means that IP has to go into "Flash mode" and stay there until we return from the word that put us into Flash mode.  We should leave this until a later release.
+The Instruction Pointer (IP) always contains an absolute address, but on Harvard architectures the address in question may refer to either data space (for user-defined words) or program space (for primitive words written in Forth).  The Inner Interpreter maintains a state variable that tracks the current address space.
+
+This state variable must be paired with the IP at all times, specifically in the case where the IP is being pushed onto the Return Stack.  Execution can move back and forth between program and data space in words like `INTERPRET`, which eventually call `EXECUTE` and could thus go from a program space word (`EXECUTE`) into a data space word (a user-defined word in the dictionary).
+
+A third stack is used to store these state variables and the stack is manipulated whenever the return stack is manipulated.  Ideally this value would be part of the IP that is pushed onto the return stack, but then we run into a problem where we need the full range of the IP -- AVR processors can have more than 64KB of flash -- and so there is no place to put a flag bit that would not be needed by the IP itself.
+
+## Option 3
+
+This problem (no available space for the flag bit) goes away if we can keep all of the primitive Forth definitions together.  That could be done by putting all of those definitions in a single block in program space and then using relative offsets (with the high bit set in order to indicate program space) on the return stack.  The downside is additional math involved to calculate the real IP, but it's always the addition/subtraction of a constant, so it's probably fine.
+
+Meanwhile the IP in the Inner Interpreter remains a C pointer and thus uses whatever native instructions work best for that (such as the `ELPM` instruction to access more than 64KB of flash).
+
+This avoids the extra stack that Option 2 requires at the expense of a small amount of arithmetic when calling from program space into user space (perhaps only in `EXECUTE`?).
+
+### Option 3.5
+
+Now that we know Option 3 is possible, for now we'll just use absolute IP addresses and assume that we won't need the high bit for the address.  This will simplify development since we can just use inline static arrays, but with the knowledge that later on we can move all of those into a single block of program data.
 
 # Execution Tokens
 
@@ -74,9 +90,9 @@ RAM is the most precious resource in the system and so a handful of optimization
 
 # Initialization
 
-ARF is initialized with an array.  ARF takes over that array and uses it for the dictionary and stacks (the latter which are configurable in the constructor).  The stacks start at the end of the array and the dictionary at the beginning.  At the very beginning of the array are the RAM definitions for `EVALUATE` and `QUIT` per the discussion earlier.
+ARF is initialized with an array.  ARF takes over that array and uses it for the dictionary and stacks (the latter which are configurable in the constructor).  The stacks start at the end of the array and the dictionary at the beginning.
 
-`go()` takes the name of the word to find and execute and, by default, that word is `COLD`.  `COLD` compiles `EVALUATE` and `QUIT` into the dictionary and then calls `ABORT` (which calls `QUIT`).  The caller could also specify `WARM-EEPROM` which copies the dictionary from EEPROM to RAM and then calls `ABORT` (since the EEPROM would already have to contain `EVALUATE` and `QUIT`).
+`go()` takes the name of the word to find and execute and, by default, that word is `COLD`.  `COLD` initializes the system and then calls `ABORT` (which calls `QUIT`).  The caller could also specify `WARM-EEPROM` which copies the dictionary from EEPROM to RAM and then calls `ABORT` (since the EEPROM would already have to contain `EVALUATE` and `QUIT`).
 
 Later, we will allow people to specify `WARM-EEPROM` which loads and verifies the EEPROM and then calls `ABORT`.  Finally, people will eventually be able to specify their own turnkey word (which of course also requires the EEPROM to be loaded).
 

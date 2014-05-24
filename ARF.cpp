@@ -110,6 +110,7 @@ enum arfOpcode
     arfOpTONUMBER,
     arfOpDEPTH,
     arfOpDOT,
+    arfOpPDOTQUOTE,
     //...
     arfOpDOCOLON = 0x7E,
     arfOpEXIT = 0x7F,
@@ -236,7 +237,7 @@ static const arfPrimitiveWord primitives[128] PROGMEM = {
     { arfOpDEPTH,           5,  arfOpNameDEPTH },
     { arfOpDOT,             1,  arfOpNameDOT },
 
-    { 0,                    0,  NULL },
+    { arfOpPDOTQUOTE,       0,  NULL },
     { 0,                    0,  NULL },
     { 0,                    0,  NULL },
     { 0,                    0,  NULL },
@@ -375,88 +376,6 @@ ARF::ARF(const uint8_t * dictionary, int dictionarySize,
    state(0)
 {
     this->here = const_cast<uint8_t *>(this->dictionary);
-}
-
-void ARF::compileParenInterpret()
-{
-    // -----------------------------------------------------------------
-    // INTERPRET [ARF] ( i*x -- j*x )
-    //
-    // Interpret the string stored in the input buffer.
-    //
-    // : INTERPRET ( i*x -- j*x )
-    //   0 >IN !
-    //   BEGIN  PARSE-WORD  DUP WHILE
-    //       FIND-WORD ( ca u 0=notfound | xt 1=imm | xt -1=interp)
-    //       ?DUP IF ( xt 1=imm | xt -1=interp)
-    //           1+  STATE @ 0=  OR ( xt 2=imm | xt 0=interp)
-    //           IF EXECUTE ELSE COMPILE, THEN
-    //       ELSE
-    //           NUMBER? IF
-    //               STATE @ IF POSTPONE LITERAL THEN
-    //               -- Interpreting; leave number on stack.
-    //           ELSE
-    //               TYPE  SPACE  [CHAR] ? EMIT  CR  ABORT
-    //           THEN
-    //       THEN
-    //   REPEAT ( j*x ca u) 2DROP ;
-
-    static const int8_t interpret[] PROGMEM = {
-        arfOpZERO, arfOpTOIN, arfOpSTORE,
-        arfOpPARSEWORD, arfOpDUP, arfOpZBRANCH, 37,
-        arfOpFINDWORD, arfOpQDUP, arfOpZBRANCH, 14,
-        arfOpONEPLUS, arfOpSTATE, arfOpFETCH, arfOpZEROEQUALS, arfOpOR,
-            arfOpZBRANCH, 4,
-        arfOpEXECUTE, arfOpBRANCH, 21,
-        arfOpCOMPILECOMMA, arfOpBRANCH, 18,
-        arfOpNUMBERQ, arfOpZBRANCH, 8,
-        arfOpSTATE, arfOpFETCH, arfOpZBRANCH, 11,
-        arfOpLITERAL, arfOpBRANCH, 8,
-        arfOpTYPE, arfOpSPACE, arfOpCHARLIT, '?', arfOpEMIT, arfOpCR,
-            arfOpABORT,
-        arfOpBRANCH, -39,
-        arfOpTWODROP,
-        arfOpEXIT,
-    };
-
-    memcpy_P(this->here, interpret, sizeof(interpret));
-    this->here += sizeof(interpret);
-}
-
-void ARF::compileParenQuit()
-{
-    // -----------------------------------------------------------------
-    // (QUIT) [ARF] ( -- )
-    //
-    // Repeat the following:
-    //   - Accept a line from the input source into the input buffer,
-    //     set >IN to zero, and interpret.
-    //   - Display the implementation-defined system prompt if in
-    //     interpretation state, all processing has been completed, and
-    //     no ambiguous condition exists.
-    //
-    // ---
-    // : (QUIT)  ( --)
-    //   BEGIN
-    //       TIB  DUP TIBSIZE ACCEPT  SPACE
-    //       INTERPRET
-    //       CR  STATE @ 0= IF ." ok " THEN
-    //   AGAIN ;
-
-    static const int8_t quit[] PROGMEM = {
-        arfOpTIB, arfOpDUP, arfOpTIBSIZE, arfOpACCEPT, arfOpSPACE,
-        arfOpINTERPRET,
-        arfOpCR, arfOpSTATE, arfOpFETCH, arfOpZEROEQUALS, arfOpZBRANCH, 7,
-        arfOpPSQUOTE, 3, 'o', 'k', ' ', arfOpTYPE,
-        arfOpBRANCH, -19
-    };
-
-    memcpy_P(this->here, quit, sizeof(quit));
-    this->here += sizeof(quit);
-}
-
-void ARF::compileParenEvaluate()
-{
 }
 
 arfUnsigned ARF::parenAccept(uint8_t * caddr, arfUnsigned n1)
@@ -624,7 +543,9 @@ void ARF::go()
     register arfCell *restDataStack; // Points at the second item on the stack.
     register arfCell *returnTop;
 
-    uint8_t op;
+#ifdef __AVR__
+    register bool inProgramSpace;
+#endif
 
 #if ENABLE_STACK_CHECKING
     // Check for available stack space and abort with a message if this
@@ -643,16 +564,6 @@ void ARF::go()
 #else
 #define CHECK_STACK(numArgs, numResults)
 #endif
-
-    // Compile our RAM definitions.
-    uint8_t * parenInterpret = this->here;
-    this->compileParenInterpret();
-
-    uint8_t * parenQuit = this->here;
-    this->compileParenQuit();
-
-    uint8_t * parenEvaluate = this->here;
-    this->compileParenEvaluate();
 
     // Print the banner.
     if (this->emit != NULL)
@@ -735,7 +646,8 @@ void ARF::go()
         &&arfOpDEPTH,
         &&arfOpDOT,
 
-        0, 0, 0, 0,
+        &&arfOpPDOTQUOTE,
+        0, 0, 0,
 
         // $38 - $3F
         0, 0, 0, 0,
@@ -783,7 +695,19 @@ void ARF::go()
     while (true)
     {
         // Get the next opcode and dispatch to the label.
-        op = *ip++;
+        uint8_t op;
+
+#ifdef __AVR__
+        if (inProgramSpace)
+        {
+            op = pgm_read_byte(ip++);
+        }
+        else
+#endif
+        {
+            op = *ip++;
+        }
+
 DISPATCH_OPCODE:
         goto *(void *)pgm_read_word(&jtb[op]);
 
@@ -791,6 +715,7 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(0, 1);
 
+            // FIXME Needs to use inProgramSpace; or maybe the function pointer should be on the stack..?
             arfZeroArgFFI fn = (arfZeroArgFFI)(((arfCell*)ip)->p);
             ip += FFIPROCSZ;
 
@@ -803,6 +728,7 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(1, 1);
 
+            // FIXME Needs to use inProgramSpace; or maybe the function pointer should be on the stack..?
             arfOneArgFFI fn = (arfOneArgFFI)(((arfCell*)ip)->p);
             ip += FFIPROCSZ;
 
@@ -814,6 +740,7 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(2, 1);
 
+            // FIXME Needs to use inProgramSpace; or maybe the function pointer should be on the stack..?
             arfTwoArgFFI fn = (arfTwoArgFFI)(((arfCell*)ip)->p);
             ip += FFIPROCSZ;
 
@@ -827,6 +754,7 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(3, 1);
 
+            // FIXME Needs to use inProgramSpace; or maybe the function pointer should be on the stack..?
             arfThreeArgFFI fn = (arfThreeArgFFI)(((arfCell*)ip)->p);
             ip += FFIPROCSZ;
             arfCell arg3 = tos;
@@ -860,7 +788,17 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
-            tos = *(arfCell*)ip;
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                tos.i = pgm_read_word(ip);
+            }
+            else
+#endif
+            {
+                tos = *(arfCell*)ip;
+            }
+
             ip += CELLSZ;
         }
         continue;
@@ -929,7 +867,19 @@ DISPATCH_OPCODE:
             // and so we want it to be relocatable without us having to
             // do anything.  Note that the offset cannot be larger than
             // +/- 127 bytes!
-            ip = ip + *(int8_t*)ip;
+            int8_t relativeOffset;
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                relativeOffset = pgm_read_byte(ip);
+            }
+            else
+#endif
+            {
+                relativeOffset = *(int8_t*)ip;
+            }
+
+            ip = ip + relativeOffset;
         }
         continue;
 
@@ -981,7 +931,18 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
-            tos.i = *ip++;
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                tos.i = pgm_read_byte(ip);
+            }
+            else
+#endif
+            {
+                tos.i = *ip;
+            }
+
+            ip++;
         }
         continue;
 
@@ -1260,6 +1221,7 @@ DISPATCH_OPCODE:
         }
         continue;
 
+        // NOTE: Only works for strings stored in data space!
         arfOpTYPE:
         {
             CHECK_STACK(2, 0);
@@ -1283,7 +1245,19 @@ DISPATCH_OPCODE:
 
             if (tos.i == 0)
             {
-                ip = ip + *(int8_t*)ip;
+                int8_t relativeOffset;
+#ifdef __AVR__
+                if (inProgramSpace)
+                {
+                    relativeOffset = pgm_read_byte(ip);
+                }
+                else
+#endif
+                {
+                    relativeOffset = *(int8_t*)ip;
+                }
+
+                ip = ip + relativeOffset;
             }
             else
             {
@@ -1326,7 +1300,34 @@ DISPATCH_OPCODE:
             CHECK_STACK(0, 0);
             returnTop = (arfCell *)&this->returnStack[32];
             this->state = 0;
-            ip = parenQuit;
+
+            // : (QUIT)  ( --)
+            //   BEGIN
+            //       TIB  DUP TIBSIZE ACCEPT  SPACE
+            //       INTERPRET
+            //       CR  STATE @ 0= IF ." ok " THEN
+            //   AGAIN ;
+            static const int8_t parenQuit[] PROGMEM = {
+                arfOpTIB, arfOpDUP, arfOpTIBSIZE, arfOpACCEPT, arfOpSPACE,
+                arfOpINTERPRET,
+                arfOpCR, arfOpSTATE, arfOpFETCH, arfOpZEROEQUALS,
+                    arfOpZBRANCH, 6,
+                arfOpPDOTQUOTE, 3, 'o', 'k', ' ',
+                arfOpBRANCH, -18
+            };
+
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                ip = (uint8_t*)((unsigned int)ip | 0x8000);
+            }
+#endif
+            (--returnTop)->p = (void *)ip;
+
+            ip = (uint8_t*)&parenQuit;
+#ifdef __AVR__
+            inProgramSpace = true;
+#endif
         }
         continue;
 
@@ -1372,14 +1373,63 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpINTERPRET: // ( i*x c-addr u -- j*x)
+        // -----------------------------------------------------------------
+        // INTERPRET [ARF] ( i*x c-addr u -- j*x )
+        //
+        // Interpret the given string.
+        arfOpINTERPRET:
         {
             CHECK_STACK(2, 0);
             this->source = (uint8_t *)restDataStack++->p;
             this->sourceLen = tos.u;
             tos = *restDataStack++;
+
+            // : (INTERPRET) ( i*x -- j*x )
+            //   0 >IN !
+            //   BEGIN  PARSE-WORD  DUP WHILE
+            //       FIND-WORD ( ca u 0=notfound | xt 1=imm | xt -1=interp)
+            //       ?DUP IF ( xt 1=imm | xt -1=interp)
+            //           1+  STATE @ 0=  OR ( xt 2=imm | xt 0=interp)
+            //           IF EXECUTE ELSE COMPILE, THEN
+            //       ELSE
+            //           NUMBER? IF
+            //               STATE @ IF POSTPONE LITERAL THEN
+            //               -- Interpreting; leave number on stack.
+            //           ELSE
+            //               TYPE  SPACE  [CHAR] ? EMIT  CR  ABORT
+            //           THEN
+            //       THEN
+            //   REPEAT ( j*x ca u) 2DROP ;
+            static const int8_t parenInterpret[] PROGMEM = {
+                arfOpZERO, arfOpTOIN, arfOpSTORE,
+                arfOpPARSEWORD, arfOpDUP, arfOpZBRANCH, 37,
+                arfOpFINDWORD, arfOpQDUP, arfOpZBRANCH, 14,
+                arfOpONEPLUS, arfOpSTATE, arfOpFETCH, arfOpZEROEQUALS, arfOpOR,
+                    arfOpZBRANCH, 4,
+                arfOpEXECUTE, arfOpBRANCH, 21,
+                arfOpCOMPILECOMMA, arfOpBRANCH, 18,
+                arfOpNUMBERQ, arfOpZBRANCH, 8,
+                arfOpSTATE, arfOpFETCH, arfOpZBRANCH, 11,
+                arfOpLITERAL, arfOpBRANCH, 8,
+                arfOpTYPE, arfOpSPACE, arfOpCHARLIT, '?', arfOpEMIT, arfOpCR,
+                    arfOpABORT,
+                arfOpBRANCH, -39,
+                arfOpTWODROP,
+                arfOpEXIT,
+            };
+
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                ip = (uint8_t*)((unsigned int)ip | 0x8000);
+            }
+#endif
             (--returnTop)->p = (void *)ip;
-            ip = parenInterpret;
+
+            ip = (uint8_t*)&parenInterpret;
+#ifdef __AVR__
+            inProgramSpace = true;
+#endif
         }
         continue;
 
@@ -1387,6 +1437,7 @@ DISPATCH_OPCODE:
         // (s") [ARF] "paren-s-quote-paren" ( -- c-addr u )
         //
         // Runtime behavior of S": return c-addr and u.
+        // NOTE: Cannot be used in program space!
         arfOpPSQUOTE:
         {
             CHECK_STACK(0, 2);
@@ -1506,6 +1557,60 @@ DISPATCH_OPCODE:
         }
         continue;
 
+        // -------------------------------------------------------------
+        // (.") [ARF] "paren-dot-quote-paren" ( -- )
+        //
+        // Prints the string that was compiled into the definition.
+        arfOpPDOTQUOTE:
+        {
+            // Instruction stream contains the length of the string as a
+            // byte and then the string itself.  Get and skip over both
+            // values
+            uint8_t * caddr;
+            uint8_t u;
+
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                u = pgm_read_byte(ip);
+                ip++;
+            }
+            else
+#endif
+            {
+                u = *ip++;
+            }
+
+            caddr = ip;
+
+            // Advance IP over the string.
+            ip = ip + u;
+
+            // Print out the string.
+            if (this->emit != NULL)
+            {
+                for (int i = 0; i < u; i++)
+                {
+                    uint8_t ch;
+#ifdef __AVR__
+                    if (inProgramSpace)
+                    {
+                        ch = pgm_read_byte(caddr);
+                    }
+                    else
+#endif
+                    {
+                        ch = *caddr;
+                    }
+
+                    this->emit(ch);
+
+                    caddr++;
+                }
+            }
+        }
+        continue;
+
         arfOpDOCOLON:
         {
             // IP currently points to the relative offset of the PFA of
@@ -1518,6 +1623,17 @@ DISPATCH_OPCODE:
             // IP now points to the next word in the PFA and that is the
             // location to which we should return once this new word has
             // executed.
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                ip = (uint8_t*)((unsigned int)ip | 0x8000);
+
+                // We are no longer in program space since, by design,
+                // DOCOLON is only ever used for user-defined words in
+                // RAM.
+                inProgramSpace = false;
+            }
+#endif
             (--returnTop)->p = (void *)ip;
 
             // Now set the IP to the PFA of the word that is being
@@ -1529,6 +1645,18 @@ DISPATCH_OPCODE:
         arfOpEXIT:
         {
             ip = (uint8_t *)((returnTop++)->p);
+
+#ifdef __AVR__
+            if (((unsigned int)ip & 0x8000) != 0)
+            {
+                ip = (uint8_t*)((unsigned int)ip & 0x7FFF);
+                inProgramSpace = true;
+            }
+            else
+            {
+                inProgramSpace = false;
+            }
+#endif
         }
         continue;
     }
