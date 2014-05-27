@@ -38,8 +38,8 @@
 #else
 #define PROGMEM
 #include <string.h>
-#define pgm_read_byte(p) (*p)
-#define pgm_read_word(p) (*p)
+#define pgm_read_byte(p) (*(uint8_t*)(p))
+#define pgm_read_word(p) (*(int *)(p))
 #define memcpy_P memcpy
 #define strncasecmp_P strncasecmp
 #endif
