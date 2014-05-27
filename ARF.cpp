@@ -415,6 +415,8 @@ bool ARF::parenFindWord(uint8_t * caddr, arfUnsigned u, arfUnsigned &xt, bool &i
     uint8_t searchLen = u;
     char * searchName = (char *)caddr;
 
+    // TODO Search the dictionary.
+
     // Search through the opcodes for a match against this search name.
     for (int op = 0; op < 128; op++)
     {
@@ -1016,7 +1018,7 @@ DISPATCH_OPCODE:
             // the latter, look up the type of user-defined word and
             // jump to the appropriate DO* primitive.
             //
-            // TODO < 128 is no longer correct; instead we should use
+            // TODO < 256 is no longer correct; instead we should use
             // the high bit of the 16-bit value to differentiate opcodes
             // vs. words.  We then look up the type of word (which will
             // be in the flags for the definition) and jump to the
@@ -1026,9 +1028,9 @@ DISPATCH_OPCODE:
             // opinion, so it is better if the XTs on the stack are are
             // more flexible.
             //
-            // Note that stack XTs will need to be absolute *from the
+            // Note that stack XTs will need to be relative *from the
             // start of the dictionary* (so that they are relative to
-            // the dictionary itself is someone decides to store them in
+            // the dictionary itself if someone decides to store them in
             // a constant) since the IP isn't relevant when invoking
             // EXECUTE.  COMPILECOMMA will also need to look up the DO*
             // opcode from the target word's flags, calculate a relative
@@ -1037,7 +1039,7 @@ DISPATCH_OPCODE:
             // Note that primitive words are only ever identified by
             // opcode; 16-bit XTs are only ever used for user-defined
             // words.
-            if (tos.u < 128)
+            if (tos.u < 256)
             {
                 op = tos.u;
                 tos = *restDataStack++;
