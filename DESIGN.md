@@ -96,6 +96,41 @@ ARF is initialized with an array.  ARF takes over that array and uses it for the
 
 Later, we will allow people to specify `WARM-EEPROM` which loads and verifies the EEPROM and then calls `ABORT`.  Finally, people will eventually be able to specify their own turnkey word (which of course also requires the EEPROM to be loaded).
 
+# Dictionary Header
+
+Each entry contains a 16-bit link field (comes first in case we need to word-align these things), an 8-bit flag field, a Name Field, and the Parameter Field.  We don't need to bother with the reverse-dictionary stuff that MFORTH used because ARF is a token-threaded Forth and we take the hit of skipping over the NFA during compilation (at which point the PFA address is compiled into the new word).  This slows down compilation, but I am not concerned about that given how infrequent it will be in this environment.
+
+Note that getting the name of an FFI definition is much slower, because we have to traverse the entire FFI list as well.
+
+Flag layout:
+
+* 1 bit for the smudge field.
+* 3 unused bits.
+* 4-bits for the type of definition (`DOCOLON`, `DOIMM`, `DOVAR`, `DOFFI0`, `DOFFI1`, etc.).  Note that we make immediate a variant of `DOCOLON` since we have some unused enum values here anyway.  This value is a direct index into the jump table and effectively forms the CFA for the word.  Note that 0 is unused as that is the `COLD` word for when we manage to read the IP from somewhere unexpected.
+
+Definition types:
+
+0. Unused (the first primitive is `COLD` so that we can restart if a bad IP is referenced)
+1. `DOCOLON`
+2. `DOIMMEDIATE`
+3. `DOCONSTANT`
+4. `DOCREATE`
+5. `DODOES`
+6. `DOVARIABLE`
+7. `DOFFI0`
+8. `DOFFI1`
+9. `DOFFI2`
+10. `DOFFI3`
+11. `DOFFI4`
+12. `DOFFI5`
+13. `DOFFI6`
+14. `DOFFI7`
+15. `DOFFI8`
+
+User-defined words then have their NFA string, which is terminated by a character with the high bit set.
+
+Instead of a string-based NFA, FFI trampolines have a 16/24/32-bit reference to the FFI linked list entry in program space.
+
 ## Kernel
 
 * Rules:

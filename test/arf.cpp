@@ -95,9 +95,36 @@ static void arfCursesEmit(arfUnsigned ch)
 
 int main(int argc, char **argv)
 {
-    /* Local variables. */
+    /* Initial dictionary with a couple of hand-coded definitions. */
     unsigned char arfDict[512];
-    ARF arf(arfDict, sizeof(arfDict),
+    unsigned char * here = arfDict;
+
+    unsigned char * favnumLFA = here;
+    *here++ = 0x00; // LFAlo; bogus LFA offset
+    *here++ = 0x00; // LFAhi; bogus LFA offset
+    *here++ = 0x01; // DOCOLON
+    *here++ = 'F';
+    *here++ = 'A';
+    *here++ = 'V';
+    *here++ = 'N';
+    *here++ = 'U';
+    *here++ = 0x80 | 'M';
+    *here++ = 0x1a; // CHARLIT
+    *here++ = 27;
+    *here++ = 0x7f; // EXIT
+
+    unsigned char * twoxLFA = here;
+    *here++ = ((twoxLFA - favnumLFA)     ) & 0xff; // LFAlo
+    *here++ = ((twoxLFA - favnumLFA) >> 8) & 0xff; // LFAhi
+    *here++ = 0x01; // DOCOLON
+    *here++ = '2';
+    *here++ = 0x80 | 'X';
+    *here++ = 0x11; // DUP
+    *here++ = 0x13; // +
+    *here++ = 0x7f; // EXIT
+
+    /* ARF VM */
+    ARF arf(arfDict, sizeof(arfDict), twoxLFA - arfDict, here - arfDict,
             arfCursesKeyQuestion, arfCursesKey, arfCursesEmit);
 
 

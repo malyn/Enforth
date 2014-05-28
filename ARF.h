@@ -60,6 +60,7 @@ class ARF
 {
     public:
         ARF(const uint8_t * dictionary, int dictionarySize,
+                int latestOffset, int hereOffset,
                 arfKeyQuestion keyQ, arfKey key, arfEmit emit);
         void go();
 
@@ -70,6 +71,7 @@ class ARF
 
         const uint8_t * dictionary;
         const int dictionarySize;
+        uint8_t * latest; // NULL means empty dictionary
         uint8_t * here;
 
         arfInt state;
@@ -85,7 +87,7 @@ class ARF
         arfInt toIn;
 
         arfUnsigned parenAccept(uint8_t * caddr, arfUnsigned n1);
-        bool parenFindWord(uint8_t * caddr, arfUnsigned u, arfUnsigned &xt, bool &isImmediate);
+        bool parenFindWord(uint8_t * caddr, arfUnsigned u, uint16_t &xt, bool &isImmediate);
         bool parenNumberQ(uint8_t * caddr, arfUnsigned u, arfInt &n);
         void parenToNumber(arfUnsigned &ud, uint8_t * &caddr, arfUnsigned &u);
         void parenParseWord(uint8_t delim, uint8_t * &caddr, arfUnsigned &u);

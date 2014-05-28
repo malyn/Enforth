@@ -58,15 +58,22 @@
 // is a Forth machine and not a CPU.
 enum arfOpcode
 {
-    arfOpZeroArgFFI = 0x00,
-    arfOpOneArgFFI,
-    arfOpTwoArgFFI,
-    arfOpThreeArgFFI,
-    arfOpFourArgFFI,
-    arfOpFiveArgFFI,
-    arfOpSixArgFFI,
-    arfOpSevenArgFFI,
-    arfOpEightArgFFI,
+    //arfOpCOLD = 0x00,
+    arfOpDOCOLON = 0x01,
+    //arfOpDOIMMEDIATE,
+    //arfOpDOCONSTANT
+    //arfOpDOCREATE
+    //arfOpDODOES
+    //arfOpDOVARIABLE
+    arfOpDOFFI0 = 0x07,
+    arfOpDOFFI1,
+    arfOpDOFFI2,
+    arfOpDOFFI3,
+    arfOpDOFFI4,
+    arfOpDOFFI5,
+    arfOpDOFFI6,
+    arfOpDOFFI7,
+    arfOpDOFFI8,
     arfOpLIT,
     arfOpDUP,
     arfOpDROP,
@@ -112,9 +119,8 @@ enum arfOpcode
     arfOpDOT,
     arfOpPDOTQUOTE,
     //...
-    arfOpDOCOLON = 0x7E,
     arfOpEXIT = 0x7F,
-};
+} arfOpcode;
 
 struct arfPrimitiveWord {
     uint8_t opcode;
@@ -166,87 +172,87 @@ static const char arfOpNameZEROEQUALS[] PROGMEM = "0=";
 // of the NULL (internal) words.
 static const arfPrimitiveWord primitives[128] PROGMEM = {
     // $00 - $07
-    { arfOpZeroArgFFI,      0,  NULL },
-    { arfOpOneArgFFI,       0,  NULL },
-    { arfOpTwoArgFFI,       0,  NULL },
-    { arfOpThreeArgFFI,     0,  NULL },
+    { 0,                    0,  NULL },
+    { arfOpDOCOLON,         0,  NULL },
+    { 0,                    0,  NULL },
+    { 0,                    0,  NULL },
 
-    { arfOpFourArgFFI,      0,  NULL },
-    { arfOpFiveArgFFI,      0,  NULL },
-    { arfOpSixArgFFI,       0,  NULL },
-    { arfOpSevenArgFFI,     0,  NULL },
+    { 0,                    0,  NULL },
+    { 0,                    0,  NULL },
+    { 0,                    0,  NULL },
+    { arfOpDOFFI0,          0,  NULL },
 
     // $08 - $0F
-    { arfOpEightArgFFI,     0,  NULL },
+    { arfOpDOFFI1,          0,  NULL },
+    { arfOpDOFFI2,          0,  NULL },
+    { arfOpDOFFI3,          0,  NULL },
+    { arfOpDOFFI4,          0,  NULL },
+
+    { arfOpDOFFI5,          0,  NULL },
+    { arfOpDOFFI6,          0,  NULL },
+    { arfOpDOFFI7,          0,  NULL },
+    { arfOpDOFFI8,          0,  NULL },
+
+    // $10 - $17
     { arfOpLIT,             0,  NULL },
     { arfOpDUP,             3,  arfOpNameDUP },
     { arfOpDROP,            4,  arfOpNameDROP },
-
     { arfOpPLUS,            1,  arfOpNamePLUS },
+
     { arfOpMINUS,           1,  arfOpNameMINUS },
     { arfOpONEPLUS,         2,  arfOpNameONEPLUS },
     { arfOpONEMINUS,        2,  arfOpNameONEMINUS },
-
-    // $10 - $17
     { arfOpSWAP,            4,  arfOpNameSWAP },
+
+    // $18 - $1F
     { arfOpBRANCH,          0,  NULL },
     { arfOpABORT,           5,  arfOpNameABORT },
     { arfOpCHARLIT,         0,  NULL },
-
     { arfOpCOMPILECOMMA,    8,  arfOpNameCOMPILECOMMA },
+
     { arfOpCR,              2,  arfOpNameCR },
     { arfOpEMIT,            4,  arfOpNameEMIT },
     { arfOpEXECUTE,         7,  arfOpNameEXECUTE },
-
-    // $18 - $1F
     { arfOpFETCH,           1,  arfOpNameFETCH },
+
+    // $20 - $27
     { arfOpLITERAL,         7,  arfOpNameLITERAL },
     { arfOpNUMBERQ,         7,  arfOpNameNUMBERQ },
     { arfOpOR,              2,  arfOpNameOR },
-
     { arfOpPARSEWORD,       0,  NULL },
+
     { arfOpFINDWORD,        0,  NULL },
     { arfOpQDUP,            4,  arfOpNameQDUP },
     { arfOpSPACE,           5,  arfOpNameSPACE },
-
-    // $20 - $27
     { arfOpSTATE,           5,  arfOpNameSTATE },
+
+    // $28 - $2F
     { arfOpSTORE,           5,  arfOpNameSTORE },
     { arfOpTOIN,            3,  arfOpNameTOIN },
     { arfOpTWODROP,         5,  arfOpNameTWODROP },
-
     { arfOpTYPE,            4,  arfOpNameTYPE },
+
     { arfOpZBRANCH,         0,  NULL },
     { arfOpZERO,            1,  arfOpNameZERO },
     { arfOpZEROEQUALS,      2,  arfOpNameZEROEQUALS },
-
-    // $28 - $2F
     { arfOpQUIT,            4,  arfOpNameQUIT },
+
+    // $30 - $37
     { arfOpTIB,             0,  NULL },
     { arfOpTIBSIZE,         0,  NULL },
     { arfOpACCEPT,          6,  arfOpNameACCEPT },
-
     { arfOpINTERPRET,       0,  NULL },
+
     { arfOpPSQUOTE,         0,  NULL },
     { arfOpBL,              2,  arfOpNameBL },
     { arfOpCFETCH,          2,  arfOpNameCFETCH },
-
-    // $30 - $37
     { arfOpCOUNT,           5,  arfOpNameCOUNT },
+
+    // $38 - $3F
     { arfOpTONUMBER,        7,  arfOpNameTONUMBER },
     { arfOpDEPTH,           5,  arfOpNameDEPTH },
     { arfOpDOT,             1,  arfOpNameDOT },
-
     { arfOpPDOTQUOTE,       0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-
-    // $38 - $3F
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
 
     { 0,                    0,  NULL },
     { 0,                    0,  NULL },
@@ -338,22 +344,28 @@ static const arfPrimitiveWord primitives[128] PROGMEM = {
 
     { 0,                    0,  NULL },
     { 0,                    0,  NULL },
-    { arfOpDOCOLON,         0,  NULL },
+    { 0,                    0,  NULL },
     { arfOpEXIT,            0,  NULL },
 };
 
-#if 0
-// TODO Consider using a similar enum as part of a definition's flags
-// field, since we'll need a way to figure out what kind of definition
-// this is (COLON, CONSTANT, CREATE, DOES).
 typedef enum
 {
-    arfCFADOCOLON = 0,
+    arfCFADOCOLON = 1,
+    arfCFADOIMMEDIATE,
     arfCFADOCONSTANT,
     arfCFADOCREATE,
     arfCFADODOES,
+    arfCFADOVARIABLE,
+    arfCFADOFFI0,
+    arfCFADOFFI1,
+    arfCFADOFFI2,
+    arfCFADOFFI3,
+    arfCFADOFFI4,
+    arfCFADOFFI5,
+    arfCFADOFFI6,
+    arfCFADOFFI7,
+    arfCFADOFFI8
 } arfCFA;
-#endif
 
 typedef arfCell (*arfZeroArgFFI)(void);
 typedef arfCell (*arfOneArgFFI)(arfCell a);
@@ -370,12 +382,22 @@ typedef arfCell (*arfEightArgFFI)(arfCell a, arfCell b, arfCell c, arfCell d,
                                   arfCell e, arfCell f, arfCell g, arfCell h);
 
 ARF::ARF(const uint8_t * dictionary, int dictionarySize,
+        int latestOffset, int hereOffset,
         arfKeyQuestion keyQ, arfKey key, arfEmit emit)
  : keyQ(keyQ), key(key), emit(emit),
    dictionary(dictionary), dictionarySize(dictionarySize),
    state(0)
 {
-    this->here = const_cast<uint8_t *>(this->dictionary);
+    if (latestOffset == -1)
+    {
+        this->latest = NULL;
+    }
+    else
+    {
+        this->latest = const_cast<uint8_t *>(this->dictionary) + latestOffset;
+    }
+
+    this->here = const_cast<uint8_t *>(this->dictionary) + hereOffset;
 }
 
 arfUnsigned ARF::parenAccept(uint8_t * caddr, arfUnsigned n1)
@@ -407,15 +429,55 @@ arfUnsigned ARF::parenAccept(uint8_t * caddr, arfUnsigned n1)
     return n2;
 }
 
-// TODO This will need to return 16-bit XTs (which might be an opcode or
-// might be a relative reference to the word -- with the high bit set --
-// from the start of the dictionary) once we support user-defined words.
-bool ARF::parenFindWord(uint8_t * caddr, arfUnsigned u, arfUnsigned &xt, bool &isImmediate)
+bool ARF::parenFindWord(uint8_t * caddr, arfUnsigned u, uint16_t &xt, bool &isImmediate)
 {
     uint8_t searchLen = u;
     char * searchName = (char *)caddr;
 
-    // TODO Search the dictionary.
+    // Search the dictionary.
+    for (uint8_t * curWord = this->latest;
+         curWord != NULL;
+         curWord = *(uint16_t *)curWord == 0 ? NULL : curWord - *(uint16_t *)curWord)
+    {
+        // Ignore smudged words.
+        if ((*curWord & 0x80) != 0)
+        {
+            continue;
+        }
+
+        // Compare the strings.
+        bool nameMatch;
+        char * pSearchName = searchName;
+        char * pDictName = (char *)(curWord + 3);
+        while (true)
+        {
+            // Try to match the characters and fail if they don't match.
+            if (toupper(*pSearchName) != toupper(*pDictName & 0x7f))
+            {
+                nameMatch = false;
+                break;
+            }
+
+            // We're done if this was the last character.
+            if ((*pDictName & 0x80) != 0)
+            {
+                nameMatch = true;
+                break;
+            }
+
+            // Next character.
+            pSearchName++;
+            pDictName++;
+        }
+
+        // Is this a match?  If so, we're done.
+        if (nameMatch)
+        {
+            xt = 0x8000 | (uint16_t)(curWord - this->dictionary);
+            isImmediate = *(curWord + 2) == arfCFADOIMMEDIATE;
+            return true;
+        }
+    }
 
     // Search through the opcodes for a match against this search name.
     for (int op = 0; op < 128; op++)
@@ -433,6 +495,7 @@ bool ARF::parenFindWord(uint8_t * caddr, arfUnsigned u, arfUnsigned &xt, bool &i
         // Compare the characters.
         if (strncasecmp_P(searchName, (char *)pgm_read_word(&prim.name), searchLen) == 0)
         {
+            // TODO isImmediate needs to come from the primitive table
             xt = pgm_read_byte(&prim.opcode);
             isImmediate = false;
             return true;
@@ -543,6 +606,7 @@ void ARF::go()
     register uint8_t *ip;
     register arfCell tos;
     register arfCell *restDataStack; // Points at the second item on the stack.
+    register uint8_t *w;
     register arfCell *returnTop;
 
 #ifdef __AVR__
@@ -577,82 +641,85 @@ void ARF::go()
 
     static const void * const jtb[128] PROGMEM = {
         // $00 - $07
-        &&arfOpZeroArgFFI,
-        &&arfOpOneArgFFI,
-        &&arfOpTwoArgFFI,
-        &&arfOpThreeArgFFI,
+        0,
+        &&arfOpDOCOLON,
+        0, 0,
 
-        &&arfOpFourArgFFI,
-        &&arfOpFiveArgFFI,
-        &&arfOpSixArgFFI,
-        &&arfOpSevenArgFFI,
+        0, 0, 0,
+        &&arfOpDOFFI0,
 
         // $08 - $0F
-        &&arfOpEightArgFFI,
+        &&arfOpDOFFI1,
+        &&arfOpDOFFI2,
+        &&arfOpDOFFI3,
+        &&arfOpDOFFI4,
+
+        &&arfOpDOFFI5,
+        &&arfOpDOFFI6,
+        &&arfOpDOFFI7,
+        &&arfOpDOFFI8,
+
+        // $10 - $17
         &&arfOpLIT,
         &&arfOpDUP,
         &&arfOpDROP,
-
         &&arfOpPLUS,
+
         &&arfOpMINUS,
         &&arfOpONEPLUS,
         &&arfOpONEMINUS,
-
-        // $10 - $17
         &&arfOpSWAP,
+
+        // $18 - $1F
         &&arfOpBRANCH,
         &&arfOpABORT,
         &&arfOpCHARLIT,
-
         &&arfOpCOMPILECOMMA,
+
         &&arfOpCR,
         &&arfOpEMIT,
         &&arfOpEXECUTE,
-
-        // $18 - $1F
         &&arfOpFETCH,
+
+        // $20 - $27
         &&arfOpLITERAL,
         &&arfOpNUMBERQ,
         &&arfOpOR,
-
         &&arfOpPARSEWORD,
+
         &&arfOpFINDWORD,
         &&arfOpQDUP,
         &&arfOpSPACE,
-
-        // $20 - $27
         &&arfOpSTATE,
+
+        // $28 - $2F
         &&arfOpSTORE,
         &&arfOpTOIN,
         &&arfOpTWODROP,
-
         &&arfOpTYPE,
+
         &&arfOpZBRANCH,
         &&arfOpZERO,
         &&arfOpZEROEQUALS,
-
-        // $28 - $2F
         &&arfOpQUIT,
+
+        // $30 - $37
         &&arfOpTIB,
         &&arfOpTIBSIZE,
         &&arfOpACCEPT,
-
         &&arfOpINTERPRET,
+
         &&arfOpPSQUOTE,
         &&arfOpBL,
         &&arfOpCFETCH,
-
-        // $30 - $37
         &&arfOpCOUNT,
+
+        // $38 - $3F
         &&arfOpTONUMBER,
         &&arfOpDEPTH,
         &&arfOpDOT,
-
         &&arfOpPDOTQUOTE,
-        0, 0, 0,
 
-        // $38 - $3F
-        0, 0, 0, 0,
         0, 0, 0, 0,
 
         // $40 - $47
@@ -685,8 +752,7 @@ void ARF::go()
 
         // $78 - $7F
         0, 0, 0, 0,
-        0, 0,
-        &&arfOpDOCOLON,
+        0, 0, 0,
         &&arfOpEXIT,
     };
 
@@ -713,7 +779,7 @@ void ARF::go()
 DISPATCH_OPCODE:
         goto *(void *)pgm_read_word(&jtb[op]);
 
-        arfOpZeroArgFFI:
+        arfOpDOFFI0:
         {
             CHECK_STACK(0, 1);
 
@@ -726,7 +792,7 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpOneArgFFI:
+        arfOpDOFFI1:
         {
             CHECK_STACK(1, 1);
 
@@ -738,7 +804,7 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpTwoArgFFI:
+        arfOpDOFFI2:
         {
             CHECK_STACK(2, 1);
 
@@ -752,7 +818,7 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpThreeArgFFI:
+        arfOpDOFFI3:
         {
             CHECK_STACK(3, 1);
 
@@ -766,23 +832,23 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpFourArgFFI:
+        arfOpDOFFI4:
             CHECK_STACK(4, 1);
         continue;
 
-        arfOpFiveArgFFI:
+        arfOpDOFFI5:
             CHECK_STACK(5, 1);
         continue;
 
-        arfOpSixArgFFI:
+        arfOpDOFFI6:
             CHECK_STACK(6, 1);
         continue;
 
-        arfOpSevenArgFFI:
+        arfOpDOFFI7:
             CHECK_STACK(7, 1);
         continue;
 
-        arfOpEightArgFFI:
+        arfOpDOFFI8:
             CHECK_STACK(8, 1);
         continue;
 
@@ -1015,31 +1081,15 @@ DISPATCH_OPCODE:
 
             // Does this XT reference a primitive word or a user-defined
             // word?  If the former, just dispatch to the primitive.  If
-            // the latter, look up the type of user-defined word and
-            // jump to the appropriate DO* primitive.
+            // the latter, look up the type of user-defined word, set W,
+            // and jump to the appropriate DO* primitive.
             //
-            // TODO < 256 is no longer correct; instead we should use
-            // the high bit of the 16-bit value to differentiate opcodes
-            // vs. words.  We then look up the type of word (which will
-            // be in the flags for the definition) and jump to the
-            // appropriate DO* primitive.  This is less efficient than
-            // encoding the DO* primitive in the XT, but EXECUTE is not
-            // necessarily something that we need to make speedy in my
-            // opinion, so it is better if the XTs on the stack are are
-            // more flexible.
-            //
-            // Note that stack XTs will need to be relative *from the
-            // start of the dictionary* (so that they are relative to
-            // the dictionary itself if someone decides to store them in
-            // a constant) since the IP isn't relevant when invoking
-            // EXECUTE.  COMPILECOMMA will also need to look up the DO*
-            // opcode from the target word's flags, calculate a relative
-            // offset from the call site, etc.
-            //
-            // Note that primitive words are only ever identified by
-            // opcode; 16-bit XTs are only ever used for user-defined
-            // words.
-            if (tos.u < 256)
+            // Note that XTs are always 16 bits, even on 32-bit
+            // platforms.  This is because XTs are relative offsets from
+            // the start of the dictionary so that they can be stored in
+            // constants (for example) and yet still relocate with the
+            // dictionary.
+            if ((tos.u & 0x8000) == 0)
             {
                 op = tos.u;
                 tos = *restDataStack++;
@@ -1047,8 +1097,56 @@ DISPATCH_OPCODE:
             }
             else
             {
-                // TODO Implement this.
+                // Calculate the absolute RAM address of the target
+                // word's PFA (the "W" register).
+                uint8_t * pTarget = (uint8_t*)this->dictionary + (tos.u & 0x7fff);
+                pTarget += 2; // Skip LFA
+                uint8_t definitionType = *pTarget++;
+
+                // Find W.  For user-defined words this is the address
+                // of the PFA (which is after the variable-length NFA).
+                // For FFI trampolines it is the FFI function pointer
+                // itself (which we get by dereferencing the FFI linked
+                // list entry that is stored after the dictionary
+                // flags).
+                if (definitionType < arfCFADOFFI0)
+                {
+                    while ((*pTarget++ & 0x80) == 0)
+                    {
+                        // Loop
+                    }
+
+                    w = pTarget;
+                }
+                else
+                {
+                    // Dereference the linked list entry in order to get
+                    // the FFI function pointer.
+                    // TODO Implement this.
+                }
+
+                // Drop the XT and get a new TOS.
                 tos = *restDataStack++;
+
+                // Dispatch to the opcode that handles this type of
+                // definition.
+                switch (definitionType)
+                {
+                    case arfCFADOCOLON:
+                        goto arfOpDOCOLON_WITH_W;
+
+                    default:
+                        if (this->emit != NULL)
+                        {
+                            this->emit('\n');
+                            this->emit('!');
+                            this->emit('D');
+                            this->emit('E');
+                            this->emit('F');
+                            this->emit('\n');
+                        }
+                        goto arfOpABORT;
+                }
             }
         }
         continue;
@@ -1142,7 +1240,7 @@ DISPATCH_OPCODE:
             uint8_t * caddr = (uint8_t *)restDataStack->p;
             arfUnsigned u = tos.u;
 
-            arfUnsigned xt;
+            uint16_t xt;
             bool isImmediate;
             if (parenFindWord(caddr, u, xt, isImmediate))
             {
@@ -1618,10 +1716,10 @@ DISPATCH_OPCODE:
             // IP currently points to the relative offset of the PFA of
             // the target word.  Read that offset and advance IP to the
             // opcode after the offset.
-            arfInt relativeOffset = ((arfCell*)ip)->i;
-            uint8_t * w = ip + relativeOffset;
+            w = ip + ((arfCell*)ip)->i;
             ip += CELLSZ;
 
+        arfOpDOCOLON_WITH_W:
             // IP now points to the next word in the PFA and that is the
             // location to which we should return once this new word has
             // executed.
