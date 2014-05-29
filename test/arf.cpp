@@ -48,6 +48,34 @@
 
 
 /* -------------------------------------
+ * Sample FFI definitions.
+ */
+
+// Macros
+#define LAST_FFI NULL
+
+#define ARF_EXTERN(name, fn, arity) \
+    const char * const FFIDEF_ ## name ## _NAME = #name; \
+    const arfFFI FFIDEF_##name = { LAST_FFI, FFIDEF_ ## name ## _NAME, arity, (void*)fn };
+
+#define GET_LAST_FFI(name) &FFIDEF_ ## name
+
+// Externs
+ARF_EXTERN(clear, clear, 0)
+#undef LAST_FFI
+#define LAST_FFI GET_LAST_FFI(clear)
+
+ARF_EXTERN(rand, rand, 0)
+#undef LAST_FFI
+#define LAST_FFI GET_LAST_FFI(rand)
+
+ARF_EXTERN(srand, srand, 1)
+#undef LAST_FFI
+#define LAST_FFI GET_LAST_FFI(srand)
+
+
+
+/* -------------------------------------
  * ARF I/O primitives.
  */
 
@@ -123,8 +151,36 @@ int main(int argc, char **argv)
     *here++ = 0x13; // +
     *here++ = 0x7f; // EXIT
 
+    unsigned char * randLFA = here;
+    *here++ = ((randLFA - twoxLFA)     ) & 0xff; // LFAlo
+    *here++ = ((randLFA - twoxLFA) >> 8) & 0xff; // LFAhi
+    *here++ = 0x07; // DOFFI0
+    *here++ = ((uint32_t)&FFIDEF_rand      ) & 0xff; // FFIdef LSB
+    *here++ = ((uint32_t)&FFIDEF_rand >>  8) & 0xff; // FFIdef
+    *here++ = ((uint32_t)&FFIDEF_rand >> 16) & 0xff; // FFIdef
+    *here++ = ((uint32_t)&FFIDEF_rand >> 24) & 0xff; // FFIdef MSB
+
+    unsigned char * srandLFA = here;
+    *here++ = ((srandLFA - randLFA)     ) & 0xff; // LFAlo
+    *here++ = ((srandLFA - randLFA) >> 8) & 0xff; // LFAhi
+    *here++ = 0x08; // DOFFI1
+    *here++ = ((uint32_t)&FFIDEF_srand      ) & 0xff; // FFIdef LSB
+    *here++ = ((uint32_t)&FFIDEF_srand >>  8) & 0xff; // FFIdef
+    *here++ = ((uint32_t)&FFIDEF_srand >> 16) & 0xff; // FFIdef
+    *here++ = ((uint32_t)&FFIDEF_srand >> 24) & 0xff; // FFIdef MSB
+
+    unsigned char * clearLFA = here;
+    *here++ = ((clearLFA - srandLFA)     ) & 0xff; // LFAlo
+    *here++ = ((clearLFA - srandLFA) >> 8) & 0xff; // LFAhi
+    *here++ = 0x07; // DOFFI0
+    *here++ = ((uint32_t)&FFIDEF_clear      ) & 0xff; // FFIdef LSB
+    *here++ = ((uint32_t)&FFIDEF_clear >>  8) & 0xff; // FFIdef
+    *here++ = ((uint32_t)&FFIDEF_clear >> 16) & 0xff; // FFIdef
+    *here++ = ((uint32_t)&FFIDEF_clear >> 24) & 0xff; // FFIdef MSB
+
     /* ARF VM */
-    ARF arf(arfDict, sizeof(arfDict), twoxLFA - arfDict, here - arfDict,
+    ARF arf(arfDict, sizeof(arfDict), clearLFA - arfDict, here - arfDict,
+            LAST_FFI,
             arfCursesKeyQuestion, arfCursesKey, arfCursesEmit);
 
 

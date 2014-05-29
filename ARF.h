@@ -52,6 +52,14 @@ typedef union arfCell
     void *p;
 } arfCell;
 
+typedef struct arfFFI
+{
+    const arfFFI * const prev;
+    const char * const name;
+    uint8_t arity;
+    void * fn;
+} arfFFI;
+
 typedef arfInt (*arfKeyQuestion)(void);
 typedef arfUnsigned (*arfKey)(void);
 typedef void (*arfEmit)(arfUnsigned);
@@ -61,10 +69,13 @@ class ARF
     public:
         ARF(const uint8_t * dictionary, int dictionarySize,
                 int latestOffset, int hereOffset,
+                const arfFFI * const lastFFI,
                 arfKeyQuestion keyQ, arfKey key, arfEmit emit);
         void go();
 
     private:
+        const arfFFI * const lastFFI;
+
         const arfKeyQuestion keyQ;
         const arfKey key;
         const arfEmit emit;

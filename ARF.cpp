@@ -41,6 +41,7 @@
 #define pgm_read_byte(p) (*(uint8_t*)(p))
 #define pgm_read_word(p) (*(int *)(p))
 #define memcpy_P memcpy
+#define strlen_P strlen
 #define strncasecmp_P strncasecmp
 #endif
 
@@ -383,8 +384,10 @@ typedef arfCell (*arfEightArgFFI)(arfCell a, arfCell b, arfCell c, arfCell d,
 
 ARF::ARF(const uint8_t * dictionary, int dictionarySize,
         int latestOffset, int hereOffset,
+        const arfFFI * const lastFFI,
         arfKeyQuestion keyQ, arfKey key, arfEmit emit)
- : keyQ(keyQ), key(key), emit(emit),
+ : lastFFI(lastFFI),
+   keyQ(keyQ), key(key), emit(emit),
    dictionary(dictionary), dictionarySize(dictionarySize),
    state(0)
 {
@@ -439,35 +442,53 @@ bool ARF::parenFindWord(uint8_t * caddr, arfUnsigned u, uint16_t &xt, bool &isIm
          curWord != NULL;
          curWord = *(uint16_t *)curWord == 0 ? NULL : curWord - *(uint16_t *)curWord)
     {
+        // Get the definition type.
+        uint8_t definitionType = *(curWord + 2);
+
         // Ignore smudged words.
-        if ((*curWord & 0x80) != 0)
+        if ((definitionType & 0x80) != 0)
         {
             continue;
         }
 
-        // Compare the strings.
+        // Compare the strings, which happens differently depending on
+        // if this is a user-defined word or an FFI trampoline.
         bool nameMatch;
-        char * pSearchName = searchName;
-        char * pDictName = (char *)(curWord + 3);
-        while (true)
+        if (definitionType < arfCFADOFFI0)
         {
-            // Try to match the characters and fail if they don't match.
-            if (toupper(*pSearchName) != toupper(*pDictName & 0x7f))
+            char * pSearchName = searchName;
+            char * pDictName = (char *)(curWord + 3);
+            while (true)
             {
-                nameMatch = false;
-                break;
-            }
+                // Try to match the characters and fail if they don't match.
+                if (toupper(*pSearchName) != toupper(*pDictName & 0x7f))
+                {
+                    nameMatch = false;
+                    break;
+                }
 
-            // We're done if this was the last character.
-            if ((*pDictName & 0x80) != 0)
-            {
-                nameMatch = true;
-                break;
-            }
+                // We're done if this was the last character.
+                if ((*pDictName & 0x80) != 0)
+                {
+                    nameMatch = true;
+                    break;
+                }
 
-            // Next character.
-            pSearchName++;
-            pDictName++;
+                // Next character.
+                pSearchName++;
+                pDictName++;
+            }
+        }
+        else
+        {
+            // Get a reference to the FFI definition.
+            const arfFFI * ffi = (arfFFI *)pgm_read_word(curWord + 3);
+            const char * ffiName = (char *)pgm_read_word(&ffi->name);
+
+            // See if this FFI matches our search word.
+            nameMatch
+                = (strlen_P(ffiName) == searchLen)
+                && (strncasecmp_P(searchName, ffiName, searchLen) == 0);
         }
 
         // Is this a match?  If so, we're done.
@@ -783,12 +804,12 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(0, 1);
 
-            // FIXME Needs to use inProgramSpace; or maybe the function pointer should be on the stack..?
-            arfZeroArgFFI fn = (arfZeroArgFFI)(((arfCell*)ip)->p);
+            w = (uint8_t*)((arfCell*)ip)->p;
             ip += FFIPROCSZ;
 
+        arfOpDOFFI0_WITH_W:
             *--restDataStack = tos;
-            tos = (*fn)();
+            tos = (*(arfZeroArgFFI)w)();
         }
         continue;
 
@@ -796,11 +817,11 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(1, 1);
 
-            // FIXME Needs to use inProgramSpace; or maybe the function pointer should be on the stack..?
-            arfOneArgFFI fn = (arfOneArgFFI)(((arfCell*)ip)->p);
+            w = (uint8_t*)((arfCell*)ip)->p;
             ip += FFIPROCSZ;
 
-            tos = (*fn)(tos);
+        arfOpDOFFI1_WITH_W:
+            tos = (*(arfOneArgFFI)w)(tos);
         }
         continue;
 
@@ -1122,7 +1143,9 @@ DISPATCH_OPCODE:
                 {
                     // Dereference the linked list entry in order to get
                     // the FFI function pointer.
-                    // TODO Implement this.
+                    const arfFFI * ffi = (arfFFI *)pgm_read_word(pTarget);
+                    const void * ffiFn = (void *)pgm_read_word(&ffi->fn);
+                    w = (uint8_t*)ffiFn;
                 }
 
                 // Drop the XT and get a new TOS.
@@ -1130,10 +1153,19 @@ DISPATCH_OPCODE:
 
                 // Dispatch to the opcode that handles this type of
                 // definition.
+                // TODO Move the non-*_W opcodes to 16-32 and the _W
+                // opcodes to 0-16; then we can just jump to them by
+                // dereferencing jtb using definitionType.
                 switch (definitionType)
                 {
                     case arfCFADOCOLON:
                         goto arfOpDOCOLON_WITH_W;
+
+                    case arfCFADOFFI0:
+                        goto arfOpDOFFI0_WITH_W;
+
+                    case arfCFADOFFI1:
+                        goto arfOpDOFFI1_WITH_W;
 
                     default:
                         if (this->emit != NULL)
