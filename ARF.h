@@ -38,6 +38,12 @@
 #include <inttypes.h>
 
 #ifdef __AVR__
+#include <avr/pgmspace.h>
+#else
+#define PROGMEM
+#endif
+
+#ifdef __AVR__
 typedef int16_t arfInt;
 typedef uint16_t arfUnsigned;
 #else
@@ -59,6 +65,15 @@ typedef struct arfFFI
     uint8_t arity;
     void * fn;
 } arfFFI;
+
+// FFI Macros
+#define LAST_FFI NULL
+
+#define ARF_EXTERN(name, fn, arity) \
+    static const char FFIDEF_ ## name ## _NAME[] PROGMEM = #name; \
+    static const arfFFI FFIDEF_##name PROGMEM = { LAST_FFI, FFIDEF_ ## name ## _NAME, arity, (void*)fn };
+
+#define GET_LAST_FFI(name) &FFIDEF_ ## name
 
 typedef arfInt (*arfKeyQuestion)(void);
 typedef arfUnsigned (*arfKey)(void);

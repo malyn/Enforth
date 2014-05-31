@@ -51,15 +51,6 @@
  * Sample FFI definitions.
  */
 
-// Macros
-#define LAST_FFI NULL
-
-#define ARF_EXTERN(name, fn, arity) \
-    const char * const FFIDEF_ ## name ## _NAME = #name; \
-    const arfFFI FFIDEF_##name = { LAST_FFI, FFIDEF_ ## name ## _NAME, arity, (void*)fn };
-
-#define GET_LAST_FFI(name) &FFIDEF_ ## name
-
 // Externs
 ARF_EXTERN(clear, clear, 0)
 #undef LAST_FFI
