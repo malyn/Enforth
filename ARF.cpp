@@ -57,39 +57,10 @@
 // The key point here is that the PFA contains a list of tokens to
 // primitive words.  There is no longer a concept of "opcode" since ARF
 // is a Forth machine and not a CPU.
-// TODO We don't actually need arfOpDO* in here because no one will ever
-// reference those opcodes in code.  Instead, the values are created by
-// doing math on the CFA definition type.  Having the names here does
-// make it easier to debug the system though...
 enum arfOpcode
 {
     //arfOpCOLD = 0x00,
-    arfOpDOCOLON = 0x01,
-    //arfOpDOIMMEDIATE,
-    //arfOpDOCONSTANT
-    //arfOpDOCREATE
-    //arfOpDODOES
-    //arfOpDOVARIABLE
-    arfOpDOFFI0 = 0x07,
-    arfOpDOFFI1,
-    arfOpDOFFI2,
-    arfOpDOFFI3,
-    arfOpDOFFI4,
-    arfOpDOFFI5,
-    arfOpDOFFI6,
-    arfOpDOFFI7,
-    arfOpDOFFI8,
-
-    // Opcodes 0x11-0x1f are reserved for jump labels to the "CFA"
-    // opcodes *after* the point where W (the Word Pointer) has already
-    // been set.  This allows words like EXECUTE to jump to a CFA
-    // without having to use a switch statement to convert definition
-    // types to opcodes.  The opcode names themselves do not need to be
-    // defined because they are never referenced (we're just reserving
-    // space in the primitive list and Address Interpreter jump table,
-    // in other words).
-
-    arfOpLIT = 0x20,
+    arfOpLIT = 0x01,
     arfOpDUP,
     arfOpDROP,
     arfOpPLUS,
@@ -133,123 +104,124 @@ enum arfOpcode
     arfOpDEPTH,
     arfOpDOT,
     arfOpPDOTQUOTE,
+
     //...
+
+    // Opcodes 0x61-0x6e are reserved for jump labels to the "CFA"
+    // opcodes *after* the point where W (the Word Pointer) has already
+    // been set.  This allows words like EXECUTE to jump to a CFA
+    // without having to use a switch statement to convert definition
+    // types to opcodes.  The opcode names themselves do not need to be
+    // defined because they are never referenced (we're just reserving
+    // space in the primitive list and Address Interpreter jump table,
+    // in other words), but we do list them here in order to make it
+    // easier to turn raw opcodes into enum values in the debugger.
+    arfOpPDOCOLON = 0x60,
+    arfOpPDOIMMEDIATE,
+    arfOpPDOCONSTANT,
+    arfOpPDOCREATE,
+    arfOpPDODOES,
+    arfOpPDOVARIABLE,
+    arfOpPDOFFI0,
+    arfOpPDOFFI1,
+    arfOpPDOFFI2,
+    arfOpPDOFFI3,
+    arfOpPDOFFI4,
+    arfOpPDOFFI5,
+    arfOpPDOFFI6,
+    arfOpPDOFFI7,
+    arfOpPDOFFI8,
+
+    // Just like the above, these opcodes are never used in code and
+    // this list of enum values is only used to simplify debugging.
+    arfOpDOCOLON = 0x70,
+    arfOpDOIMMEDIATE,
+    arfOpDOCONSTANT,
+    arfOpDOCREATE,
+    arfOpDODOES,
+    arfOpDOVARIABLE,
+    arfOpDOFFI0,
+    arfOpDOFFI1,
+    arfOpDOFFI2,
+    arfOpDOFFI3,
+    arfOpDOFFI4,
+    arfOpDOFFI5,
+    arfOpDOFFI6,
+    arfOpDOFFI7,
+    arfOpDOFFI8,
+
+    // This is a normal opcode and is placed at the end in order to make
+    // it easier to identify in definitions.
     arfOpEXIT = 0x7F,
 } arfOpcode;
 
-// TODO Could make this string smaller by moving the DO* opcodes to
-// $F0-$FE and then OR'ing in $F0 when converting a definition type to
-// an opcode (need to also move the definition types down one value).
-// Then the ...-with-W opcodes could move to $E0-$EE and EXECUTE would
-// OR in $E0.  All of this would eliminate the need to store these first
-// 32 empty characters in the primitives table.
+// TODO Should move all of the internal words (BRANCH, CHARLIT, etc.) to
+// the end of the opcode table so that they don't need to waste space in
+// the primitive list.
 static const char primitives[] PROGMEM =
     // $00 - $07
     "\x00"
-    "\x00" // DOCOLON
-    "\x00"
-    "\x00"
-
-    "\x00"
-    "\x00"
-    "\x00"
-    "\x00" // DOFFI0
-
-    // $08 - $0F
-    "\x00" // DOFFI1
-    "\x00" // DOFFI2
-    "\x00" // DOFFI3
-    "\x00" // DOFFI4
-
-    "\x00" // DOFFI5
-    "\x00" // DOFFI6
-    "\x00" // DOFFI7
-    "\x00" // DOFFI8
-
-    // $10 - $17
-    "\x00" // Reserved so that the following values match the definition types
-    "\x00" // Reserved for DOCOLON-with-W
-    "\x00" // Reserved for DOIMMEDIATE-with-W
-    "\x00" // Reserved for DOCONSTANT-with-W
-
-    "\x00" // Reserved for DOCREATE-with-W
-    "\x00" // Reserved for DODOES-with-W
-    "\x00" // Reserved for DOVARIABLE-with-W
-    "\x00" // Reserved for DOFFI0-with-W
-
-    // $18 - $1F
-    "\x00" // Reserved for DOFFI1-with-W
-    "\x00" // Reserved for DOFFI2-with-W
-    "\x00" // Reserved for DOFFI3-with-W
-    "\x00" // Reserved for DOFFI4-with-W
-
-    "\x00" // Reserved for DOFFI5-with-W
-    "\x00" // Reserved for DOFFI6-with-W
-    "\x00" // Reserved for DOFFI7-with-W
-    "\x00" // Reserved for DOFFI8-with-W
-
-    // $20 - $27
     "\x00" // LIT
     "\x03" "DUP"
     "\x04" "DROP"
-    "\x01" "+"
 
+    "\x01" "+"
     "\x01" "-"
     "\x02" "1+"
     "\x02" "1-"
-    "\x04" "SWAP"
 
-    // $28 - $2F
+    // $08 - $0F
+    "\x04" "SWAP"
     "\x00" // BRANCH
     "\x05" "ABORT"
     "\x00" // CHARLIT
-    "\x08" "COMPILE,"
 
+    "\x08" "COMPILE,"
     "\x02" "CR"
     "\x04" "EMIT"
     "\x07" "EXECUTE"
-    "\x01" "@"
 
-    // $30 - $37
+    // $10 - $17
+    "\x01" "@"
     "\x07" "LITERAL"
     "\x07" "NUMBER?"
     "\x02" "OR"
-    "\x00" // PARSE-WORD
 
+    "\x00" // PARSE-WORD
     "\x00" // FIND-WORD
     "\x04" "?DUP"
     "\x05" "SPACE"
-    "\x05" "STATE"
 
-    // $38 - $3F
+    // $18 - $1F
+    "\x05" "STATE"
     "\x01" "!"
     "\x03" ">IN"
     "\x05" "2DROP"
-    "\x04" "TYPE"
 
+    "\x04" "TYPE"
     "\x00" // ZBRANCH
     "\x01" "0"
     "\x02" "0="
-    "\x04" "QUIT"
 
-    // $40 - $47
+    // $20 - $27
+    "\x04" "QUIT"
     "\x00" // TIB
     "\x00" // TIBSIZE
     "\x06" "ACCEPT"
-    "\x00" // INTERPRET
 
+    "\x00" // INTERPRET
     "\x00" // (S")
     "\x02" "BL"
     "\x02" "C@"
-    "\x05" "COUNT"
 
-    // $48 - $4F
+    // $28 - $2F
+    "\x05" "COUNT"
     "\x07" ">NUMBER"
     "\x05" "DEPTH"
     "\x01" "."
-    "\x00" // (.")
 
-    "\x00" "\x00" "\x00" "\x00"
+    "\x00" // (.")
+    "\x00" "\x00" "\x00"
 
     // End byte
     "\xff"
@@ -257,7 +229,7 @@ static const char primitives[] PROGMEM =
 
 typedef enum
 {
-    arfCFADOCOLON = 1,
+    arfCFADOCOLON = 0,
     arfCFADOIMMEDIATE,
     arfCFADOCONSTANT,
     arfCFADOCREATE,
@@ -572,99 +544,82 @@ void ARF::go()
     static const void * const jtb[128] PROGMEM = {
         // $00 - $07
         0,
-        &&arfOpDOCOLON,
-        0, 0,
-
-        0, 0, 0,
-        &&arfOpDOFFI0,
-
-        // $08 - $0F
-        &&arfOpDOFFI1,
-        &&arfOpDOFFI2,
-        &&arfOpDOFFI3,
-        &&arfOpDOFFI4,
-
-        &&arfOpDOFFI5,
-        &&arfOpDOFFI6,
-        &&arfOpDOFFI7,
-        &&arfOpDOFFI8,
-
-        // $10 - $17
-        0,
-        &&arfOpDOCOLON_WITH_W,
-        0, 0,
-
-        0, 0, 0,
-        &&arfOpDOFFI0_WITH_W,
-
-        // $18 - $1F
-        &&arfOpDOFFI1_WITH_W,
-        &&arfOpDOFFI2_WITH_W,
-        0, 0,
-
-        0, 0, 0, 0,
-
-        // $20 - $27
         &&arfOpLIT,
         &&arfOpDUP,
         &&arfOpDROP,
-        &&arfOpPLUS,
 
+        &&arfOpPLUS,
         &&arfOpMINUS,
         &&arfOpONEPLUS,
         &&arfOpONEMINUS,
-        &&arfOpSWAP,
 
-        // $28 - $2F
+        // $08 - $0F
+        &&arfOpSWAP,
         &&arfOpBRANCH,
         &&arfOpABORT,
         &&arfOpCHARLIT,
-        &&arfOpCOMPILECOMMA,
 
+        &&arfOpCOMPILECOMMA,
         &&arfOpCR,
         &&arfOpEMIT,
         &&arfOpEXECUTE,
-        &&arfOpFETCH,
 
-        // $30 - $37
+        // $10 - $17
+        &&arfOpFETCH,
         &&arfOpLITERAL,
         &&arfOpNUMBERQ,
         &&arfOpOR,
-        &&arfOpPARSEWORD,
 
+        &&arfOpPARSEWORD,
         &&arfOpFINDWORD,
         &&arfOpQDUP,
         &&arfOpSPACE,
-        &&arfOpSTATE,
 
-        // $38 - $3F
+        // $18 - $1F
+        &&arfOpSTATE,
         &&arfOpSTORE,
         &&arfOpTOIN,
         &&arfOpTWODROP,
-        &&arfOpTYPE,
 
+        &&arfOpTYPE,
         &&arfOpZBRANCH,
         &&arfOpZERO,
         &&arfOpZEROEQUALS,
-        &&arfOpQUIT,
 
-        // $40 - $47
+        // $20 - $27
+        &&arfOpQUIT,
         &&arfOpTIB,
         &&arfOpTIBSIZE,
         &&arfOpACCEPT,
-        &&arfOpINTERPRET,
 
+        &&arfOpINTERPRET,
         &&arfOpPSQUOTE,
         &&arfOpBL,
         &&arfOpCFETCH,
-        &&arfOpCOUNT,
 
-        // $48 - $4F
+        // $28 - $2F
+        &&arfOpCOUNT,
         &&arfOpTONUMBER,
         &&arfOpDEPTH,
         &&arfOpDOT,
-        &&arfOpPDOTQUOTE,
 
+        &&arfOpPDOTQUOTE,
+        0, 0, 0,
+
+        // $30 - $37
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+
+        // $38 - $3F
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+
+        // $40 - $47
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+
+        // $48 - $4F
+        0, 0, 0, 0,
         0, 0, 0, 0,
 
         // $50 - $57
@@ -676,20 +631,36 @@ void ARF::go()
         0, 0, 0, 0,
 
         // $60 - $67
-        0, 0, 0, 0,
-        0, 0, 0, 0,
+        &&arfOpPDOCOLON,
+        0, 0, 0,
+
+        0, 0,
+        &&arfOpPDOFFI0,
+        &&arfOpPDOFFI1,
 
         // $68 - $6F
-        0, 0, 0, 0,
+        &&arfOpPDOFFI2,
+        0, 0, 0,
+
         0, 0, 0, 0,
 
         // $70 - $77
-        0, 0, 0, 0,
-        0, 0, 0, 0,
+        &&arfOpDOCOLON,
+        0, 0, 0,
+
+        0, 0,
+        &&arfOpDOFFI0,
+        &&arfOpDOFFI1,
 
         // $78 - $7F
-        0, 0, 0, 0,
-        0, 0, 0,
+        &&arfOpDOFFI2,
+        &&arfOpDOFFI3,
+        &&arfOpDOFFI4,
+        &&arfOpDOFFI5,
+
+        &&arfOpDOFFI6,
+        &&arfOpDOFFI7,
+        &&arfOpDOFFI8,
         &&arfOpEXIT,
     };
 
@@ -723,7 +694,7 @@ DISPATCH_OPCODE:
             w = (uint8_t*)((arfCell*)ip)->p;
             ip += FFIPROCSZ;
 
-        arfOpDOFFI0_WITH_W:
+        arfOpPDOFFI0:
             *--restDataStack = tos;
             tos = (*(arfZeroArgFFI)w)();
         }
@@ -736,7 +707,7 @@ DISPATCH_OPCODE:
             w = (uint8_t*)((arfCell*)ip)->p;
             ip += FFIPROCSZ;
 
-        arfOpDOFFI1_WITH_W:
+        arfOpPDOFFI1:
             tos = (*(arfOneArgFFI)w)(tos);
         }
         continue;
@@ -748,7 +719,7 @@ DISPATCH_OPCODE:
             w = (uint8_t*)((arfCell*)ip)->p;
             ip += FFIPROCSZ;
 
-        arfOpDOFFI2_WITH_W:
+        arfOpPDOFFI2:
             arfCell arg2 = tos;
             arfCell arg1 = *restDataStack++;
             tos = (*(arfTwoArgFFI)w)(arg1, arg2);
@@ -1059,10 +1030,10 @@ DISPATCH_OPCODE:
 
                 // Dispatch to the opcode that handles this type of
                 // definition.  By design, the opcodes for each
-                // definition are 0x10 greater than the definition
-                // type value, so we can just OR 0x10 with the
+                // definition are 0x60 greater than the definition
+                // type value, so we can just OR 0x60 with the
                 // definition type and then use that as the opcode.
-                op = 0x10 | definitionType;
+                op = 0x60 | definitionType;
                 goto DISPATCH_OPCODE;
             }
         }
@@ -1636,7 +1607,7 @@ DISPATCH_OPCODE:
             w = ip + ((arfCell*)ip)->i;
             ip += CELLSZ;
 
-        arfOpDOCOLON_WITH_W:
+        arfOpPDOCOLON:
             // IP now points to the next word in the PFA and that is the
             // location to which we should return once this new word has
             // executed.

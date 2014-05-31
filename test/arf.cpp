@@ -121,31 +121,31 @@ int main(int argc, char **argv)
     unsigned char * favnumLFA = here;
     *here++ = 0x00; // LFAlo; bogus LFA offset
     *here++ = 0x00; // LFAhi; bogus LFA offset
-    *here++ = 0x01; // DOCOLON
+    *here++ = 0x00; // DOCOLON
     *here++ = 'F';
     *here++ = 'A';
     *here++ = 'V';
     *here++ = 'N';
     *here++ = 'U';
     *here++ = 0x80 | 'M';
-    *here++ = 0x2a; // CHARLIT
+    *here++ = 0x0b; // CHARLIT
     *here++ = 27;
     *here++ = 0x7f; // EXIT
 
     unsigned char * twoxLFA = here;
     *here++ = ((twoxLFA - favnumLFA)     ) & 0xff; // LFAlo
     *here++ = ((twoxLFA - favnumLFA) >> 8) & 0xff; // LFAhi
-    *here++ = 0x01; // DOCOLON
+    *here++ = 0x00; // DOCOLON
     *here++ = '2';
     *here++ = 0x80 | 'X';
-    *here++ = 0x21; // DUP
-    *here++ = 0x23; // +
+    *here++ = 0x02; // DUP
+    *here++ = 0x04; // +
     *here++ = 0x7f; // EXIT
 
     unsigned char * randLFA = here;
     *here++ = ((randLFA - twoxLFA)     ) & 0xff; // LFAlo
     *here++ = ((randLFA - twoxLFA) >> 8) & 0xff; // LFAhi
-    *here++ = 0x07; // DOFFI0
+    *here++ = 0x06; // DOFFI0
     *here++ = ((uint32_t)&FFIDEF_rand      ) & 0xff; // FFIdef LSB
     *here++ = ((uint32_t)&FFIDEF_rand >>  8) & 0xff; // FFIdef
     *here++ = ((uint32_t)&FFIDEF_rand >> 16) & 0xff; // FFIdef
@@ -154,7 +154,7 @@ int main(int argc, char **argv)
     unsigned char * srandLFA = here;
     *here++ = ((srandLFA - randLFA)     ) & 0xff; // LFAlo
     *here++ = ((srandLFA - randLFA) >> 8) & 0xff; // LFAhi
-    *here++ = 0x08; // DOFFI1
+    *here++ = 0x07; // DOFFI1
     *here++ = ((uint32_t)&FFIDEF_srand      ) & 0xff; // FFIdef LSB
     *here++ = ((uint32_t)&FFIDEF_srand >>  8) & 0xff; // FFIdef
     *here++ = ((uint32_t)&FFIDEF_srand >> 16) & 0xff; // FFIdef
@@ -163,7 +163,7 @@ int main(int argc, char **argv)
     unsigned char * clearLFA = here;
     *here++ = ((clearLFA - srandLFA)     ) & 0xff; // LFAlo
     *here++ = ((clearLFA - srandLFA) >> 8) & 0xff; // LFAhi
-    *here++ = 0x07; // DOFFI0
+    *here++ = 0x06; // DOFFI0
     *here++ = ((uint32_t)&FFIDEF_clear      ) & 0xff; // FFIdef LSB
     *here++ = ((uint32_t)&FFIDEF_clear >>  8) & 0xff; // FFIdef
     *here++ = ((uint32_t)&FFIDEF_clear >> 16) & 0xff; // FFIdef

@@ -106,26 +106,25 @@ Flag layout:
 
 * 1 bit for the smudge field.
 * 3 unused bits.
-* 4-bits for the type of definition (`DOCOLON`, `DOIMM`, `DOVAR`, `DOFFI0`, `DOFFI1`, etc.).  Note that we make immediate a variant of `DOCOLON` since we have some unused enum values here anyway.  This value is a direct index into the jump table and effectively forms the CFA for the word.  Note that 0 is unused as that is the `COLD` word for when we manage to read the IP from somewhere unexpected.
+* 4-bits for the type of definition (`DOCOLON`, `DOIMM`, `DOVAR`, `DOFFI0`, `DOFFI1`, etc.).  Note that we make immediate a variant of `DOCOLON` since we have some unused enum values here anyway.  This value is a calculated index into the jump table and effectively forms the CFA for the word.
 
 Definition types:
 
-0. Unused (the first primitive is `COLD` so that we can restart if a bad IP is referenced)
-1. `DOCOLON`
-2. `DOIMMEDIATE`
-3. `DOCONSTANT`
-4. `DOCREATE`
-5. `DODOES`
-6. `DOVARIABLE`
-7. `DOFFI0`
-8. `DOFFI1`
-9. `DOFFI2`
-10. `DOFFI3`
-11. `DOFFI4`
-12. `DOFFI5`
-13. `DOFFI6`
-14. `DOFFI7`
-15. `DOFFI8`
+0. `DOCOLON`
+1. `DOIMMEDIATE`
+2. `DOCONSTANT`
+3. `DOCREATE`
+4. `DODOES`
+5. `DOVARIABLE`
+6. `DOFFI0`
+7. `DOFFI1`
+8. `DOFFI2`
+9. `DOFFI3`
+10. `DOFFI4`
+11. `DOFFI5`
+12. `DOFFI6`
+13. `DOFFI7`
+14. `DOFFI8`
 
 User-defined words then have their NFA string, which is terminated by a character with the high bit set.
 
