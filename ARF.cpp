@@ -482,7 +482,7 @@ bool ARF::parenFindWord(uint8_t * caddr, arfUnsigned u, uint16_t &xt, bool &isIm
         else
         {
             // Get a reference to the FFI definition.
-            const arfFFI * ffi = (arfFFI *)pgm_read_word(curWord + 3);
+            const arfFFI * ffi = *(arfFFI **)(curWord + 3);
             const char * ffiName = (char *)pgm_read_word(&ffi->name);
 
             // See if this FFI matches our search word.
@@ -1143,7 +1143,7 @@ DISPATCH_OPCODE:
                 {
                     // Dereference the linked list entry in order to get
                     // the FFI function pointer.
-                    const arfFFI * ffi = (arfFFI *)pgm_read_word(pTarget);
+                    const arfFFI * ffi = *(arfFFI **)pTarget;
                     const void * ffiFn = (void *)pgm_read_word(&ffi->fn);
                     w = (uint8_t*)ffiFn;
                 }
