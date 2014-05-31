@@ -829,28 +829,18 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(2, 1);
 
-            // FIXME Needs to use inProgramSpace; or maybe the function pointer should be on the stack..?
-            arfTwoArgFFI fn = (arfTwoArgFFI)(((arfCell*)ip)->p);
+            w = (uint8_t*)((arfCell*)ip)->p;
             ip += FFIPROCSZ;
 
+        arfOpDOFFI2_WITH_W:
             arfCell arg2 = tos;
             arfCell arg1 = *restDataStack++;
-            tos = (*fn)(arg1, arg2);
+            tos = (*(arfTwoArgFFI)w)(arg1, arg2);
         }
         continue;
 
         arfOpDOFFI3:
-        {
             CHECK_STACK(3, 1);
-
-            // FIXME Needs to use inProgramSpace; or maybe the function pointer should be on the stack..?
-            arfThreeArgFFI fn = (arfThreeArgFFI)(((arfCell*)ip)->p);
-            ip += FFIPROCSZ;
-            arfCell arg3 = tos;
-            arfCell arg2 = *restDataStack++;
-            arfCell arg1 = *restDataStack++;
-            tos = (*fn)(arg1, arg2, arg3);
-        }
         continue;
 
         arfOpDOFFI4:
@@ -1166,6 +1156,9 @@ DISPATCH_OPCODE:
 
                     case arfCFADOFFI1:
                         goto arfOpDOFFI1_WITH_W;
+
+                    case arfCFADOFFI2:
+                        goto arfOpDOFFI2_WITH_W;
 
                     default:
                         if (this->emit != NULL)
