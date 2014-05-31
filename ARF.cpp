@@ -123,231 +123,95 @@ enum arfOpcode
     arfOpEXIT = 0x7F,
 } arfOpcode;
 
-struct arfPrimitiveWord {
-    uint8_t opcode;
-    uint8_t nameLen;
-    const char * name;
-};
-
-static const char arfOpNameABORT[] PROGMEM = "ABORT";
-static const char arfOpNameACCEPT[] PROGMEM = "ACCEPT";
-static const char arfOpNameBL[] PROGMEM = "BL";
-static const char arfOpNameCFETCH[] PROGMEM = "C@";
-static const char arfOpNameCOMPILECOMMA[] PROGMEM = "COMPILE,";
-static const char arfOpNameCOUNT[] PROGMEM = "COUNT";
-static const char arfOpNameCR[] PROGMEM = "CR";
-static const char arfOpNameDEPTH[] PROGMEM = "DEPTH";
-static const char arfOpNameDOT[] PROGMEM = ".";
-static const char arfOpNameDROP[] PROGMEM = "DROP";
-static const char arfOpNameDUP[] PROGMEM = "DUP";
-static const char arfOpNameEMIT[] PROGMEM = "EMIT";
-static const char arfOpNameEXECUTE[] PROGMEM = "EXECUTE";
-static const char arfOpNameFETCH[] PROGMEM = "@";
-static const char arfOpNameLITERAL[] PROGMEM = "LITERAL";
-static const char arfOpNameMINUS[] PROGMEM = "-";
-static const char arfOpNameNUMBERQ[] PROGMEM = "NUMBER?";
-static const char arfOpNameONEMINUS[] PROGMEM = "1-";
-static const char arfOpNameONEPLUS[] PROGMEM = "1+";
-static const char arfOpNameOR[] PROGMEM = "OR";
-static const char arfOpNamePLUS[] PROGMEM = "+";
-static const char arfOpNameQDUP[] PROGMEM = "?DUP";
-static const char arfOpNameQUIT[] PROGMEM = "QUIT";
-static const char arfOpNameSPACE[] PROGMEM = "SPACE";
-static const char arfOpNameSTATE[] PROGMEM = "STATE";
-static const char arfOpNameSTORE[] PROGMEM = "STORE";
-static const char arfOpNameSWAP[] PROGMEM = "SWAP";
-static const char arfOpNameTOIN[] PROGMEM = ">IN";
-static const char arfOpNameTONUMBER[] PROGMEM = ">NUMBER";
-static const char arfOpNameTWODROP[] PROGMEM = "2DROP";
-static const char arfOpNameTYPE[] PROGMEM = "TYPE";
-static const char arfOpNameZERO[] PROGMEM = "0";
-static const char arfOpNameZEROEQUALS[] PROGMEM = "0=";
-
-// TODO The size of this data structure could be reduced by at least 384
-// bytes if we pack the entire thing into a single byte array and then
-// just inline the strings, using the count to traverse from
-// word-to-word, with a separate counter being used in code to decide
-// which opcode we are looking at (instead of including the opcode in
-// the struct).  128 bytes saved for the opcode, another 256 bytes saved
-// for the string pointer, then some number of extra bytes saved for all
-// of the NULL (internal) words.
-static const arfPrimitiveWord primitives[128] PROGMEM = {
+static const char primitives[] PROGMEM =
     // $00 - $07
-    { 0,                    0,  NULL },
-    { arfOpDOCOLON,         0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
+    "\x00"
+    "\x00" // DOCOLON
+    "\x00"
+    "\x00"
 
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { arfOpDOFFI0,          0,  NULL },
+    "\x00"
+    "\x00"
+    "\x00"
+    "\x00" // DOFFI0
 
     // $08 - $0F
-    { arfOpDOFFI1,          0,  NULL },
-    { arfOpDOFFI2,          0,  NULL },
-    { arfOpDOFFI3,          0,  NULL },
-    { arfOpDOFFI4,          0,  NULL },
+    "\x00" // DOFFI1
+    "\x00" // DOFFI2
+    "\x00" // DOFFI3
+    "\x00" // DOFFI4
 
-    { arfOpDOFFI5,          0,  NULL },
-    { arfOpDOFFI6,          0,  NULL },
-    { arfOpDOFFI7,          0,  NULL },
-    { arfOpDOFFI8,          0,  NULL },
+    "\x00" // DOFFI5
+    "\x00" // DOFFI6
+    "\x00" // DOFFI7
+    "\x00" // DOFFI8
 
     // $10 - $17
-    { arfOpLIT,             0,  NULL },
-    { arfOpDUP,             3,  arfOpNameDUP },
-    { arfOpDROP,            4,  arfOpNameDROP },
-    { arfOpPLUS,            1,  arfOpNamePLUS },
+    "\x00" // LIT
+    "\x03" "DUP"
+    "\x04" "DROP"
+    "\x01" "+"
 
-    { arfOpMINUS,           1,  arfOpNameMINUS },
-    { arfOpONEPLUS,         2,  arfOpNameONEPLUS },
-    { arfOpONEMINUS,        2,  arfOpNameONEMINUS },
-    { arfOpSWAP,            4,  arfOpNameSWAP },
+    "\x01" "-"
+    "\x02" "1+"
+    "\x02" "1-"
+    "\x04" "SWAP"
 
     // $18 - $1F
-    { arfOpBRANCH,          0,  NULL },
-    { arfOpABORT,           5,  arfOpNameABORT },
-    { arfOpCHARLIT,         0,  NULL },
-    { arfOpCOMPILECOMMA,    8,  arfOpNameCOMPILECOMMA },
+    "\x00" // BRANCH
+    "\x05" "ABORT"
+    "\x00" // CHARLIT
+    "\x08" "COMPILE,"
 
-    { arfOpCR,              2,  arfOpNameCR },
-    { arfOpEMIT,            4,  arfOpNameEMIT },
-    { arfOpEXECUTE,         7,  arfOpNameEXECUTE },
-    { arfOpFETCH,           1,  arfOpNameFETCH },
+    "\x02" "CR"
+    "\x04" "EMIT"
+    "\x07" "EXECUTE"
+    "\x01" "@"
 
     // $20 - $27
-    { arfOpLITERAL,         7,  arfOpNameLITERAL },
-    { arfOpNUMBERQ,         7,  arfOpNameNUMBERQ },
-    { arfOpOR,              2,  arfOpNameOR },
-    { arfOpPARSEWORD,       0,  NULL },
+    "\x07" "LITERAL"
+    "\x07" "NUMBER?"
+    "\x02" "OR"
+    "\x00" // PARSE-WORD
 
-    { arfOpFINDWORD,        0,  NULL },
-    { arfOpQDUP,            4,  arfOpNameQDUP },
-    { arfOpSPACE,           5,  arfOpNameSPACE },
-    { arfOpSTATE,           5,  arfOpNameSTATE },
+    "\x00" // FIND-WORD
+    "\x04" "?DUP"
+    "\x05" "SPACE"
+    "\x05" "STATE"
 
     // $28 - $2F
-    { arfOpSTORE,           5,  arfOpNameSTORE },
-    { arfOpTOIN,            3,  arfOpNameTOIN },
-    { arfOpTWODROP,         5,  arfOpNameTWODROP },
-    { arfOpTYPE,            4,  arfOpNameTYPE },
+    "\x01" "!"
+    "\x03" ">IN"
+    "\x05" "2DROP"
+    "\x04" "TYPE"
 
-    { arfOpZBRANCH,         0,  NULL },
-    { arfOpZERO,            1,  arfOpNameZERO },
-    { arfOpZEROEQUALS,      2,  arfOpNameZEROEQUALS },
-    { arfOpQUIT,            4,  arfOpNameQUIT },
+    "\x00" // ZBRANCH
+    "\x01" "0"
+    "\x02" "0="
+    "\x04" "QUIT"
 
     // $30 - $37
-    { arfOpTIB,             0,  NULL },
-    { arfOpTIBSIZE,         0,  NULL },
-    { arfOpACCEPT,          6,  arfOpNameACCEPT },
-    { arfOpINTERPRET,       0,  NULL },
+    "\x00" // TIB
+    "\x00" // TIBSIZE
+    "\x06" "ACCEPT"
+    "\x00" // INTERPRET
 
-    { arfOpPSQUOTE,         0,  NULL },
-    { arfOpBL,              2,  arfOpNameBL },
-    { arfOpCFETCH,          2,  arfOpNameCFETCH },
-    { arfOpCOUNT,           5,  arfOpNameCOUNT },
+    "\x00" // (S")
+    "\x02" "BL"
+    "\x02" "C@"
+    "\x05" "COUNT"
 
     // $38 - $3F
-    { arfOpTONUMBER,        7,  arfOpNameTONUMBER },
-    { arfOpDEPTH,           5,  arfOpNameDEPTH },
-    { arfOpDOT,             1,  arfOpNameDOT },
-    { arfOpPDOTQUOTE,       0,  NULL },
+    "\x07" ">NUMBER"
+    "\x05" "DEPTH"
+    "\x01" "."
+    "\x00" // (.")
 
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
+    "\x00" "\x00" "\x00" "\x00"
 
-    // $40 - $47
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-
-    // $48 - $4F
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-
-    // $50 - $57
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-
-    // $58 - $5F
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-
-    // $60 - $67
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-
-    // $68 - $6F
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-
-    // $70 - $77
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-
-    // $78 - $7F
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { 0,                    0,  NULL },
-    { arfOpEXIT,            0,  NULL },
-};
+    // End byte
+    "\xff"
+;
 
 typedef enum
 {
@@ -501,26 +365,29 @@ bool ARF::parenFindWord(uint8_t * caddr, arfUnsigned u, uint16_t &xt, bool &isIm
     }
 
     // Search through the opcodes for a match against this search name.
-    for (int op = 0; op < 128; op++)
+    const char * pPrimitives = primitives;
+    for (uint8_t opcode = 0; /* below */; ++opcode)
     {
-        // Get a reference to this primitive.
-        const arfPrimitiveWord &prim = primitives[op];
-
-        // Ignore this opcode if its length is not the same as our
-        // search length.
-        if (pgm_read_byte(&prim.nameLen) != searchLen)
+        // Get the length of this primitive; we're done if this is the
+        // end value (0xff).
+        uint8_t primitiveLength = (uint8_t)pgm_read_byte(pPrimitives++);
+        if (primitiveLength == 0xff)
         {
-            continue;
+            break;
         }
 
-        // Compare the characters.
-        if (strncasecmp_P(searchName, (char *)pgm_read_word(&prim.name), searchLen) == 0)
+        // Is this a match?  If so, return the XT.
+        if ((primitiveLength == searchLen)
+            && (strncasecmp_P(searchName, pPrimitives, searchLen) == 0))
         {
             // TODO isImmediate needs to come from the primitive table
-            xt = pgm_read_byte(&prim.opcode);
+            xt = opcode;
             isImmediate = false;
             return true;
         }
+
+        // No match; skip over the name.
+        pPrimitives += primitiveLength;
     }
 
     // No match.
