@@ -57,6 +57,10 @@
 // The key point here is that the PFA contains a list of tokens to
 // primitive words.  There is no longer a concept of "opcode" since ARF
 // is a Forth machine and not a CPU.
+// TODO We don't actually need arfOpDO* in here because no one will ever
+// reference those opcodes in code.  Instead, the values are created by
+// doing math on the CFA definition type.  Having the names here does
+// make it easier to debug the system though...
 enum arfOpcode
 {
     //arfOpCOLD = 0x00,
@@ -75,7 +79,17 @@ enum arfOpcode
     arfOpDOFFI6,
     arfOpDOFFI7,
     arfOpDOFFI8,
-    arfOpLIT,
+
+    // Opcodes 0x11-0x1f are reserved for jump labels to the "CFA"
+    // opcodes *after* the point where W (the Word Pointer) has already
+    // been set.  This allows words like EXECUTE to jump to a CFA
+    // without having to use a switch statement to convert definition
+    // types to opcodes.  The opcode names themselves do not need to be
+    // defined because they are never referenced (we're just reserving
+    // space in the primitive list and Address Interpreter jump table,
+    // in other words).
+
+    arfOpLIT = 0x20,
     arfOpDUP,
     arfOpDROP,
     arfOpPLUS,
@@ -123,6 +137,12 @@ enum arfOpcode
     arfOpEXIT = 0x7F,
 } arfOpcode;
 
+// TODO Could make this string smaller by moving the DO* opcodes to
+// $F0-$FE and then OR'ing in $F0 when converting a definition type to
+// an opcode (need to also move the definition types down one value).
+// Then the ...-with-W opcodes could move to $E0-$EE and EXECUTE would
+// OR in $E0.  All of this would eliminate the need to store these first
+// 32 empty characters in the primitives table.
 static const char primitives[] PROGMEM =
     // $00 - $07
     "\x00"
@@ -147,6 +167,28 @@ static const char primitives[] PROGMEM =
     "\x00" // DOFFI8
 
     // $10 - $17
+    "\x00" // Reserved so that the following values match the definition types
+    "\x00" // Reserved for DOCOLON-with-W
+    "\x00" // Reserved for DOIMMEDIATE-with-W
+    "\x00" // Reserved for DOCONSTANT-with-W
+
+    "\x00" // Reserved for DOCREATE-with-W
+    "\x00" // Reserved for DODOES-with-W
+    "\x00" // Reserved for DOVARIABLE-with-W
+    "\x00" // Reserved for DOFFI0-with-W
+
+    // $18 - $1F
+    "\x00" // Reserved for DOFFI1-with-W
+    "\x00" // Reserved for DOFFI2-with-W
+    "\x00" // Reserved for DOFFI3-with-W
+    "\x00" // Reserved for DOFFI4-with-W
+
+    "\x00" // Reserved for DOFFI5-with-W
+    "\x00" // Reserved for DOFFI6-with-W
+    "\x00" // Reserved for DOFFI7-with-W
+    "\x00" // Reserved for DOFFI8-with-W
+
+    // $20 - $27
     "\x00" // LIT
     "\x03" "DUP"
     "\x04" "DROP"
@@ -157,7 +199,7 @@ static const char primitives[] PROGMEM =
     "\x02" "1-"
     "\x04" "SWAP"
 
-    // $18 - $1F
+    // $28 - $2F
     "\x00" // BRANCH
     "\x05" "ABORT"
     "\x00" // CHARLIT
@@ -168,7 +210,7 @@ static const char primitives[] PROGMEM =
     "\x07" "EXECUTE"
     "\x01" "@"
 
-    // $20 - $27
+    // $30 - $37
     "\x07" "LITERAL"
     "\x07" "NUMBER?"
     "\x02" "OR"
@@ -179,7 +221,7 @@ static const char primitives[] PROGMEM =
     "\x05" "SPACE"
     "\x05" "STATE"
 
-    // $28 - $2F
+    // $38 - $3F
     "\x01" "!"
     "\x03" ">IN"
     "\x05" "2DROP"
@@ -190,7 +232,7 @@ static const char primitives[] PROGMEM =
     "\x02" "0="
     "\x04" "QUIT"
 
-    // $30 - $37
+    // $40 - $47
     "\x00" // TIB
     "\x00" // TIBSIZE
     "\x06" "ACCEPT"
@@ -201,7 +243,7 @@ static const char primitives[] PROGMEM =
     "\x02" "C@"
     "\x05" "COUNT"
 
-    // $38 - $3F
+    // $48 - $4F
     "\x07" ">NUMBER"
     "\x05" "DEPTH"
     "\x01" "."
@@ -548,6 +590,21 @@ void ARF::go()
         &&arfOpDOFFI8,
 
         // $10 - $17
+        0,
+        &&arfOpDOCOLON_WITH_W,
+        0, 0,
+
+        0, 0, 0,
+        &&arfOpDOFFI0_WITH_W,
+
+        // $18 - $1F
+        &&arfOpDOFFI1_WITH_W,
+        &&arfOpDOFFI2_WITH_W,
+        0, 0,
+
+        0, 0, 0, 0,
+
+        // $20 - $27
         &&arfOpLIT,
         &&arfOpDUP,
         &&arfOpDROP,
@@ -558,7 +615,7 @@ void ARF::go()
         &&arfOpONEMINUS,
         &&arfOpSWAP,
 
-        // $18 - $1F
+        // $28 - $2F
         &&arfOpBRANCH,
         &&arfOpABORT,
         &&arfOpCHARLIT,
@@ -569,7 +626,7 @@ void ARF::go()
         &&arfOpEXECUTE,
         &&arfOpFETCH,
 
-        // $20 - $27
+        // $30 - $37
         &&arfOpLITERAL,
         &&arfOpNUMBERQ,
         &&arfOpOR,
@@ -580,7 +637,7 @@ void ARF::go()
         &&arfOpSPACE,
         &&arfOpSTATE,
 
-        // $28 - $2F
+        // $38 - $3F
         &&arfOpSTORE,
         &&arfOpTOIN,
         &&arfOpTWODROP,
@@ -591,7 +648,7 @@ void ARF::go()
         &&arfOpZEROEQUALS,
         &&arfOpQUIT,
 
-        // $30 - $37
+        // $40 - $47
         &&arfOpTIB,
         &&arfOpTIBSIZE,
         &&arfOpACCEPT,
@@ -602,20 +659,12 @@ void ARF::go()
         &&arfOpCFETCH,
         &&arfOpCOUNT,
 
-        // $38 - $3F
+        // $48 - $4F
         &&arfOpTONUMBER,
         &&arfOpDEPTH,
         &&arfOpDOT,
         &&arfOpPDOTQUOTE,
 
-        0, 0, 0, 0,
-
-        // $40 - $47
-        0, 0, 0, 0,
-        0, 0, 0, 0,
-
-        // $48 - $4F
-        0, 0, 0, 0,
         0, 0, 0, 0,
 
         // $50 - $57
@@ -1009,36 +1058,12 @@ DISPATCH_OPCODE:
                 tos = *restDataStack++;
 
                 // Dispatch to the opcode that handles this type of
-                // definition.
-                // TODO Move the non-*_W opcodes to 16-32 and the _W
-                // opcodes to 0-16; then we can just jump to them by
-                // dereferencing jtb using definitionType.
-                switch (definitionType)
-                {
-                    case arfCFADOCOLON:
-                        goto arfOpDOCOLON_WITH_W;
-
-                    case arfCFADOFFI0:
-                        goto arfOpDOFFI0_WITH_W;
-
-                    case arfCFADOFFI1:
-                        goto arfOpDOFFI1_WITH_W;
-
-                    case arfCFADOFFI2:
-                        goto arfOpDOFFI2_WITH_W;
-
-                    default:
-                        if (this->emit != NULL)
-                        {
-                            this->emit('\n');
-                            this->emit('!');
-                            this->emit('D');
-                            this->emit('E');
-                            this->emit('F');
-                            this->emit('\n');
-                        }
-                        goto arfOpABORT;
-                }
+                // definition.  By design, the opcodes for each
+                // definition are 0x10 greater than the definition
+                // type value, so we can just OR 0x10 with the
+                // definition type and then use that as the opcode.
+                op = 0x10 | definitionType;
+                goto DISPATCH_OPCODE;
             }
         }
         continue;

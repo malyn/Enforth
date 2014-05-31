@@ -119,7 +119,7 @@ int main(void)
     *here++ = 'N';
     *here++ = 'U';
     *here++ = 0x80 | 'M';
-    *here++ = 0x1a; // CHARLIT
+    *here++ = 0x2a; // CHARLIT
     *here++ = 27;
     *here++ = 0x7f; // EXIT
 
@@ -129,8 +129,8 @@ int main(void)
     *here++ = 0x01; // DOCOLON
     *here++ = '2';
     *here++ = 0x80 | 'X';
-    *here++ = 0x11; // DUP
-    *here++ = 0x13; // +
+    *here++ = 0x21; // DUP
+    *here++ = 0x23; // +
     *here++ = 0x7f; // EXIT
 
     unsigned char * randLFA = here;
