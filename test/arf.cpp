@@ -128,6 +128,7 @@ int main(int argc, char **argv)
     *here++ = 'N';
     *here++ = 'U';
     *here++ = 0x80 | 'M';
+    unsigned char * favnumPFA = here;
     *here++ = 0x0b; // CHARLIT
     *here++ = 27;
     *here++ = 0x7f; // EXIT
@@ -138,13 +139,36 @@ int main(int argc, char **argv)
     *here++ = 0x00; // DOCOLON
     *here++ = '2';
     *here++ = 0x80 | 'X';
+    unsigned char * twoxPFA = here;
     *here++ = 0x02; // DUP
     *here++ = 0x04; // +
     *here++ = 0x7f; // EXIT
 
+    unsigned char * twoxfavnumLFA = here;
+    *here++ = ((twoxfavnumLFA - twoxLFA)     ) & 0xff; // LFAlo
+    *here++ = ((twoxfavnumLFA - twoxLFA) >> 8) & 0xff; // LFAhi
+    *here++ = 0x00; // DOCOLON
+    *here++ = '2';
+    *here++ = 'X';
+    *here++ = 'F';
+    *here++ = 'A';
+    *here++ = 'V';
+    *here++ = 'N';
+    *here++ = 'U';
+    *here++ = 0x80 | 'M';
+    *here++ = 0x70; // DOCOLON
+    *(here+0) = ((here - favnumPFA)     ) & 0xff; // offset LSB
+    *(here+1) = ((here - favnumPFA) >> 8) & 0xff; // offset MSB
+    here += 2;
+    *here++ = 0x70; // DOCOLON
+    *(here+0) = ((here - twoxPFA)     ) & 0xff; // offset LSB
+    *(here+1) = ((here - twoxPFA) >> 8) & 0xff; // offset MSB
+    here += 2;
+    *here++ = 0x7f; // EXIT
+
     unsigned char * randLFA = here;
-    *here++ = ((randLFA - twoxLFA)     ) & 0xff; // LFAlo
-    *here++ = ((randLFA - twoxLFA) >> 8) & 0xff; // LFAhi
+    *here++ = ((randLFA - twoxfavnumLFA)     ) & 0xff; // LFAlo
+    *here++ = ((randLFA - twoxfavnumLFA) >> 8) & 0xff; // LFAhi
     *here++ = 0x06; // DOFFI0
     *here++ = ((uint32_t)&FFIDEF_rand      ) & 0xff; // FFIdef LSB
     *here++ = ((uint32_t)&FFIDEF_rand >>  8) & 0xff; // FFIdef

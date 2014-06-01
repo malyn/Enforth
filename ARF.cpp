@@ -1604,8 +1604,8 @@ DISPATCH_OPCODE:
             // IP currently points to the relative offset of the PFA of
             // the target word.  Read that offset and advance IP to the
             // opcode after the offset.
-            w = ip + ((arfCell*)ip)->i;
-            ip += CELLSZ;
+            w = ip - *(uint16_t*)ip;
+            ip += 2;
 
         arfOpPDOCOLON:
             // IP now points to the next word in the PFA and that is the
