@@ -106,7 +106,7 @@ class ARF
         arfCell dataStack[32];
         arfCell returnStack[32];
 
-        uint8_t tib[64];
+        uint8_t tib[80];
 
         uint8_t * source;
         arfInt sourceLen;

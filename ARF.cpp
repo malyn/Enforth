@@ -104,6 +104,7 @@ enum arfOpcode
     arfOpDEPTH,
     arfOpDOT,
     arfOpPDOTQUOTE,
+    arfOpBACKSLASH,
 
     //...
 
@@ -221,7 +222,9 @@ static const char primitives[] PROGMEM =
     "\x01" "."
 
     "\x00" // (.")
-    "\x00" "\x00" "\x00"
+    "\x01" "\\"
+    "\x03" "HEX"
+    "\x00"
 
     // End byte
     "\xff"
@@ -604,7 +607,9 @@ void ARF::go()
         &&arfOpDOT,
 
         &&arfOpPDOTQUOTE,
-        0, 0, 0,
+        &&arfOpBACKSLASH,
+        &&arfOpHEX,
+        0,
 
         // $30 - $37
         0, 0, 0, 0,
@@ -1596,6 +1601,31 @@ DISPATCH_OPCODE:
                     caddr++;
                 }
             }
+        }
+        continue;
+
+        // -------------------------------------------------------------
+        // \ [CORE-EXT] 6.2.2535 "backslash"
+        //
+        // Compilation:
+        //   Perform the execution semantics given below.
+        //
+        // Execution: ( "ccc<eol>" -- )
+        //   Parse and discard the remainder of the parse area.  \ is an
+        //   immediate word.
+        arfOpBACKSLASH:
+        {
+            this->toIn = this->sourceLen;
+        }
+        continue;
+
+        // -------------------------------------------------------------
+        // HEX [CORE EXT] 6.2.1660 ( -- )
+        //
+        // Set contents of BASE to sixteen.
+        arfOpHEX:
+        {
+            this->base = 16;
         }
         continue;
 
