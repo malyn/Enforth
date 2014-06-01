@@ -1,12 +1,12 @@
-* Rename ARF to MFORTH?  (and thus MFORTH to MFORTH/100)
 * Fix up all of the types; sometimes we use uint8_t, sometimes we use arfInteger, etc.
+* Rename ARF to MFORTH?  (and thus MFORTH to MFORTH/100)
 * Turn `dictionary` constructor parameter into a generic `vm` parameter.  Put data stack and return stack at the end of the `vm` buffer.  Put TIB at the start of the buffer (before the dictionary, just like MFORTH).  Allow stack sizes and TIB size to be configured in the constructor.  TIB can be zero if you do not need the text interpreter.
 * "Fix" stack usage so that we don't have to waste the last (31st, currently) cell on a TOS value that will never be stored there.  Should probably put the stacks at the beginning of the buffer so that we don't have the issue with sometimes reading TOS from beyond the data stack when the stack is in fact empty.  So organization is: data stack, return stack, TIB, dictionary.
 * Put the global and user vars in the `vm` buffer as well.  Among other things, this allows us to snapshot the system by making a copy of `vm`.
+* Reorganize/Clean up source files.  Maybe auto-generate opcodes so that we can avoid some of the duplication, for example.
 * Implement compilation (`:`, `COMPILE,`, `;`, etc.).
   * The compiler needs to figure out what kind of word is being compiled and put that opcode into the definition.  This trades compiler expense -- need to interrogate the target word -- for runtime efficiency -- a single jump table for everything.  `COMPILE,` has to convert XTs into a separate 8-bit opcode and 16-bit, dictionary-relative offset (which is already what the XT is, but without the high bit set).  Note that `COMPILE,` will need to use `>BODY` to skip over the LFA, flags, and NFA.
     * Should probably just make DOCOLON8 and DOCOLON16 and then align PFAs to 16-bits so that DOCOLON8 can span a full -512 bytes.
-* Reorganize/Clean up source files.  Maybe auto-generate opcodes so that we can avoid some of the duplication, for example.
 * Move some of the non-critical C++ primitives over to Forth (whatever is uses the least flash).
 * Build a new command-line tool (`anstests`) that provides hardcoded implementations of the `tester.fr` words (so that we don't need compilation yet) and then takes `KEY` input from a file specified on the command line.  This will allow us to start running `core.fr` tests without needing a compiler.
   * This has to be done later in the cycle because we need a bunch of ANS words in order to use the tester (DO/LOOP, for example).  It's going to be easier to clean up the source and bring over a bunch of code from MFORTH instead of hardcoding all of this stuff.
