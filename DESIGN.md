@@ -23,7 +23,7 @@ Provided as an Arduino Library with a small handful of entry points.  Two key en
 
 # Implementation
 
-* 16-bit Forth
+* 16-bit Forth on AVR, 32-bit Forth on ARM, x86
 * Token-threaded Forth with 8-bit tokens.
 * Tokens reference primitive words; user-defined words are invoked with `DO*` tokens that get the PFA of the callee from the instruction stream (in the same manner as how `LIT` works).
 

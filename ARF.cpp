@@ -47,9 +47,6 @@
 
 #include "ARF.h"
 
-#define FFIPROCSZ (sizeof(void*))
-#define CELLSZ (sizeof(arfCell))
-
 // TODO We've gotten our names a bit wrong here.  These aren't
 // "opcodes" as much as they are "primitive words".  Similarly, the
 // RAM definitions are "user-defined words."
@@ -286,9 +283,9 @@ ARF::ARF(const uint8_t * dictionary, int dictionarySize,
 
 arfUnsigned ARF::parenAccept(uint8_t * caddr, arfUnsigned n1)
 {
-    uint8_t * p = caddr;
+    char * p = (char *)caddr;
     arfUnsigned n2 = 0;
-    uint8_t ch;
+    char ch;
 
     // Read characters until we get a linefeed.
     while ((ch = this->key()) != '\n')
@@ -315,7 +312,7 @@ arfUnsigned ARF::parenAccept(uint8_t * caddr, arfUnsigned n1)
 
 bool ARF::parenFindWord(uint8_t * caddr, arfUnsigned u, uint16_t &xt, bool &isImmediate)
 {
-    uint8_t searchLen = u;
+    int searchLen = u;
     char * searchName = (char *)caddr;
 
     // Search the dictionary.
@@ -458,7 +455,7 @@ void ARF::parenToNumber(arfUnsigned &ud, uint8_t * &caddr, arfUnsigned &u)
 {
     while (u > 0)
     {
-        uint8_t ch = *caddr;
+        char ch = *(char *)caddr;
         if (ch < '0')
         {
             break;
@@ -495,7 +492,8 @@ void ARF::parenParseWord(uint8_t delim, uint8_t * &caddr, arfUnsigned &u)
     // the end of the parse area; point caddr at the current location
     // and then scan forwards until we hit another delimiter or we
     // exhaust the parse area.
-    uint8_t * pParse = caddr = this->source + this->toIn;
+    caddr = this->source + this->toIn;
+    char * pParse = (char *)caddr;
     while ((*pParse != delim) && (this->toIn < this->sourceLen))
     {
         pParse++;
@@ -503,7 +501,7 @@ void ARF::parenParseWord(uint8_t delim, uint8_t * &caddr, arfUnsigned &u)
     }
 
     // Set the string length.
-    u = pParse - caddr;
+    u = (uint8_t*)pParse - caddr;
 }
 
 void ARF::go()
@@ -696,7 +694,7 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(0, 1);
 
-            w = (uint8_t*)((arfCell*)ip)->p;
+            w = *(uint8_t**)ip;
             ip += FFIPROCSZ;
 
         arfOpPDOFFI0:
@@ -709,7 +707,7 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(1, 1);
 
-            w = (uint8_t*)((arfCell*)ip)->p;
+            w = *(uint8_t**)ip;
             ip += FFIPROCSZ;
 
         arfOpPDOFFI1:
@@ -721,7 +719,7 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(2, 1);
 
-            w = (uint8_t*)((arfCell*)ip)->p;
+            w = *(uint8_t**)ip;
             ip += FFIPROCSZ;
 
         arfOpPDOFFI2:
@@ -1047,7 +1045,7 @@ DISPATCH_OPCODE:
         arfOpFETCH:
         {
             CHECK_STACK(1, 1);
-            tos = *(arfCell*)tos.p;
+            tos = *(arfCell*)tos.pRAM;
         }
         continue;
 
@@ -1069,7 +1067,7 @@ DISPATCH_OPCODE:
             CHECK_STACK(2, 3);
 
             arfUnsigned u = tos.u;
-            uint8_t * caddr = (uint8_t*)restDataStack->p;
+            uint8_t * caddr = (uint8_t*)restDataStack->pRAM;
 
             arfInt n;
             if (this->parenNumberQ(caddr, u, n))
@@ -1110,7 +1108,7 @@ DISPATCH_OPCODE:
             uint8_t * caddr;
             arfUnsigned u;
             parenParseWord(' ', caddr, u);
-            (--restDataStack)->p = caddr;
+            (--restDataStack)->pRAM = caddr;
             tos.u = u;
         }
         continue;
@@ -1130,10 +1128,10 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(2, 3);
 
-            uint8_t * caddr = (uint8_t *)restDataStack->p;
+            uint8_t * caddr = (uint8_t *)restDataStack->pRAM;
             arfUnsigned u = tos.u;
 
-            uint16_t xt;
+            arfXT xt;
             bool isImmediate;
             if (parenFindWord(caddr, u, xt, isImmediate))
             {
@@ -1176,7 +1174,7 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
-            tos.p = &this->state;
+            tos.pRAM = &this->state;
         }
         continue;
 
@@ -1187,7 +1185,7 @@ DISPATCH_OPCODE:
         arfOpSTORE:
         {
             CHECK_STACK(2, 0);
-            *(arfCell*)tos.p = *restDataStack++;
+            *(arfCell*)tos.pRAM = *restDataStack++;
             tos = *restDataStack++;
         }
         continue;
@@ -1202,7 +1200,7 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
-            tos.p = &this->toIn;
+            tos.pRAM = &this->toIn;
         }
         continue;
 
@@ -1223,7 +1221,7 @@ DISPATCH_OPCODE:
             {
                 for (int i = 0; i < tos.i; i++)
                 {
-                    this->emit(*((uint8_t*)restDataStack->p + i));
+                    this->emit(*((uint8_t*)restDataStack->pRAM + i));
                 }
             }
 
@@ -1315,7 +1313,7 @@ DISPATCH_OPCODE:
                 ip = (uint8_t*)((unsigned int)ip | 0x8000);
             }
 #endif
-            (--returnTop)->p = (void *)ip;
+            (--returnTop)->pRAM = (void *)ip;
 
             ip = (uint8_t*)&parenQuit;
 #ifdef __AVR__
@@ -1328,7 +1326,7 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
-            tos.p = &this->tib;
+            tos.pRAM = &this->tib;
         }
         continue;
 
@@ -1362,7 +1360,7 @@ DISPATCH_OPCODE:
             CHECK_STACK(2, 1);
             arfCell n1 = tos;
             arfCell caddr = *restDataStack++;
-            tos.u = parenAccept((uint8_t *)caddr.p, n1.u);
+            tos.u = parenAccept((uint8_t *)caddr.pRAM, n1.u);
         }
         continue;
 
@@ -1373,7 +1371,7 @@ DISPATCH_OPCODE:
         arfOpINTERPRET:
         {
             CHECK_STACK(2, 0);
-            this->source = (uint8_t *)restDataStack++->p;
+            this->source = (uint8_t *)restDataStack++->pRAM;
             this->sourceLen = tos.u;
             tos = *restDataStack++;
 
@@ -1417,7 +1415,7 @@ DISPATCH_OPCODE:
                 ip = (uint8_t*)((unsigned int)ip | 0x8000);
             }
 #endif
-            (--returnTop)->p = (void *)ip;
+            (--returnTop)->pRAM = (void *)ip;
 
             ip = (uint8_t*)&parenInterpret;
 #ifdef __AVR__
@@ -1441,7 +1439,7 @@ DISPATCH_OPCODE:
             // Instruction stream contains the length of the string as a
             // byte and then the string itself.  Start out by pushing
             // the address of the string (ip+1) onto the stack.
-            (--restDataStack)->p = ip + 1;
+            (--restDataStack)->pRAM = ip + 1;
 
             // Now get the string length into TOS.
             tos.i = *ip++;
@@ -1462,15 +1460,15 @@ DISPATCH_OPCODE:
         arfOpCFETCH:
         {
             CHECK_STACK(1, 1);
-            tos.u = *(uint8_t*)tos.p;
+            tos.u = *(uint8_t*)tos.pRAM;
         }
         continue;
 
         arfOpCOUNT:
         {
             CHECK_STACK(1, 2);
-            (--restDataStack)->p = (uint8_t*)tos.p + 1;
-            tos.u = *(uint8_t*)tos.p;
+            (--restDataStack)->pRAM = (uint8_t*)tos.pRAM + 1;
+            tos.u = *(uint8_t*)tos.pRAM;
         }
         continue;
 
@@ -1493,13 +1491,13 @@ DISPATCH_OPCODE:
             CHECK_STACK(3, 3);
 
             arfUnsigned u = tos.u;
-            uint8_t * caddr = (uint8_t*)restDataStack[0].p;
+            uint8_t * caddr = (uint8_t*)restDataStack[0].pRAM;
             arfUnsigned ud = restDataStack[-1].u;
 
             parenToNumber(ud, caddr, u);
 
             restDataStack[-1].u = ud;
-            restDataStack[0].p = caddr;
+            restDataStack[0].pRAM = caddr;
             tos.u = u;
         }
         continue;
@@ -1533,9 +1531,9 @@ DISPATCH_OPCODE:
 
             if (this->emit != NULL)
             {
-                // FIXME These numbers are printing backwards; we
-                // probably need to implement pictured numeric output.
-                // FIXME Use BASE.
+                // TODO These numbers are printing backwards; we need to
+                // implement pictured numeric output.
+                // TODO Use BASE.
                 do
                 {
                     arfInt i = tos.i - ((tos.i / 10) * 10);
@@ -1652,7 +1650,7 @@ DISPATCH_OPCODE:
                 inProgramSpace = false;
             }
 #endif
-            (--returnTop)->p = (void *)ip;
+            (--returnTop)->pRAM = (void *)ip;
 
             // Now set the IP to the PFA of the word that is being
             // called and continue execution inside of that word.
@@ -1662,11 +1660,14 @@ DISPATCH_OPCODE:
 
         arfOpEXIT:
         {
-            ip = (uint8_t *)((returnTop++)->p);
+            ip = (uint8_t *)((returnTop++)->pRAM);
 
 #ifdef __AVR__
             if (((unsigned int)ip & 0x8000) != 0)
             {
+                // TODO Needs to be relative to something (such as the
+                // block of ROM definitions, should we create such a
+                // thing).
                 ip = (uint8_t*)((unsigned int)ip & 0x7FFF);
                 inProgramSpace = true;
             }

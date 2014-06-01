@@ -51,12 +51,27 @@ typedef int32_t arfInt;
 typedef uint32_t arfUnsigned;
 #endif
 
+// Execution Tokens (XTs) are always 16-bits, even on 32-bit processors
+// or processors with more than 16 bits of program space.  ARF handles
+// this constraint by ensuring that all XTs are relative to the start of
+// the dictionary.
+typedef uint16_t arfXT;
+
 typedef union arfCell
 {
     arfInt i;
     arfUnsigned u;
-    void *p;
+
+    // Pointer to RAM.  Why not just a generic pointer?  Because ARF
+    // works on processors that have more program space than can be
+    // referenced by a cell-sized pointer.  The name of this field is
+    // designed to make it clear that cells can only reference addresses
+    // in RAM.
+    void * pRAM;
 } arfCell;
+
+#define CELLSZ (sizeof(arfCell))
+
 
 typedef struct arfFFI
 {
@@ -65,6 +80,9 @@ typedef struct arfFFI
     uint8_t arity;
     void * fn;
 } arfFFI;
+
+#define FFIPROCSZ (sizeof(void*))
+
 
 // FFI Macros
 #define LAST_FFI NULL
@@ -75,9 +93,9 @@ typedef struct arfFFI
 
 #define GET_LAST_FFI(name) &FFIDEF_ ## name
 
-typedef arfInt (*arfKeyQuestion)(void);
-typedef arfUnsigned (*arfKey)(void);
-typedef void (*arfEmit)(arfUnsigned);
+typedef bool (*arfKeyQuestion)(void);
+typedef char (*arfKey)(void);
+typedef void (*arfEmit)(char);
 
 class ARF
 {
@@ -106,14 +124,14 @@ class ARF
         arfCell dataStack[32];
         arfCell returnStack[32];
 
-        uint8_t tib[80];
+        char tib[80];
 
         uint8_t * source;
         arfInt sourceLen;
         arfInt toIn;
 
         arfUnsigned parenAccept(uint8_t * caddr, arfUnsigned n1);
-        bool parenFindWord(uint8_t * caddr, arfUnsigned u, uint16_t &xt, bool &isImmediate);
+        bool parenFindWord(uint8_t * caddr, arfUnsigned u, arfXT &xt, bool &isImmediate);
         bool parenNumberQ(uint8_t * caddr, arfUnsigned u, arfInt &n);
         void parenToNumber(arfUnsigned &ud, uint8_t * &caddr, arfUnsigned &u);
         void parenParseWord(uint8_t delim, uint8_t * &caddr, arfUnsigned &u);

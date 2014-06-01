@@ -70,9 +70,9 @@ ARF_EXTERN(srand, srand, 1)
  * ARF I/O primitives.
  */
 
-static arfInt arfCursesKeyQuestion(void)
+static bool arfCursesKeyQuestion(void)
 {
-    return -1;
+    return true;
 }
 
 /* 6.1.1750 KEY
@@ -94,12 +94,12 @@ static arfInt arfCursesKeyQuestion(void)
 
  * See: 10.6.2.1305 EKEY , 10.6.1.1755 KEY?
  */
-static arfUnsigned arfCursesKey(void)
+static char arfCursesKey(void)
 {
     return getch();
 }
 
-static void arfCursesEmit(arfUnsigned ch)
+static void arfCursesEmit(char ch)
 {
     /* Output the character and refresh the screen. */
     addch(ch);
