@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, Michael Alyn Miller <malyn@strangeGizmo.com>.
+/* Copyright (c) 2008-2014, Michael Alyn Miller <malyn@strangeGizmo.com>.
  * All rights reserved.
  * vi:ts=4:sts=4:et:sw=4:sr:et:tw=72:fo=tcrq
  *
@@ -31,8 +31,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ARF_H_
-#define ARF_H_
+#ifndef MFORTH_H_
+#define MFORTH_H_
 
 #include <stdlib.h>
 #include <inttypes.h>
@@ -46,13 +46,13 @@
 // FFI Macros
 #define LAST_FFI NULL
 
-#define ARF_EXTERN(name, fn, arity) \
+#define MFORTH_EXTERN(name, fn, arity) \
     static const char FFIDEF_ ## name ## _NAME[] PROGMEM = #name; \
-    static const ARF::FFIDef FFIDEF_##name PROGMEM = { LAST_FFI, FFIDEF_ ## name ## _NAME, arity, (void*)fn };
+    static const MFORTH::FFIDef FFIDEF_##name PROGMEM = { LAST_FFI, FFIDEF_ ## name ## _NAME, arity, (void*)fn };
 
 #define GET_LAST_FFI(name) &FFIDEF_ ## name
 
-class ARF
+class MFORTH
 {
     // Public Typedefs
     public:
@@ -83,8 +83,8 @@ class ARF
 
         // Execution Tokens (XTs) are always 16-bits, even on 32-bit
         // processors or processors with more than 16 bits of program
-        // space.  ARF handles this constraint by ensuring that all XTs
-        // are relative to the start of the dictionary.
+        // space.  MFORTH handles this constraint by ensuring that all
+        // XTs are relative to the start of the dictionary.
         typedef uint16_t XT;
 
         typedef union
@@ -93,9 +93,9 @@ class ARF
             Unsigned u;
 
             // Pointer to RAM.  Why not just a generic pointer?  Because
-            // ARF works on processors that have more program space than
-            // can be referenced by a cell-sized pointer.  The name of
-            // this field is designed to make it clear that cells can
+            // MFORTH works on processors that have more program space
+            // than can be referenced by a cell-sized pointer.  The name
+            // of this field is designed to make it clear that cells can
             // only reference addresses in RAM.
             void * pRAM;
         } Cell;
@@ -144,7 +144,7 @@ class ARF
         //
         // The key point here is that the PFA contains a list of tokens
         // to primitive words.  There is no longer a concept of "opcode"
-        // since ARF is a Forth machine and not a CPU.
+        // since MFORTH is a Forth machine and not a CPU.
         typedef enum
         {
             //COLD = 0x00,
@@ -246,7 +246,7 @@ class ARF
 
 
     public:
-        ARF(const uint8_t * dictionary, int dictionarySize,
+        MFORTH(const uint8_t * dictionary, int dictionarySize,
                 int latestOffset, int hereOffset,
                 const FFIDef * const lastFFI,
                 KeyQuestion keyQ, Key key, Emit emit);
@@ -283,4 +283,4 @@ class ARF
         void parenParseWord(uint8_t delim, uint8_t * &caddr, Unsigned &u);
 };
 
-#endif /* ARF_H_ */
+#endif /* MFORTH_H_ */

@@ -1,7 +1,9 @@
 /Debug
 /Release
-test/arf
+test/mforth
+test/mforthsimple
 *.atsuo
 *.core
+*.diff
 *.exe
 *.exe.stackdump

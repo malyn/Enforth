@@ -12,9 +12,9 @@
     <OutputFileName>$(MSBuildProjectName)</OutputFileName>
     <OutputFileExtension>.elf</OutputFileExtension>
     <OutputDirectory>$(MSBuildProjectDirectory)\$(Configuration)</OutputDirectory>
-    <AssemblyName>ARF</AssemblyName>
-    <Name>ARF</Name>
-    <RootNamespace>ARF</RootNamespace>
+    <AssemblyName>MFORTH</AssemblyName>
+    <Name>MFORTH</Name>
+    <RootNamespace>MFORTH</RootNamespace>
     <ToolchainFlavour>Native</ToolchainFlavour>
     <KeepTimersRunning>true</KeepTimersRunning>
     <OverrideVtor>false</OverrideVtor>
@@ -128,10 +128,10 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="ARF.cpp">
+    <Compile Include="MFORTH.cpp">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="ARF.h">
+    <Compile Include="MFORTH.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="test\main.cpp">

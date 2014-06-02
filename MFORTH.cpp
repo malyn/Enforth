@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, Michael Alyn Miller <malyn@strangeGizmo.com>.
+/* Copyright (c) 2008-2014, Michael Alyn Miller <malyn@strangeGizmo.com>.
  * All rights reserved.
  * vi:ts=4:sts=4:et:sw=4:sr:et:tw=72:fo=tcrq
  *
@@ -45,7 +45,7 @@
 #define strncasecmp_P strncasecmp
 #endif
 
-#include "ARF.h"
+#include "MFORTH.h"
 
 // TODO Should move all of the internal words (BRANCH, CHARLIT, etc.) to
 // the end of the opcode table so that they don't need to waste space in
@@ -121,7 +121,7 @@ static const char primitives[] PROGMEM =
     "\xff"
 ;
 
-ARF::ARF(const uint8_t * dictionary, int dictionarySize,
+MFORTH::MFORTH(const uint8_t * dictionary, int dictionarySize,
         int latestOffset, int hereOffset,
         const FFIDef * const lastFFI,
         KeyQuestion keyQ, Key key, Emit emit)
@@ -142,7 +142,7 @@ ARF::ARF(const uint8_t * dictionary, int dictionarySize,
     this->here = const_cast<uint8_t *>(this->dictionary) + hereOffset;
 }
 
-ARF::Unsigned ARF::parenAccept(uint8_t * caddr, ARF::Unsigned n1)
+MFORTH::Unsigned MFORTH::parenAccept(uint8_t * caddr, MFORTH::Unsigned n1)
 {
     char * p = (char *)caddr;
     Unsigned n2 = 0;
@@ -171,7 +171,7 @@ ARF::Unsigned ARF::parenAccept(uint8_t * caddr, ARF::Unsigned n1)
     return n2;
 }
 
-bool ARF::parenFindWord(uint8_t * caddr, ARF::Unsigned u, XT &xt, bool &isImmediate)
+bool MFORTH::parenFindWord(uint8_t * caddr, MFORTH::Unsigned u, XT &xt, bool &isImmediate)
 {
     int searchLen = u;
     char * searchName = (char *)caddr;
@@ -269,12 +269,12 @@ bool ARF::parenFindWord(uint8_t * caddr, ARF::Unsigned u, XT &xt, bool &isImmedi
     return false;
 }
 
-// NUMBER? [ARF] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
+// NUMBER? [MFORTH] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
 //
 // Attempt to convert a string at c-addr of length u into digits, using
 // the radix in BASE.  The number and -1 is returned if the conversion
 // was successful, otherwise 0 is returned.
-bool ARF::parenNumberQ(uint8_t * caddr, ARF::Unsigned u, ARF::Int &n)
+bool MFORTH::parenNumberQ(uint8_t * caddr, MFORTH::Unsigned u, MFORTH::Int &n)
 {
     // Store the sign as a value to be multipled against the final
     // number.
@@ -312,7 +312,7 @@ bool ARF::parenNumberQ(uint8_t * caddr, ARF::Unsigned u, ARF::Int &n)
 // string if the string was entirely converted.  u2 is the number of
 // unconverted characters in the string.  An ambiguous condition exists
 // if ud2 overflows during the conversion.
-void ARF::parenToNumber(ARF::Unsigned &ud, uint8_t * &caddr, ARF::Unsigned &u)
+void MFORTH::parenToNumber(MFORTH::Unsigned &ud, uint8_t * &caddr, MFORTH::Unsigned &u)
 {
     while (u > 0)
     {
@@ -339,7 +339,7 @@ void ARF::parenToNumber(ARF::Unsigned &ud, uint8_t * &caddr, ARF::Unsigned &u)
     }
 }
 
-void ARF::parenParseWord(uint8_t delim, uint8_t * &caddr, ARF::Unsigned &u)
+void MFORTH::parenParseWord(uint8_t delim, uint8_t * &caddr, MFORTH::Unsigned &u)
 {
     // Skip over the start of the string until we find a non-delimiter
     // character or we hit the end of the parse area.
@@ -365,7 +365,7 @@ void ARF::parenParseWord(uint8_t delim, uint8_t * &caddr, ARF::Unsigned &u)
     u = (uint8_t*)pParse - caddr;
 }
 
-void ARF::go()
+void MFORTH::go()
 {
     register uint8_t *ip;
     register Cell tos;
@@ -798,7 +798,7 @@ DISPATCH_OPCODE:
             // as-is.
             //
             // Note that the compiled offset is a native endian relative
-            // offset to the word's PFA (no CFAs in ARF) and that the
+            // offset to the word's PFA (no CFAs in MFORTH) and that the
             // offset is as of the address *after* the opcode and
             // *before* the offset since that's where the IP will be in
             // the DO* opcode when we calculate the address.
@@ -917,7 +917,7 @@ DISPATCH_OPCODE:
         continue;
 
         // -------------------------------------------------------------
-        // NUMBER? [ARF] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
+        // NUMBER? [MFORTH] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
         //
         // Attempt to convert a string at c-addr of length u into
         // digits, using the radix in BASE.  The number and -1 is
@@ -954,7 +954,7 @@ DISPATCH_OPCODE:
         continue;
 
         // -------------------------------------------------------------
-        // PARSE-WORD [ARF] ( "<spaces>name<space>" -- c-addr u )
+        // PARSE-WORD [MFORTH] ( "<spaces>name<space>" -- c-addr u )
         //
         // Skip leading spaces and parse name delimited by a space.
         // c-addr is the address within the input buffer and u is the
@@ -975,7 +975,7 @@ DISPATCH_OPCODE:
         continue;
 
         // -------------------------------------------------------------
-        // FIND-WORD [ARF] "paren-find-paren" ( c-addr u -- c-addr u 0 | xt 1 | xt -1 )
+        // FIND-WORD [MFORTH] "paren-find-paren" ( c-addr u -- c-addr u 0 | xt 1 | xt -1 )
         //
         // Find the definition named in the string at c-addr with length
         // u in the word list whose latest definition is pointed to by
@@ -1225,7 +1225,7 @@ DISPATCH_OPCODE:
         continue;
 
         // -----------------------------------------------------------------
-        // INTERPRET [ARF] ( i*x c-addr u -- j*x )
+        // INTERPRET [MFORTH] ( i*x c-addr u -- j*x )
         //
         // Interpret the given string.
         INTERPRET:
@@ -1283,7 +1283,7 @@ DISPATCH_OPCODE:
         continue;
 
         // -------------------------------------------------------------
-        // (s") [ARF] "paren-s-quote-paren" ( -- c-addr u )
+        // (s") [MFORTH] "paren-s-quote-paren" ( -- c-addr u )
         //
         // Runtime behavior of S": return c-addr and u.
         // NOTE: Cannot be used in program space!
@@ -1407,7 +1407,7 @@ DISPATCH_OPCODE:
         continue;
 
         // -------------------------------------------------------------
-        // (.") [ARF] "paren-dot-quote-paren" ( -- )
+        // (.") [MFORTH] "paren-dot-quote-paren" ( -- )
         //
         // Prints the string that was compiled into the definition.
         PDOTQUOTE:

@@ -39,11 +39,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* Curses includes. */
-#include <curses.h>
-
-/* ARF includes. */
-#include "ARF.h"
+/* MFORTH includes. */
+#include "MFORTH.h"
 
 
 
@@ -52,25 +49,21 @@
  */
 
 // Externs
-ARF_EXTERN(clear, clear, 0)
-#undef LAST_FFI
-#define LAST_FFI GET_LAST_FFI(clear)
-
-ARF_EXTERN(rand, rand, 0)
+MFORTH_EXTERN(rand, rand, 0)
 #undef LAST_FFI
 #define LAST_FFI GET_LAST_FFI(rand)
 
-ARF_EXTERN(srand, srand, 1)
+MFORTH_EXTERN(srand, srand, 1)
 #undef LAST_FFI
 #define LAST_FFI GET_LAST_FFI(srand)
 
 
 
 /* -------------------------------------
- * ARF I/O primitives.
+ * MFORTH I/O primitives.
  */
 
-static bool arfCursesKeyQuestion(void)
+static bool mforthSimpleKeyQuestion(void)
 {
     return true;
 }
@@ -94,16 +87,14 @@ static bool arfCursesKeyQuestion(void)
 
  * See: 10.6.2.1305 EKEY , 10.6.1.1755 KEY?
  */
-static char arfCursesKey(void)
+static char mforthSimpleKey(void)
 {
-    return getch();
+    return getchar();
 }
 
-static void arfCursesEmit(char ch)
+static void mforthSimpleEmit(char ch)
 {
-    /* Output the character and refresh the screen. */
-    addch(ch);
-    refresh();
+    putchar(ch);
 }
 
 
@@ -115,8 +106,8 @@ static void arfCursesEmit(char ch)
 int main(int argc, char **argv)
 {
     /* Initial dictionary with a couple of hand-coded definitions. */
-    unsigned char arfDict[512];
-    unsigned char * here = arfDict;
+    unsigned char mforthDict[512];
+    unsigned char * here = mforthDict;
 
     unsigned char * favnumLFA = here;
     *here++ = 0x00; // LFAlo; bogus LFA offset
@@ -184,34 +175,15 @@ int main(int argc, char **argv)
     *here++ = ((uint32_t)&FFIDEF_srand >> 16) & 0xff; // FFIdef
     *here++ = ((uint32_t)&FFIDEF_srand >> 24) & 0xff; // FFIdef MSB
 
-    unsigned char * clearLFA = here;
-    *here++ = ((clearLFA - srandLFA)     ) & 0xff; // LFAlo
-    *here++ = ((clearLFA - srandLFA) >> 8) & 0xff; // LFAhi
-    *here++ = 0x06; // DOFFI0
-    *here++ = ((uint32_t)&FFIDEF_clear      ) & 0xff; // FFIdef LSB
-    *here++ = ((uint32_t)&FFIDEF_clear >>  8) & 0xff; // FFIdef
-    *here++ = ((uint32_t)&FFIDEF_clear >> 16) & 0xff; // FFIdef
-    *here++ = ((uint32_t)&FFIDEF_clear >> 24) & 0xff; // FFIdef MSB
-
-    /* ARF VM */
-    ARF arf(arfDict, sizeof(arfDict), clearLFA - arfDict, here - arfDict,
+    /* MFORTH VM */
+    MFORTH mforth(mforthDict, sizeof(mforthDict),
+            srandLFA - mforthDict, here - mforthDict,
             LAST_FFI,
-            arfCursesKeyQuestion, arfCursesKey, arfCursesEmit);
+            mforthSimpleKeyQuestion, mforthSimpleKey, mforthSimpleEmit);
 
 
-    /* Initialize curses: disable line buffering and local echo, enable
-     * line-oriented scrolling. */
-    initscr();
-    cbreak();
-    noecho();
-    idlok(stdscr, TRUE);
-    scrollok(stdscr, TRUE);
-
-    /* Launch the ARF interpreter. */
-    arf.go();
-
-    /* Destroy curses. */
-    endwin();
+    /* Launch the MFORTH interpreter. */
+    mforth.go();
 
     /* Exit the application. */
     return 0;

@@ -1,2 +1,7 @@
-test/arf: ARF.h ARF.cpp test/arf.cpp
-	c++ -g -I. -lcurses -o $@ -DENABLE_STACK_CHECKING=1 ARF.cpp test/arf.cpp
+all: test/mforth test/mforthsimple
+
+test/mforth: MFORTH.h MFORTH.cpp test/mforth.cpp
+	c++ -g -I. -lcurses -o $@ -DENABLE_STACK_CHECKING=1 MFORTH.cpp test/mforth.cpp
+
+test/mforthsimple: MFORTH.h MFORTH.cpp test/mforthsimple.cpp
+	c++ -g -I. -o $@ -DENABLE_STACK_CHECKING=1 MFORTH.cpp test/mforthsimple.cpp
