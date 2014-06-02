@@ -1,6 +1,6 @@
-# ARF
+# MFORTH
 
-Arduino-based Forth: embraces the Arduino ecosystem and libraries, while allow Forth-style interactive programming.
+C++-based Forth: embraces existing ecosystems and libraries, while allowing Forth-style interactive programming.  Especially well suited to Arduino-style devices.
 
 # Overview
 
@@ -13,10 +13,10 @@ Provided as an Arduino Library with a small handful of entry points.  Two key en
 
 # Operation
 
-* Flash contains your Arduino sketch, which includes the ARF "kernel" (just another Arduino Library), any linked-in libraries, and all of your predefined words.  The flash dictionary is stored here.
+* Flash contains your Arduino sketch, which includes the MFORTH "kernel" (just another Arduino Library), any linked-in libraries, and all of your predefined words.  The flash dictionary is stored here.
 * RAM contains your interactive words and a runtime dictionary.
   * Obviously the RAM used by your libraries and stuff is here as well.
-  * The size of the ARF RAM dictionary space is controlled by an ARF #define and can vary by platform.
+  * The size of the MFORTH RAM dictionary space is controlled by an MFORTH #define and can vary by platform.
 * EEPROM contains your load-at-boot words and a checksum to verify that we should actually load the EEPROM dictionary into RAM.
 * At any time you can copy an existing definition from RAM to EEPROM.  A `GO` definition in RAM after boot (copied from EEPROM or already in the flash) will cause that word to be executed.
   * You can provide a boot-time hook for bypassing the automatic `GO` word, probably by detecting a low/high signal on an input pin, but it's up to you.
@@ -29,7 +29,7 @@ Provided as an Arduino Library with a small handful of entry points.  Two key en
 
 # Primitives vs. Definitions
 
-**Primitives** are part of the ARF kernel and are Forth words written in C or Forth.  C-based words can block if necessary (for I/O, although that would not be ideal if we ever implement multitasking), but they cannot reenter the ARF kernel.  That is because the kernel needs a thread of words to follow and that thread effectively stops at the point where a C word has been invoked.  Reentrant primitives must be written in Forth and are then dispatched by way of the `DOPRIM` primitive, which tells the inner interpreter that the IP points into ROM, for those processors (AVR) that must use different instructions to access ROM and RAM.
+**Primitives** are part of the MFORTH kernel and are Forth words written in C or Forth.  C-based words can block if necessary (for I/O, although that would not be ideal if we ever implement multitasking), but they cannot reenter the MFORTH kernel.  That is because the kernel needs a thread of words to follow and that thread effectively stops at the point where a C word has been invoked.  Reentrant primitives must be written in Forth and are then dispatched by way of the `DOPRIM` primitive, which tells the inner interpreter that the IP points into ROM, for those processors (AVR) that must use different instructions to access ROM and RAM.
 
 **User-defined words** are Forth words written by the user and are executed from RAM.  These words can reenter the interpreter, change between interpretation and compilation states, etc.
 
@@ -65,15 +65,15 @@ Now that we know Option 3 is possible, for now we'll just use absolute IP addres
 
 # Execution Tokens
 
-Execution Tokens (XT) in ARF are not the same thing as the contents of the Parameter Field in a definition.  The latter always consists of a series of tokens that reference ROM-based primitives.  XTs, on the other hand, are only ever seen on the stack (although they could be stored in constants or arrays as well).
+Execution Tokens (XT) in MFORTH are not the same thing as the contents of the Parameter Field in a definition.  The latter always consists of a series of tokens that reference ROM-based primitives.  XTs, on the other hand, are only ever seen on the stack (although they could be stored in constants or arrays as well).
 
 An XT can point to one of two things: a ROM-based primitive or a user-defined word.  The high bit of the XT indicates the type of thing that is being referenced: ROM-based primitives have a clear high bit and user-defined words have the high bit set.
 
-XTs are used by `EXECUTE` and `COMPILE,`, which must be able to determine the type of XT -- primitive or user-defined -- and then invoke the appropriate `DO*` primitive If the XT references a user-defined word.  This creates additional work for `EXECUTE` and `COMPILE,`, but the benefit to ARF is that the inner interpreter only ever needs to deal with tokens and so its register usage can be optimized for that operation.
+XTs are used by `EXECUTE` and `COMPILE,`, which must be able to determine the type of XT -- primitive or user-defined -- and then invoke the appropriate `DO*` primitive If the XT references a user-defined word.  This creates additional work for `EXECUTE` and `COMPILE,`, but the benefit to MFORTH is that the inner interpreter only ever needs to deal with tokens and so its register usage can be optimized for that operation.
 
 # Relocation
 
-ARF programs are created interactively.  The program manifests itself as a dictionary image.  The dictionary image can be copied verbatim into EEPROM for turnkey applications and is then copied back into RAM to execute the turnkey application.
+MFORTH programs are created interactively.  The program manifests itself as a dictionary image.  The dictionary image can be copied verbatim into EEPROM for turnkey applications and is then copied back into RAM to execute the turnkey application.
 
 This works for the following reasons:
 
@@ -90,7 +90,7 @@ RAM is the most precious resource in the system and so a handful of optimization
 
 # Initialization
 
-ARF is initialized with an array.  ARF takes over that array and uses it for the dictionary and stacks (the latter which are configurable in the constructor).  The stacks start at the end of the array and the dictionary at the beginning.
+MFORTH is initialized with an array.  MFORTH takes over that array and uses it for the dictionary and stacks (the latter which are configurable in the constructor).  The stacks start at the end of the array and the dictionary at the beginning.
 
 `go()` takes the name of the word to find and execute and, by default, that word is `COLD`.  `COLD` initializes the system and then calls `ABORT` (which calls `QUIT`).  The caller could also specify `WARM-EEPROM` which copies the dictionary from EEPROM to RAM and then calls `ABORT` (since the EEPROM would already have to contain `EVALUATE` and `QUIT`).
 
@@ -98,7 +98,7 @@ Later, we will allow people to specify `WARM-EEPROM` which loads and verifies th
 
 # Dictionary Header
 
-Each entry contains a 16-bit link field (comes first in case we need to word-align these things), an 8-bit flag field, a Name Field, and the Parameter Field.  We don't need to bother with the reverse-dictionary stuff that MFORTH used because ARF is a token-threaded Forth and we take the hit of skipping over the NFA during compilation (at which point the PFA address is compiled into the new word).  This slows down compilation, but I am not concerned about that given how infrequent it will be in this environment.
+Each entry contains a 16-bit link field (comes first in case we need to word-align these things), an 8-bit flag field, a Name Field, and the Parameter Field.  We don't need to bother with the reverse-dictionary stuff that MFORTH used because MFORTH is a token-threaded Forth and we take the hit of skipping over the NFA during compilation (at which point the PFA address is compiled into the new word).  This slows down compilation, but I am not concerned about that given how infrequent it will be in this environment.
 
 Note that getting the name of an FFI definition is much slower, because we have to traverse the entire FFI list as well.
 
@@ -138,7 +138,7 @@ Instead of a string-based NFA, FFI trampolines have a 16/24/32-bit reference to 
   * Immediate kernel words don't need an opcode.
 * Possible Rules:
   * Get rid of string input and dictionary searches?  ACCEPT, FIND, WORD, &gt;NUMBER
-    * This really focuses ARF on embedded systems (no text input)...
+    * This really focuses MFORTH on embedded systems (no text input)...
   * Eliminate unlikely helpers: SPACE, SPACES
   * Drop HEX and DECIMAL and put BASE back in there
   * Consider eliminating advanced concepts -- immediate, &gt;BODY, etc.
@@ -243,12 +243,12 @@ Eliminates the need for the RAM-based lookup table at the expense of 2x-sized RA
 
 Also, makes store/load of RAM words to/from EEPROM and Flash easier, because you can just rewrite the jumps as you store/load the words.  Contrast this with opcodes, which completely change depending on which words have been stored.  Probably not actually that different, but feels better for some reason...
 
-Downside is you only have 128 words total in Flash, which is only going to be enough for Forth and not enough for Arduino Libraries.  Possible solution there is to compile trampoline words into RAM as you reference them during interactive development.  In other words, hundreds of Library words are available in the Flash dictionary, but do not have opcodes.  Then if you reference one interactively we create a trampoline word that can be referenced using the 16-bit indirect-threaded address.  The trampoline word just issues a jump directly to the Flash routine.  This lets us offer hundreds of Library words without any runtime cost until/unless individual words are actually used.  Also, this should make it possible to create "\*\_arf.h" headers that you can include after the library which then just do:
+Downside is you only have 128 words total in Flash, which is only going to be enough for Forth and not enough for Arduino Libraries.  Possible solution there is to compile trampoline words into RAM as you reference them during interactive development.  In other words, hundreds of Library words are available in the Flash dictionary, but do not have opcodes.  Then if you reference one interactively we create a trampoline word that can be referenced using the 16-bit indirect-threaded address.  The trampoline word just issues a jump directly to the Flash routine.  This lets us offer hundreds of Library words without any runtime cost until/unless individual words are actually used.  Also, this should make it possible to create "\*\_mforth.h" headers that you can include after the library which then just do:
 
-    ARF_LIBRARY_WORD("eepromRead", EEPROM.read, 1);
-    ARF_LIBRARY_WORD("eepromWrite", EEPROM.write, 2);
+    MFORTH_LIBRARY_WORD("eepromRead", EEPROM.read, 1);
+    MFORTH_LIBRARY_WORD("eepromWrite", EEPROM.write, 2);
 
-etc.  Those macros add something to the compiled ARF dictionary, again, on the theory that we have tons of flash and should blow it on making things available interactively.
+etc.  Those macros add something to the compiled MFORTH dictionary, again, on the theory that we have tons of flash and should blow it on making things available interactively.
 
 Another nice thing about this approach is that the trampoline words can easily be stored in Flash/EEPROM as well, because they just look like normal, runtime-added words.  *i.e.,* they get referenced through indirect-threading, are added as dependencies, etc.
 
@@ -288,7 +288,7 @@ References for adding assembly code to Arduino libraries:
 * Not as useful/accurate, but just in case: <http://www.nongnu.org/avr-libc/user-manual/FAQ.html#faq_reg_usage>
 * Important information on conserving RAM (and Flash) on an Arduino: <http://www.fourwalledcubicle.com/AVRArticles.php>
 
-**NOTE** significantly changes the Workflow described below, because you just include the `\*\_arf.h` files for whichever libraries you want to make available.  You don't actually have to write the FFI word yourself, in other words.
+**NOTE** significantly changes the Workflow described below, because you just include the `\*\_mforth.h` files for whichever libraries you want to make available.  You don't actually have to write the FFI word yourself, in other words.
 
 ##### Jump Table
 
@@ -296,7 +296,7 @@ It's pretty hard (impossible?) to get gcc-avr to automatically generate a jump t
 
 Ah!  The combination is to use the goto-label trick combined with the `PGMSPACE` macro and then `pgm_read_word`.  This causes our jump table to be stored in Program Space.
 
-There are still a couple of unnecessary instructions here though, because GCC doesn't know that we can just blow away Z, for example.  Instead, it tries to retain Z across jumps.  We could probably reduce the number of instructions at use if we create an assembly version of arfInnerInterpreter that has careful knowledge of which registers are being used and then just blows away Z as part of the IJMP, issuing a dedicated JMP back to the top of the loop.
+There are still a couple of unnecessary instructions here though, because GCC doesn't know that we can just blow away Z, for example.  Instead, it tries to retain Z across jumps.  We could probably reduce the number of instructions at use if we create an assembly version of mforthInnerInterpreter that has careful knowledge of which registers are being used and then just blows away Z as part of the IJMP, issuing a dedicated JMP back to the top of the loop.
 
 Here is what is currently being done (R30:R31/Z contains the opcode):
 
@@ -320,7 +320,7 @@ RET 		    (4) Subroutine return
 
 `PUSH` + `PUSH` + `RET` is 8 instructions, but instead we could do `MOVW` and `ICALL` which is 4 instructions.  That's a 2x improvement, although probably in the grand scheme of things it doesn't matter, given everything else that is happening here.
 
-The best (?) speed up is likely to be an assembly version of arfInnerInterpreter.  Then we could store a bunch of stuff in registers -- R2-R17 are call-saved -- and minimize the overall number of instructions here.  The jump table could stay in R2:R3, for example, and so then jumping to an opcode becomes very efficient:
+The best (?) speed up is likely to be an assembly version of mforthInnerInterpreter.  Then we could store a bunch of stuff in registers -- R2-R17 are call-saved -- and minimize the overall number of instructions here.  The jump table could stay in R2:R3, for example, and so then jumping to an opcode becomes very efficient:
 
 ```asm
 ;; R2:R3 contains jump table base.
@@ -374,7 +374,7 @@ That only saves 5 instructions though and doesn't feel worth us hand-coding stuf
 
 ##### Threading Model and Opcodes
 
-ARF is indirect-threaded because the CFA contains the opcode that runs the word: DOCOLON, DOCREATE, DOVARIABLE, etc.
+MFORTH is indirect-threaded because the CFA contains the opcode that runs the word: DOCOLON, DOCREATE, DOVARIABLE, etc.
 
 Words look like this:
 
@@ -385,7 +385,7 @@ Words look like this:
 
 Blink tutorial: <http://www.arduino.cc/en/Tutorial/Blink>
 
-1. Create basic blink Arduino sketch with our ARF library.
+1. Create basic blink Arduino sketch with our MFORTH library.
 2. We'll need to reference that assembly serial sample thing so that we can have .cpp and .h and .S code.
 3. Need the basic layout: NEXT (opcode loop through a table, really), EXIT, the stack, maybe a couple of basic opcodes for testing.
 3. Add the single zero-op FFI opcode ($00) and EXIT ($7F).
@@ -393,14 +393,14 @@ Blink tutorial: <http://www.arduino.cc/en/Tutorial/Blink>
 5. Write some startup code that builds a dictionary in RAM with the right FFI and EXIT calls and stuff.
 6. Execute that and see if it blinks.
 7. Add the single-op FFI opcode and use it for delay (creating ledOn and ledOff FFIs).
-8. Same thing for two-op FFI opcodes so that the entire thing can be in ARF.
+8. Same thing for two-op FFI opcodes so that the entire thing can be in MFORTH.
 
 Thoughts: No loop constructs, just tail recursion.
 
 Technically we could go for a simpler approach, just to get something working at all:
 
-1. Basic blink sketch with ARF library.
-2. ARF.cpp, ARF.h, ARF.S files.
+1. Basic blink sketch with MFORTH library.
+2. MFORTH.cpp, MFORTH.h, MFORTH.S files.
 3. NEXT, EXIT, the stack, dictionary traversal.
 4. Zere-op FFI opcode ($00) that just calls the "blink" function and doesn't actually do any FFI.
 5. Startup code with hardcoded dictionary.
@@ -408,8 +408,8 @@ Technically we could go for a simpler approach, just to get something working at
 
 ## Workflow
 
-* Create sketch, bring in ARF and other Arduino Libraries.
-* Define precompiled ARF words.
+* Create sketch, bring in MFORTH and other Arduino Libraries.
+* Define precompiled MFORTH words.
   * Words for accessing library functions (FFI word; requires writing Arduino functions).
   * App-specific words -- can be written in Wiring (FFI word) or Forth (which then needs some sort of metacompiler).
 * Flash the new code.
@@ -423,5 +423,5 @@ Technically we could go for a simpler approach, just to get something working at
 * **However** EEPROM is never very big!  2KB at the most, whereas RAM is 8KB starting on the Teensy++ 2.0 and then goes up to 16KB and 64KB.
   * This means that RAM is ultimately the best place to store the interactive dictionary.
   * Also, we can't really execute out of EEPROM given how slow that is likely to be.
-* Ideally should run most programs from Flash, which means that we need a meta-compiler or, perhaps even better, a way for ARF to output its own turnkey source.  *i.e.,* you run some command and it spams out a C-style string, #define, whatever that you can then just copy/paste back into your sketch in order to provide your turnkey code.
+* Ideally should run most programs from Flash, which means that we need a meta-compiler or, perhaps even better, a way for MFORTH to output its own turnkey source.  *i.e.,* you run some command and it spams out a C-style string, #define, whatever that you can then just copy/paste back into your sketch in order to provide your turnkey code.
 * Otherwise programs can be typed in and then run from RAM, with
