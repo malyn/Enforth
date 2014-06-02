@@ -4,8 +4,12 @@
   * HLD is 3x the bit size in order to account for binary output with 50% extra stuff.  So 48/96 bytes.
   * Stacks are at the start of the buffer so that we don't have the issue with sometimes reading TOS from beyond the data stack when the stack is in fact empty.
   * Tasks are 32 return stack cells (64/128 bytes), 16 data stack cells (32/64 bytes), 16 user cells (32/64 bytes) for a total of 128/256 bytes per task.
+    * Note that tasks go into the dictionary and not at the end!  This allows dictionaries to be resized or only partially copied to storage.
+    * Need one task cell to act as a link to the previously-created task as well as a global that points to the newest task (similar to the dictionary itself).
   * A 512-byte VM buffer gives you 256 bytes of empty dictionary space, assuming that you use an 80-byte TIB and one task.  Basically the VM has 128 bytes of overhead on a 16-bit processor and each task also has 128 bytes of overhead.  Everything beyond that is free to use.
+    * Also globals, so probably more than 128 bytes for the system.  Could slightly reduce this if we go with the 2n+2 size (34/66) for HLD per the standard.
     * PAD would make this worse, because each task would then need an additional 84 bytes at minimum.  I recommend that we not offer PAD for now.
+  * Interestingly enough, this actually makes tasks a realistic concept even on the Arduino Uno with only 2.5KB of RAM...  A 1.5KB VM would give you 512 bytes for four tasks and still leave ~1KB for the dictionary, with the remaining 1KB free for Arduino libraries.
 * Reorganize/Clean up source files.  Maybe auto-generate opcodes so that we can avoid some of the duplication, for example.
 * Implement pictured numeric output (putting `HLD` in the `vm` buffer).
 * Implement compilation (`:`, `COMPILE,`, `;`, etc.).
