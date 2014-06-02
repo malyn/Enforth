@@ -47,112 +47,6 @@
 
 #include "ARF.h"
 
-// TODO We've gotten our names a bit wrong here.  These aren't
-// "opcodes" as much as they are "primitive words".  Similarly, the
-// RAM definitions are "user-defined words."
-//
-// The key point here is that the PFA contains a list of tokens to
-// primitive words.  There is no longer a concept of "opcode" since ARF
-// is a Forth machine and not a CPU.
-enum arfOpcode
-{
-    //arfOpCOLD = 0x00,
-    arfOpLIT = 0x01,
-    arfOpDUP,
-    arfOpDROP,
-    arfOpPLUS,
-    arfOpMINUS,
-    arfOpONEPLUS,
-    arfOpONEMINUS,
-    arfOpSWAP,
-    arfOpBRANCH,
-    arfOpABORT,
-    arfOpCHARLIT,
-    arfOpCOMPILECOMMA,
-    arfOpCR,
-    arfOpEMIT,
-    arfOpEXECUTE,
-    arfOpFETCH,
-    arfOpLITERAL,
-    arfOpNUMBERQ,
-    arfOpOR,
-    arfOpPARSEWORD,
-    arfOpFINDWORD,
-    arfOpQDUP,
-    arfOpSPACE,
-    arfOpSTATE,
-    arfOpSTORE,
-    arfOpTOIN,
-    arfOpTWODROP,
-    arfOpTYPE,
-    arfOpZBRANCH,
-    arfOpZERO,
-    arfOpZEROEQUALS,
-    arfOpQUIT,
-    arfOpTIB,
-    arfOpTIBSIZE,
-    arfOpACCEPT,
-    arfOpINTERPRET,
-    arfOpPSQUOTE,
-    arfOpBL,
-    arfOpCFETCH,
-    arfOpCOUNT,
-    arfOpTONUMBER,
-    arfOpDEPTH,
-    arfOpDOT,
-    arfOpPDOTQUOTE,
-    arfOpBACKSLASH,
-
-    //...
-
-    // Opcodes 0x61-0x6e are reserved for jump labels to the "CFA"
-    // opcodes *after* the point where W (the Word Pointer) has already
-    // been set.  This allows words like EXECUTE to jump to a CFA
-    // without having to use a switch statement to convert definition
-    // types to opcodes.  The opcode names themselves do not need to be
-    // defined because they are never referenced (we're just reserving
-    // space in the primitive list and Address Interpreter jump table,
-    // in other words), but we do list them here in order to make it
-    // easier to turn raw opcodes into enum values in the debugger.
-    arfOpPDOCOLON = 0x60,
-    arfOpPDOIMMEDIATE,
-    arfOpPDOCONSTANT,
-    arfOpPDOCREATE,
-    arfOpPDODOES,
-    arfOpPDOVARIABLE,
-    arfOpPDOFFI0,
-    arfOpPDOFFI1,
-    arfOpPDOFFI2,
-    arfOpPDOFFI3,
-    arfOpPDOFFI4,
-    arfOpPDOFFI5,
-    arfOpPDOFFI6,
-    arfOpPDOFFI7,
-    arfOpPDOFFI8,
-
-    // Just like the above, these opcodes are never used in code and
-    // this list of enum values is only used to simplify debugging.
-    arfOpDOCOLON = 0x70,
-    arfOpDOIMMEDIATE,
-    arfOpDOCONSTANT,
-    arfOpDOCREATE,
-    arfOpDODOES,
-    arfOpDOVARIABLE,
-    arfOpDOFFI0,
-    arfOpDOFFI1,
-    arfOpDOFFI2,
-    arfOpDOFFI3,
-    arfOpDOFFI4,
-    arfOpDOFFI5,
-    arfOpDOFFI6,
-    arfOpDOFFI7,
-    arfOpDOFFI8,
-
-    // This is a normal opcode and is placed at the end in order to make
-    // it easier to identify in definitions.
-    arfOpEXIT = 0x7F,
-} arfOpcode;
-
 // TODO Should move all of the internal words (BRANCH, CHARLIT, etc.) to
 // the end of the opcode table so that they don't need to waste space in
 // the primitive list.
@@ -227,43 +121,10 @@ static const char primitives[] PROGMEM =
     "\xff"
 ;
 
-typedef enum
-{
-    arfCFADOCOLON = 0,
-    arfCFADOIMMEDIATE,
-    arfCFADOCONSTANT,
-    arfCFADOCREATE,
-    arfCFADODOES,
-    arfCFADOVARIABLE,
-    arfCFADOFFI0,
-    arfCFADOFFI1,
-    arfCFADOFFI2,
-    arfCFADOFFI3,
-    arfCFADOFFI4,
-    arfCFADOFFI5,
-    arfCFADOFFI6,
-    arfCFADOFFI7,
-    arfCFADOFFI8
-} arfCFA;
-
-typedef arfCell (*arfZeroArgFFI)(void);
-typedef arfCell (*arfOneArgFFI)(arfCell a);
-typedef arfCell (*arfTwoArgFFI)(arfCell a, arfCell b);
-typedef arfCell (*arfThreeArgFFI)(arfCell a, arfCell b, arfCell c);
-typedef arfCell (*arfFourArgFFI)(arfCell a, arfCell b, arfCell c, arfCell d);
-typedef arfCell (*arfFiveArgFFI)(arfCell a, arfCell b, arfCell c, arfCell d,
-                                 arfCell e);
-typedef arfCell (*arfSixArgFFI)(arfCell a, arfCell b, arfCell c, arfCell d,
-                                arfCell e, arfCell f);
-typedef arfCell (*arfSevenArgFFI)(arfCell a, arfCell b, arfCell c, arfCell d,
-                                  arfCell e, arfCell f, arfCell g);
-typedef arfCell (*arfEightArgFFI)(arfCell a, arfCell b, arfCell c, arfCell d,
-                                  arfCell e, arfCell f, arfCell g, arfCell h);
-
 ARF::ARF(const uint8_t * dictionary, int dictionarySize,
         int latestOffset, int hereOffset,
-        const arfFFI * const lastFFI,
-        arfKeyQuestion keyQ, arfKey key, arfEmit emit)
+        const FFIDef * const lastFFI,
+        KeyQuestion keyQ, Key key, Emit emit)
  : lastFFI(lastFFI),
    keyQ(keyQ), key(key), emit(emit),
    dictionary(dictionary), dictionarySize(dictionarySize),
@@ -281,10 +142,10 @@ ARF::ARF(const uint8_t * dictionary, int dictionarySize,
     this->here = const_cast<uint8_t *>(this->dictionary) + hereOffset;
 }
 
-arfUnsigned ARF::parenAccept(uint8_t * caddr, arfUnsigned n1)
+ARF::Unsigned ARF::parenAccept(uint8_t * caddr, ARF::Unsigned n1)
 {
     char * p = (char *)caddr;
-    arfUnsigned n2 = 0;
+    Unsigned n2 = 0;
     char ch;
 
     // Read characters until we get a linefeed.
@@ -310,7 +171,7 @@ arfUnsigned ARF::parenAccept(uint8_t * caddr, arfUnsigned n1)
     return n2;
 }
 
-bool ARF::parenFindWord(uint8_t * caddr, arfUnsigned u, uint16_t &xt, bool &isImmediate)
+bool ARF::parenFindWord(uint8_t * caddr, ARF::Unsigned u, XT &xt, bool &isImmediate)
 {
     int searchLen = u;
     char * searchName = (char *)caddr;
@@ -332,7 +193,7 @@ bool ARF::parenFindWord(uint8_t * caddr, arfUnsigned u, uint16_t &xt, bool &isIm
         // Compare the strings, which happens differently depending on
         // if this is a user-defined word or an FFI trampoline.
         bool nameMatch;
-        if (definitionType < arfCFADOFFI0)
+        if (definitionType < CFADOFFI0)
         {
             char * pSearchName = searchName;
             char * pDictName = (char *)(curWord + 3);
@@ -360,7 +221,7 @@ bool ARF::parenFindWord(uint8_t * caddr, arfUnsigned u, uint16_t &xt, bool &isIm
         else
         {
             // Get a reference to the FFI definition.
-            const arfFFI * ffi = *(arfFFI **)(curWord + 3);
+            const FFIDef * ffi = *(FFIDef **)(curWord + 3);
             const char * ffiName = (char *)pgm_read_word(&ffi->name);
 
             // See if this FFI matches our search word.
@@ -373,7 +234,7 @@ bool ARF::parenFindWord(uint8_t * caddr, arfUnsigned u, uint16_t &xt, bool &isIm
         if (nameMatch)
         {
             xt = 0x8000 | (uint16_t)(curWord - this->dictionary);
-            isImmediate = *(curWord + 2) == arfCFADOIMMEDIATE;
+            isImmediate = *(curWord + 2) == CFADOIMMEDIATE;
             return true;
         }
     }
@@ -413,11 +274,11 @@ bool ARF::parenFindWord(uint8_t * caddr, arfUnsigned u, uint16_t &xt, bool &isIm
 // Attempt to convert a string at c-addr of length u into digits, using
 // the radix in BASE.  The number and -1 is returned if the conversion
 // was successful, otherwise 0 is returned.
-bool ARF::parenNumberQ(uint8_t * caddr, arfUnsigned u, arfInt &n)
+bool ARF::parenNumberQ(uint8_t * caddr, ARF::Unsigned u, ARF::Int &n)
 {
     // Store the sign as a value to be multipled against the final
     // number.
-    arfInt sign = 1;
+    Int sign = 1;
     if (*caddr == '-')
     {
         sign = -1;
@@ -426,11 +287,11 @@ bool ARF::parenNumberQ(uint8_t * caddr, arfUnsigned u, arfInt &n)
     }
 
     // Try to convert the (rest of, if we found a sign) number.
-    arfUnsigned ud = 0;
+    Unsigned ud = 0;
     this->parenToNumber(ud, caddr, u);
     if (u == 0)
     {
-        n = (arfInt)ud * sign;
+        n = (Int)ud * sign;
         return true;
     }
     else
@@ -451,7 +312,7 @@ bool ARF::parenNumberQ(uint8_t * caddr, arfUnsigned u, arfInt &n)
 // string if the string was entirely converted.  u2 is the number of
 // unconverted characters in the string.  An ambiguous condition exists
 // if ud2 overflows during the conversion.
-void ARF::parenToNumber(arfUnsigned &ud, uint8_t * &caddr, arfUnsigned &u)
+void ARF::parenToNumber(ARF::Unsigned &ud, uint8_t * &caddr, ARF::Unsigned &u)
 {
     while (u > 0)
     {
@@ -461,7 +322,7 @@ void ARF::parenToNumber(arfUnsigned &ud, uint8_t * &caddr, arfUnsigned &u)
             break;
         }
 
-        arfUnsigned digit = ch - '0';
+        Unsigned digit = ch - '0';
         if (digit > 9)
         {
             digit = tolower(ch) - 'a' + 10;
@@ -478,7 +339,7 @@ void ARF::parenToNumber(arfUnsigned &ud, uint8_t * &caddr, arfUnsigned &u)
     }
 }
 
-void ARF::parenParseWord(uint8_t delim, uint8_t * &caddr, arfUnsigned &u)
+void ARF::parenParseWord(uint8_t delim, uint8_t * &caddr, ARF::Unsigned &u)
 {
     // Skip over the start of the string until we find a non-delimiter
     // character or we hit the end of the parse area.
@@ -507,10 +368,10 @@ void ARF::parenParseWord(uint8_t delim, uint8_t * &caddr, arfUnsigned &u)
 void ARF::go()
 {
     register uint8_t *ip;
-    register arfCell tos;
-    register arfCell *restDataStack; // Points at the second item on the stack.
+    register Cell tos;
+    register Cell *restDataStack; // Points at the second item on the stack.
     register uint8_t *w;
-    register arfCell *returnTop;
+    register Cell *returnTop;
 
 #ifdef __AVR__
     register bool inProgramSpace;
@@ -545,68 +406,68 @@ void ARF::go()
     static const void * const jtb[128] PROGMEM = {
         // $00 - $07
         0,
-        &&arfOpLIT,
-        &&arfOpDUP,
-        &&arfOpDROP,
+        &&LIT,
+        &&DUP,
+        &&DROP,
 
-        &&arfOpPLUS,
-        &&arfOpMINUS,
-        &&arfOpONEPLUS,
-        &&arfOpONEMINUS,
+        &&PLUS,
+        &&MINUS,
+        &&ONEPLUS,
+        &&ONEMINUS,
 
         // $08 - $0F
-        &&arfOpSWAP,
-        &&arfOpBRANCH,
-        &&arfOpABORT,
-        &&arfOpCHARLIT,
+        &&SWAP,
+        &&BRANCH,
+        &&ABORT,
+        &&CHARLIT,
 
-        &&arfOpCOMPILECOMMA,
-        &&arfOpCR,
-        &&arfOpEMIT,
-        &&arfOpEXECUTE,
+        &&COMPILECOMMA,
+        &&CR,
+        &&EMIT,
+        &&EXECUTE,
 
         // $10 - $17
-        &&arfOpFETCH,
-        &&arfOpLITERAL,
-        &&arfOpNUMBERQ,
-        &&arfOpOR,
+        &&FETCH,
+        &&LITERAL,
+        &&NUMBERQ,
+        &&OR,
 
-        &&arfOpPARSEWORD,
-        &&arfOpFINDWORD,
-        &&arfOpQDUP,
-        &&arfOpSPACE,
+        &&PARSEWORD,
+        &&FINDWORD,
+        &&QDUP,
+        &&SPACE,
 
         // $18 - $1F
-        &&arfOpSTATE,
-        &&arfOpSTORE,
-        &&arfOpTOIN,
-        &&arfOpTWODROP,
+        &&STATE,
+        &&STORE,
+        &&TOIN,
+        &&TWODROP,
 
-        &&arfOpTYPE,
-        &&arfOpZBRANCH,
-        &&arfOpZERO,
-        &&arfOpZEROEQUALS,
+        &&TYPE,
+        &&ZBRANCH,
+        &&ZERO,
+        &&ZEROEQUALS,
 
         // $20 - $27
-        &&arfOpQUIT,
-        &&arfOpTIB,
-        &&arfOpTIBSIZE,
-        &&arfOpACCEPT,
+        &&QUIT,
+        &&TIB,
+        &&TIBSIZE,
+        &&ACCEPT,
 
-        &&arfOpINTERPRET,
-        &&arfOpPSQUOTE,
-        &&arfOpBL,
-        &&arfOpCFETCH,
+        &&INTERPRET,
+        &&PSQUOTE,
+        &&BL,
+        &&CFETCH,
 
         // $28 - $2F
-        &&arfOpCOUNT,
-        &&arfOpTONUMBER,
-        &&arfOpDEPTH,
-        &&arfOpDOT,
+        &&COUNT,
+        &&TONUMBER,
+        &&DEPTH,
+        &&DOT,
 
-        &&arfOpPDOTQUOTE,
-        &&arfOpBACKSLASH,
-        &&arfOpHEX,
+        &&PDOTQUOTE,
+        &&BACKSLASH,
+        &&HEX,
         0,
 
         // $30 - $37
@@ -634,41 +495,41 @@ void ARF::go()
         0, 0, 0, 0,
 
         // $60 - $67
-        &&arfOpPDOCOLON,
+        &&PDOCOLON,
         0, 0, 0,
 
         0, 0,
-        &&arfOpPDOFFI0,
-        &&arfOpPDOFFI1,
+        &&PDOFFI0,
+        &&PDOFFI1,
 
         // $68 - $6F
-        &&arfOpPDOFFI2,
+        &&PDOFFI2,
         0, 0, 0,
 
         0, 0, 0, 0,
 
         // $70 - $77
-        &&arfOpDOCOLON,
+        &&DOCOLON,
         0, 0, 0,
 
         0, 0,
-        &&arfOpDOFFI0,
-        &&arfOpDOFFI1,
+        &&DOFFI0,
+        &&DOFFI1,
 
         // $78 - $7F
-        &&arfOpDOFFI2,
-        &&arfOpDOFFI3,
-        &&arfOpDOFFI4,
-        &&arfOpDOFFI5,
+        &&DOFFI2,
+        &&DOFFI3,
+        &&DOFFI4,
+        &&DOFFI5,
 
-        &&arfOpDOFFI6,
-        &&arfOpDOFFI7,
-        &&arfOpDOFFI8,
-        &&arfOpEXIT,
+        &&DOFFI6,
+        &&DOFFI7,
+        &&DOFFI8,
+        &&EXIT,
     };
 
     // Jump to ABORT, which initializes the IP, our stacks, etc.
-    goto arfOpABORT;
+    goto ABORT;
 
     // The inner interpreter.
     while (true)
@@ -690,70 +551,70 @@ void ARF::go()
 DISPATCH_OPCODE:
         goto *(void *)pgm_read_word(&jtb[op]);
 
-        arfOpDOFFI0:
+        DOFFI0:
         {
             CHECK_STACK(0, 1);
 
             w = *(uint8_t**)ip;
-            ip += FFIPROCSZ;
+            ip += FFIProcPtrSize;
 
-        arfOpPDOFFI0:
+        PDOFFI0:
             *--restDataStack = tos;
-            tos = (*(arfZeroArgFFI)w)();
+            tos = (*(ZeroArgFFI)w)();
         }
         continue;
 
-        arfOpDOFFI1:
+        DOFFI1:
         {
             CHECK_STACK(1, 1);
 
             w = *(uint8_t**)ip;
-            ip += FFIPROCSZ;
+            ip += FFIProcPtrSize;
 
-        arfOpPDOFFI1:
-            tos = (*(arfOneArgFFI)w)(tos);
+        PDOFFI1:
+            tos = (*(OneArgFFI)w)(tos);
         }
         continue;
 
-        arfOpDOFFI2:
+        DOFFI2:
         {
             CHECK_STACK(2, 1);
 
             w = *(uint8_t**)ip;
-            ip += FFIPROCSZ;
+            ip += FFIProcPtrSize;
 
-        arfOpPDOFFI2:
-            arfCell arg2 = tos;
-            arfCell arg1 = *restDataStack++;
-            tos = (*(arfTwoArgFFI)w)(arg1, arg2);
+        PDOFFI2:
+            Cell arg2 = tos;
+            Cell arg1 = *restDataStack++;
+            tos = (*(TwoArgFFI)w)(arg1, arg2);
         }
         continue;
 
-        arfOpDOFFI3:
+        DOFFI3:
             CHECK_STACK(3, 1);
         continue;
 
-        arfOpDOFFI4:
+        DOFFI4:
             CHECK_STACK(4, 1);
         continue;
 
-        arfOpDOFFI5:
+        DOFFI5:
             CHECK_STACK(5, 1);
         continue;
 
-        arfOpDOFFI6:
+        DOFFI6:
             CHECK_STACK(6, 1);
         continue;
 
-        arfOpDOFFI7:
+        DOFFI7:
             CHECK_STACK(7, 1);
         continue;
 
-        arfOpDOFFI8:
+        DOFFI8:
             CHECK_STACK(8, 1);
         continue;
 
-        arfOpLIT:
+        LIT:
         {
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
@@ -765,59 +626,59 @@ DISPATCH_OPCODE:
             else
 #endif
             {
-                tos = *(arfCell*)ip;
+                tos = *(Cell*)ip;
             }
 
-            ip += CELLSZ;
+            ip += CellSize;
         }
         continue;
 
-        arfOpDUP:
+        DUP:
         {
             CHECK_STACK(1, 2);
             *--restDataStack = tos;
         }
         continue;
 
-        arfOpDROP:
+        DROP:
         {
             CHECK_STACK(1, 0);
             tos = *restDataStack++;
         }
         continue;
 
-        arfOpPLUS:
+        PLUS:
         {
             CHECK_STACK(2, 1);
             tos.i += restDataStack++->i;
         }
         continue;
 
-        arfOpMINUS:
+        MINUS:
         {
             CHECK_STACK(2, 1);
             tos.i = restDataStack++->i - tos.i;
         }
         continue;
 
-        arfOpONEPLUS:
+        ONEPLUS:
         {
             CHECK_STACK(1, 1);
             tos.i++;
         }
         continue;
 
-        arfOpONEMINUS:
+        ONEMINUS:
         {
             CHECK_STACK(1, 1);
             tos.i--;
         }
         continue;
 
-        arfOpSWAP:
+        SWAP:
         {
             CHECK_STACK(2, 2);
-            arfCell swap = restDataStack[0];
+            Cell swap = restDataStack[0];
             restDataStack[0] = tos;
             tos = swap;
         }
@@ -825,10 +686,10 @@ DISPATCH_OPCODE:
 
         // TODO Add docs re: Note that (branch) and (0branch) offsets
         // are 8-bit relative offsets.  UNLIKE word addresses, the IP
-        // points at the offset in arfOpBRANCH/arfOpZBRANCH.  These
-        // offsets can be positive or negative because branches can go
-        // both forwards and backwards.
-        arfOpBRANCH:
+        // points at the offset in BRANCH/ZBRANCH.  These offsets can be
+        // positive or negative because branches can go both forwards
+        // and backwards.
+        BRANCH:
         {
             CHECK_STACK(0, 0);
 
@@ -863,7 +724,7 @@ DISPATCH_OPCODE:
                 this->emit('V');
                 this->emit('\n');
             }
-            goto arfOpABORT;
+            goto ABORT;
         }
         continue;
 
@@ -877,7 +738,7 @@ DISPATCH_OPCODE:
                 this->emit('N');
                 this->emit('\n');
             }
-            goto arfOpABORT;
+            goto ABORT;
         }
         continue;
 #endif
@@ -887,16 +748,16 @@ DISPATCH_OPCODE:
         // Empty the data stack and perform the function of QUIT, which
         // includes emptying the return stack, without displaying a
         // message.
-        arfOpABORT:
+        ABORT:
         {
             tos.i = 0;
-            restDataStack = (arfCell*)&this->dataStack[32];
+            restDataStack = (Cell*)&this->dataStack[32];
             this->base = 10;
-            goto arfOpQUIT;
+            goto QUIT;
         }
         continue;
 
-        arfOpCHARLIT:
+        CHARLIT:
         {
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
@@ -915,7 +776,7 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpCOMPILECOMMA:
+        COMPILECOMMA:
         {
             // TODO Needs to differentiate between XTs for primitive
             // words and user-defined words.  The latter will be encoded
@@ -947,7 +808,7 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpCR:
+        CR:
         {
             CHECK_STACK(0, 0);
 
@@ -958,7 +819,7 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpEMIT:
+        EMIT:
         {
             CHECK_STACK(1, 0);
 
@@ -976,7 +837,7 @@ DISPATCH_OPCODE:
         //
         // Remove xt from the stack and perform the semantics identified
         // by it.  Other stack effects are due to the word EXECUTEd.
-        arfOpEXECUTE:
+        EXECUTE:
         {
             CHECK_STACK(1, 0);
 
@@ -1010,7 +871,7 @@ DISPATCH_OPCODE:
                 // itself (which we get by dereferencing the FFI linked
                 // list entry that is stored after the dictionary
                 // flags).
-                if (definitionType < arfCFADOFFI0)
+                if (definitionType < CFADOFFI0)
                 {
                     while ((*pTarget++ & 0x80) == 0)
                     {
@@ -1023,7 +884,7 @@ DISPATCH_OPCODE:
                 {
                     // Dereference the linked list entry in order to get
                     // the FFI function pointer.
-                    const arfFFI * ffi = *(arfFFI **)pTarget;
+                    const FFIDef * ffi = *(FFIDef **)pTarget;
                     const void * ffiFn = (void *)pgm_read_word(&ffi->fn);
                     w = (uint8_t*)ffiFn;
                 }
@@ -1042,14 +903,14 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpFETCH:
+        FETCH:
         {
             CHECK_STACK(1, 1);
-            tos = *(arfCell*)tos.pRAM;
+            tos = *(Cell*)tos.pRAM;
         }
         continue;
 
-        arfOpLITERAL:
+        LITERAL:
         {
             // TODO Implement this.
         }
@@ -1062,14 +923,14 @@ DISPATCH_OPCODE:
         // digits, using the radix in BASE.  The number and -1 is
         // returned if the conversion was successful, otherwise 0 is
         // returned.
-        arfOpNUMBERQ:
+        NUMBERQ:
         {
             CHECK_STACK(2, 3);
 
-            arfUnsigned u = tos.u;
+            Unsigned u = tos.u;
             uint8_t * caddr = (uint8_t*)restDataStack->pRAM;
 
-            arfInt n;
+            Int n;
             if (this->parenNumberQ(caddr, u, n))
             {
                 // Stack still contains c-addr u; rewrite to n -1.
@@ -1085,7 +946,7 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpOR:
+        OR:
         {
             CHECK_STACK(2, 1);
             tos.i |= restDataStack++->i;
@@ -1099,14 +960,14 @@ DISPATCH_OPCODE:
         // c-addr is the address within the input buffer and u is the
         // length of the selected string. If the parse area is empty,
         // the resulting string has a zero length.
-        arfOpPARSEWORD:
+        PARSEWORD:
         {
             CHECK_STACK(0, 2);
 
             *--restDataStack = tos;
 
             uint8_t * caddr;
-            arfUnsigned u;
+            Unsigned u;
             parenParseWord(' ', caddr, u);
             (--restDataStack)->pRAM = caddr;
             tos.u = u;
@@ -1124,14 +985,14 @@ DISPATCH_OPCODE:
         // otherwise also return minus-one (-1).  For a given string,
         // the values returned by FIND-WORD while compiling may differ
         // from those returned while not compiling.
-        arfOpFINDWORD:
+        FINDWORD:
         {
             CHECK_STACK(2, 3);
 
             uint8_t * caddr = (uint8_t *)restDataStack->pRAM;
-            arfUnsigned u = tos.u;
+            Unsigned u = tos.u;
 
-            arfXT xt;
+            XT xt;
             bool isImmediate;
             if (parenFindWord(caddr, u, xt, isImmediate))
             {
@@ -1148,7 +1009,7 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpQDUP:
+        QDUP:
         {
             CHECK_STACK(1, 2);
 
@@ -1159,7 +1020,7 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpSPACE:
+        SPACE:
         {
             CHECK_STACK(0, 0);
 
@@ -1170,7 +1031,7 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpSTATE:
+        STATE:
         {
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
@@ -1182,10 +1043,10 @@ DISPATCH_OPCODE:
         // ! [CORE] 6.1.0010 "store" ( x a-addr -- )
         //
         // Store x at a-addr.
-        arfOpSTORE:
+        STORE:
         {
             CHECK_STACK(2, 0);
-            *(arfCell*)tos.pRAM = *restDataStack++;
+            *(Cell*)tos.pRAM = *restDataStack++;
             tos = *restDataStack++;
         }
         continue;
@@ -1196,7 +1057,7 @@ DISPATCH_OPCODE:
         // a-addr is the address of a cell containing the offset in
         // characters from the start of the input buffer to the start of
         // the parse area.
-        arfOpTOIN:
+        TOIN:
         {
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
@@ -1204,7 +1065,7 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpTWODROP:
+        TWODROP:
         {
             CHECK_STACK(2, 0);
             restDataStack++;
@@ -1213,7 +1074,7 @@ DISPATCH_OPCODE:
         continue;
 
         // NOTE: Only works for strings stored in data space!
-        arfOpTYPE:
+        TYPE:
         {
             CHECK_STACK(2, 0);
 
@@ -1230,7 +1091,7 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpZBRANCH:
+        ZBRANCH:
         {
             CHECK_STACK(1, 0);
 
@@ -1259,7 +1120,7 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpZERO:
+        ZERO:
         {
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
@@ -1267,7 +1128,7 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpZEROEQUALS:
+        ZEROEQUALS:
         {
             CHECK_STACK(1, 1);
             tos.i = tos.i == 0 ? -1 : 0;
@@ -1286,10 +1147,10 @@ DISPATCH_OPCODE:
         //   - Display the implementation-defined system prompt if in
         //     interpretation state, all processing has been completed,
         //     and no ambiguous condition exists.
-        arfOpQUIT:
+        QUIT:
         {
             CHECK_STACK(0, 0);
-            returnTop = (arfCell *)&this->returnStack[32];
+            returnTop = (Cell *)&this->returnStack[32];
             this->state = 0;
 
             // : (QUIT)  ( --)
@@ -1299,12 +1160,11 @@ DISPATCH_OPCODE:
             //       CR  STATE @ 0= IF ." ok " THEN
             //   AGAIN ;
             static const int8_t parenQuit[] PROGMEM = {
-                arfOpTIB, arfOpDUP, arfOpTIBSIZE, arfOpACCEPT, arfOpSPACE,
-                arfOpINTERPRET,
-                arfOpCR, arfOpSTATE, arfOpFETCH, arfOpZEROEQUALS,
-                    arfOpZBRANCH, 6,
-                arfOpPDOTQUOTE, 3, 'o', 'k', ' ',
-                arfOpBRANCH, -18
+                TIB, DUP, TIBSIZE, ACCEPT, SPACE,
+                INTERPRET,
+                CR, STATE, FETCH, ZEROEQUALS, ZBRANCH, 6,
+                PDOTQUOTE, 3, 'o', 'k', ' ',
+                BRANCH, -18
             };
 
 #ifdef __AVR__
@@ -1322,7 +1182,7 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpTIB:
+        TIB:
         {
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
@@ -1330,7 +1190,7 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpTIBSIZE:
+        TIBSIZE:
         {
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
@@ -1355,11 +1215,11 @@ DISPATCH_OPCODE:
         // implementation-defined way.
         //
         // +n2 is the length of the string stored at c-addr.
-        arfOpACCEPT:
+        ACCEPT:
         {
             CHECK_STACK(2, 1);
-            arfCell n1 = tos;
-            arfCell caddr = *restDataStack++;
+            Cell n1 = tos;
+            Cell caddr = *restDataStack++;
             tos.u = parenAccept((uint8_t *)caddr.pRAM, n1.u);
         }
         continue;
@@ -1368,7 +1228,7 @@ DISPATCH_OPCODE:
         // INTERPRET [ARF] ( i*x c-addr u -- j*x )
         //
         // Interpret the given string.
-        arfOpINTERPRET:
+        INTERPRET:
         {
             CHECK_STACK(2, 0);
             this->source = (uint8_t *)restDataStack++->pRAM;
@@ -1392,21 +1252,19 @@ DISPATCH_OPCODE:
             //       THEN
             //   REPEAT ( j*x ca u) 2DROP ;
             static const int8_t parenInterpret[] PROGMEM = {
-                arfOpZERO, arfOpTOIN, arfOpSTORE,
-                arfOpPARSEWORD, arfOpDUP, arfOpZBRANCH, 37,
-                arfOpFINDWORD, arfOpQDUP, arfOpZBRANCH, 14,
-                arfOpONEPLUS, arfOpSTATE, arfOpFETCH, arfOpZEROEQUALS, arfOpOR,
-                    arfOpZBRANCH, 4,
-                arfOpEXECUTE, arfOpBRANCH, 21,
-                arfOpCOMPILECOMMA, arfOpBRANCH, 18,
-                arfOpNUMBERQ, arfOpZBRANCH, 8,
-                arfOpSTATE, arfOpFETCH, arfOpZBRANCH, 11,
-                arfOpLITERAL, arfOpBRANCH, 8,
-                arfOpTYPE, arfOpSPACE, arfOpCHARLIT, '?', arfOpEMIT, arfOpCR,
-                    arfOpABORT,
-                arfOpBRANCH, -39,
-                arfOpTWODROP,
-                arfOpEXIT,
+                ZERO, TOIN, STORE,
+                PARSEWORD, DUP, ZBRANCH, 37,
+                FINDWORD, QDUP, ZBRANCH, 14,
+                ONEPLUS, STATE, FETCH, ZEROEQUALS, OR, ZBRANCH, 4,
+                EXECUTE, BRANCH, 21,
+                COMPILECOMMA, BRANCH, 18,
+                NUMBERQ, ZBRANCH, 8,
+                STATE, FETCH, ZBRANCH, 11,
+                LITERAL, BRANCH, 8,
+                TYPE, SPACE, CHARLIT, '?', EMIT, CR, ABORT,
+                BRANCH, -39,
+                TWODROP,
+                EXIT,
             };
 
 #ifdef __AVR__
@@ -1429,7 +1287,7 @@ DISPATCH_OPCODE:
         //
         // Runtime behavior of S": return c-addr and u.
         // NOTE: Cannot be used in program space!
-        arfOpPSQUOTE:
+        PSQUOTE:
         {
             CHECK_STACK(0, 2);
 
@@ -1449,7 +1307,7 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpBL:
+        BL:
         {
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
@@ -1457,14 +1315,14 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpCFETCH:
+        CFETCH:
         {
             CHECK_STACK(1, 1);
             tos.u = *(uint8_t*)tos.pRAM;
         }
         continue;
 
-        arfOpCOUNT:
+        COUNT:
         {
             CHECK_STACK(1, 2);
             (--restDataStack)->pRAM = (uint8_t*)tos.pRAM + 1;
@@ -1486,13 +1344,13 @@ DISPATCH_OPCODE:
         // the string if the string was entirely converted.  u2 is the
         // number of unconverted characters in the string.  An ambiguous
         // condition exists if ud2 overflows during the conversion.
-        arfOpTONUMBER:
+        TONUMBER:
         {
             CHECK_STACK(3, 3);
 
-            arfUnsigned u = tos.u;
+            Unsigned u = tos.u;
             uint8_t * caddr = (uint8_t*)restDataStack[0].pRAM;
-            arfUnsigned ud = restDataStack[-1].u;
+            Unsigned ud = restDataStack[-1].u;
 
             parenToNumber(ud, caddr, u);
 
@@ -1507,7 +1365,7 @@ DISPATCH_OPCODE:
         //
         // +n is the number of single-cell values contained in the data
         // stack before +n was placed on the stack.
-        arfOpDEPTH:
+        DEPTH:
         {
             CHECK_STACK(0, 1);
 
@@ -1525,7 +1383,7 @@ DISPATCH_OPCODE:
         // . [CORE] 6.1.0180 "dot" ( n -- )
         //
         // Display n in free field format.
-        arfOpDOT:
+        DOT:
         {
             CHECK_STACK(1, 0);
 
@@ -1536,7 +1394,7 @@ DISPATCH_OPCODE:
                 // TODO Use BASE.
                 do
                 {
-                    arfInt i = tos.i - ((tos.i / 10) * 10);
+                    Int i = tos.i - ((tos.i / 10) * 10);
                     this->emit('0' + i);
                     tos.i = tos.i / 10;
                 } while (tos.i != 0);
@@ -1552,7 +1410,7 @@ DISPATCH_OPCODE:
         // (.") [ARF] "paren-dot-quote-paren" ( -- )
         //
         // Prints the string that was compiled into the definition.
-        arfOpPDOTQUOTE:
+        PDOTQUOTE:
         {
             // Instruction stream contains the length of the string as a
             // byte and then the string itself.  Get and skip over both
@@ -1611,7 +1469,7 @@ DISPATCH_OPCODE:
         // Execution: ( "ccc<eol>" -- )
         //   Parse and discard the remainder of the parse area.  \ is an
         //   immediate word.
-        arfOpBACKSLASH:
+        BACKSLASH:
         {
             this->toIn = this->sourceLen;
         }
@@ -1621,13 +1479,13 @@ DISPATCH_OPCODE:
         // HEX [CORE EXT] 6.2.1660 ( -- )
         //
         // Set contents of BASE to sixteen.
-        arfOpHEX:
+        HEX:
         {
             this->base = 16;
         }
         continue;
 
-        arfOpDOCOLON:
+        DOCOLON:
         {
             // IP currently points to the relative offset of the PFA of
             // the target word.  Read that offset and advance IP to the
@@ -1635,7 +1493,7 @@ DISPATCH_OPCODE:
             w = ip - *(uint16_t*)ip;
             ip += 2;
 
-        arfOpPDOCOLON:
+        PDOCOLON:
             // IP now points to the next word in the PFA and that is the
             // location to which we should return once this new word has
             // executed.
@@ -1658,7 +1516,7 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        arfOpEXIT:
+        EXIT:
         {
             ip = (uint8_t *)((returnTop++)->pRAM);
 
