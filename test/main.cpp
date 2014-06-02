@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, Michael Alyn Miller <malyn@strangeGizmo.com>.
+/* Copyright (c) 2008-2014, Michael Alyn Miller <malyn@strangeGizmo.com>.
  * All rights reserved.
  * vi:ts=4:sts=4:et:sw=4:sr:et:tw=72:fo=tcrq
  *
@@ -41,8 +41,8 @@
 /* AVR includes. */
 #include <avr/pgmspace.h>
 
-/* ARF includes. */
-#include "..\ARF.h"
+/* MFORTH includes. */
+#include "..\MFORTH.h"
 
 
 
@@ -50,18 +50,18 @@
  * Sample FFI definitions.
  */
 
-ARF_EXTERN(rand, rand, 0)
+MFORTH_EXTERN(rand, rand, 0)
 #undef LAST_FFI
 #define LAST_FFI GET_LAST_FFI(rand)
 
-ARF_EXTERN(srand, srand, 1)
+MFORTH_EXTERN(srand, srand, 1)
 #undef LAST_FFI
 #define LAST_FFI GET_LAST_FFI(srand)
 
 
 
 /* -------------------------------------
- * ARF I/O primitives.
+ * MFORTH I/O primitives.
  */
 
 unsigned int inputOffset = 0;
@@ -71,12 +71,12 @@ static const uint8_t input[] PROGMEM = {
     //'r','a','n','d', ' ', '.', '\n'
 };
 
-static arfInt arfStaticKeyQuestion(void)
+static bool mforthStaticKeyQuestion(void)
 {
     return inputOffset < sizeof(input);
 }
 
-static arfUnsigned arfStaticKey(void)
+static char mforthStaticKey(void)
 {
     if (inputOffset < sizeof(input))
     {
@@ -91,8 +91,8 @@ static arfUnsigned arfStaticKey(void)
     }
 }
 
-static arfUnsigned lastCh = 0;
-static void arfStaticEmit(arfUnsigned ch)
+static char lastCh = 0;
+static void mforthStaticEmit(char ch)
 {
     lastCh = ch;
 }
@@ -106,8 +106,8 @@ static void arfStaticEmit(arfUnsigned ch)
 int main(void)
 {
     /* Initial dictionary with a couple of hand-coded definitions. */
-    unsigned char arfDict[512];
-    unsigned char * here = arfDict;
+    unsigned char mforthDict[512];
+    unsigned char * here = mforthDict;
 
     unsigned char * favnumLFA = here;
     *here++ = 0x00; // LFAlo; bogus LFA offset
@@ -147,11 +147,12 @@ int main(void)
     *here++ = ((uint16_t)&FFIDEF_srand     ) & 0xff; // FFIdef LSB
     *here++ = ((uint16_t)&FFIDEF_srand >> 8) & 0xff; // FFIdef MSB
 
-    /* ARF VM */
-    ARF arf(arfDict, sizeof(arfDict), srandLFA - arfDict, here - arfDict,
+    /* MFORTH VM */
+    MFORTH mforth(mforthDict, sizeof(mforthDict),
+            srandLFA - mforthDict, here - mforthDict,
             LAST_FFI,
-            arfStaticKeyQuestion, arfStaticKey, arfStaticEmit);
+            mforthStaticKeyQuestion, mforthStaticKey, mforthStaticEmit);
 
-    /* Launch the ARF interpreter. */
-    arf.go();
+    /* Launch the MFORTH interpreter. */
+    mforth.go();
 }

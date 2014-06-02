@@ -1,26 +1,26 @@
-#include <ARF.h>
+#include <MFORTH.h>
 
 
 // FFI definitions
-ARF_EXTERN(delay, delay, 2)
+MFORTH_EXTERN(delay, delay, 2)
 #undef LAST_FFI
 #define LAST_FFI GET_LAST_FFI(delay)
 
-ARF_EXTERN(digitalWrite, digitalWrite, 2)
+MFORTH_EXTERN(digitalWrite, digitalWrite, 2)
 #undef LAST_FFI
 #define LAST_FFI GET_LAST_FFI(digitalWrite)
 
-ARF_EXTERN(pinMode, pinMode, 2)
+MFORTH_EXTERN(pinMode, pinMode, 2)
 #undef LAST_FFI
 #define LAST_FFI GET_LAST_FFI(pinMode)
 
 
-arfInt serialKeyQ()
+bool serialKeyQ()
 {
   return Serial.available() > 0;
 }
 
-arfUnsigned serialKey()
+char serialKey()
 {
   while (true)
   {
@@ -35,12 +35,12 @@ arfUnsigned serialKey()
     }
     else
     {
-      return b;
+      return (char)b;
     }
   }
 }
 
-void serialEmit(arfUnsigned ch)
+void serialEmit(char ch)
 {
   if (ch == 0x0a)
   {
@@ -58,8 +58,8 @@ void setup()
 void loop()
 {
   /* Initial dictionary with a couple of hand-coded definitions. */
-  unsigned char arfDict[512];
-  unsigned char * here = arfDict;
+  unsigned char mforthDict[512];
+  unsigned char * here = mforthDict;
 
   unsigned char * favnumLFA = here;
   *here++ = 0x00; // LFAlo; bogus LFA offset
@@ -106,11 +106,12 @@ void loop()
   *here++ = ((uint16_t)&FFIDEF_pinMode     ) & 0xff; // FFIdef LSB
   *here++ = ((uint16_t)&FFIDEF_pinMode >> 8) & 0xff; // FFIdef MSB
 
-  /* ARF VM */
-  ARF arf(arfDict, sizeof(arfDict), pinModeLFA - arfDict, here - arfDict,
+  /* MFORTH VM */
+  MFORTH mforth(mforthDict, sizeof(mforthDict),
+          pinModeLFA - mforthDict, here - mforthDict,
           LAST_FFI,
           serialKeyQ, serialKey, serialEmit);
 
-  /* Launch the ARF interpreter. */
-  arf.go();
+  /* Launch the MFORTH interpreter. */
+  mforth.go();
 }
