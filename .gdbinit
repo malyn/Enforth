@@ -5,5 +5,5 @@ define vmvars
 	display this->dataStack[30]
 	display tos
 	display &this->dataStack[32] - restDataStack
-	display (arfOpcode)op
+	display/x op
 end
