@@ -231,6 +231,7 @@ bool MFORTH::parenFindWord(uint8_t * caddr, MFORTH::Unsigned u, XT &xt, bool &is
         if (definitionType < CFADOFFI0)
         {
             char * pSearchName = searchName;
+            char * searchEnd = searchName + searchLen-1;
             char * pDictName = (char *)(curWord + 3);
             while (true)
             {
@@ -244,7 +245,9 @@ bool MFORTH::parenFindWord(uint8_t * caddr, MFORTH::Unsigned u, XT &xt, bool &is
                 // We're done if this was the last character.
                 if ((*pDictName & 0x80) != 0)
                 {
-                    nameMatch = true;
+                    // It's only a match if we simultaneously hit the
+                    // end of the search name.
+                    nameMatch = pSearchName == searchEnd;
                     break;
                 }
 
