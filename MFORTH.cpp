@@ -1185,14 +1185,6 @@ DISPATCH_OPCODE:
                 BRANCH, -18
             };
 
-#ifdef __AVR__
-            if (inProgramSpace)
-            {
-                ip = (uint8_t*)((unsigned int)ip | 0x8000);
-            }
-#endif
-            (--returnTop)->pRAM = (void *)ip;
-
             ip = (uint8_t*)&parenQuit;
 #ifdef __AVR__
             inProgramSpace = true;
