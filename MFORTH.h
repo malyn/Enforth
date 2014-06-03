@@ -193,6 +193,7 @@ class MFORTH
             DOT,
             PDOTQUOTE,
             BACKSLASH,
+            HEX,
 
             //...
 
