@@ -194,6 +194,19 @@ class MFORTH
             PDOTQUOTE,
             BACKSLASH,
             HEX,
+            CREATE,
+            HERE,
+            LATEST,
+            TWODUP,
+            COMMA,
+            CCOMMA,
+            TUCK,
+            ALIGN,
+            MOVE,
+            CPLUSSTORE,
+            ALLOT,
+            NIP,
+            WCOMMA,
 
             //...
 

@@ -115,7 +115,24 @@ static const char primitives[] PROGMEM =
     "\x00" // (.")
     "\x01" "\\"
     "\x03" "HEX"
-    "\x00"
+    "\x06" "CREATE"
+
+    // $30 - $37
+    "\x04" "HERE"
+    "\x00" // LATEST
+    "\x04" "2DUP"
+    "\x01" ","
+
+    "\x02" "C,"
+    "\x04" "TUCK"
+    "\x05" "ALIGN"
+    "\x04" "MOVE"
+
+    // $38 - $3F
+    "\x03" "C+!"
+    "\x05" "ALLOT"
+    "\x03" "NIP"
+    "\x02" "W,"
 
     // End byte
     "\xff"
@@ -486,14 +503,25 @@ void MFORTH::go()
         &&PDOTQUOTE,
         &&BACKSLASH,
         &&HEX,
-        0,
+        &&CREATE,
 
         // $30 - $37
-        0, 0, 0, 0,
-        0, 0, 0, 0,
+        &&HERE,
+        &&LATEST,
+        &&TWODUP,
+        &&COMMA,
+
+        &&CCOMMA,
+        &&TUCK,
+        &&ALIGN,
+        &&MOVE,
 
         // $38 - $3F
-        0, 0, 0, 0,
+        &&CPLUSSTORE,
+        &&ALLOT,
+        &&NIP,
+        &&WCOMMA,
+
         0, 0, 0, 0,
 
         // $40 - $47
@@ -1492,6 +1520,165 @@ DISPATCH_OPCODE:
         HEX:
         {
             this->base = 16;
+        }
+        continue;
+
+        // -------------------------------------------------------------
+        // CREATE [CORE] 6.1.1000 ( "<spaces>name" -- )
+        //
+        // Skip leading space delimiters.  Parse name delimited by a
+        // space.  Create a definition for name with the execution
+        // semantics defined below.  If the data-space pointer is not
+        // aligned, reserve enough data space to align it.  The new
+        // data-space pointer defines name's data field.  CREATE does
+        // not allocate data space in name's data field.
+        //
+        //   name Execution:	( -- a-addr )
+        //       a-addr is the address of name's data field.  The
+        //       execution semantics of name may be extended by using
+        //       DOES>.
+        //
+        // : TERMINATE-NAME ( ca u -- ca u)  2DUP 1- +  $80 SWAP C+! ;
+        // : S, ( ca u --)  TUCK  HERE SWAP MOVE  ALLOT ;
+        // : NAME, ( ca u --)  TERMINATE-NAME S, ;
+        // : >LATEST-OFFSET ( addr -- u)  LATEST @ DUP IF - ELSE NIP THEN ;
+        // : CREATE ( "<spaces>name" -- )
+        //   PARSE-WORD DUP 0= IF ABORT THEN ( ca u)
+        //   HERE  DUP >LATEST-OFFSET W,  LATEST ! ( ca u)
+        //   CFADOCREATE C, ( ca u)  NAME,  ALIGN ;
+        CREATE:
+        {
+            static const int8_t parenCreate[] PROGMEM = {
+                PARSEWORD, DUP, ZEROEQUALS, ZBRANCH, 2, ABORT,
+                HERE, DUP,
+                // >LATEST-OFFSET
+                    LATEST, FETCH, DUP, ZBRANCH, 4,
+                        MINUS, BRANCH, 2,
+                        NIP,
+                WCOMMA, LATEST, STORE,
+                CHARLIT, CFADOCREATE, CCOMMA,
+                // NAME,
+                    // TERMINATE-NAME
+                        TWODUP, ONEMINUS, PLUS, CHARLIT, 0x80, SWAP, CPLUSSTORE,
+                    // S,
+                        TUCK, HERE, SWAP, MOVE, ALLOT,
+                ALIGN,
+                EXIT
+            };
+
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                ip = (uint8_t*)((unsigned int)ip | 0x8000);
+            }
+#endif
+            (--returnTop)->pRAM = (void *)ip;
+
+            ip = (uint8_t*)&parenCreate;
+#ifdef __AVR__
+            inProgramSpace = true;
+#endif
+        }
+        continue;
+
+        HERE:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos.pRAM = this->dp;
+        }
+        continue;
+
+        LATEST:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos.pRAM = &this->latest;
+        }
+        continue;
+
+        TWODUP:
+        {
+            CHECK_STACK(2, 4);
+            Cell second = *restDataStack;
+            *--restDataStack = tos;
+            *--restDataStack = second;
+        }
+        continue;
+
+        COMMA:
+        {
+            CHECK_STACK(1, 0);
+            *((Cell*)this->dp) = tos;
+            this->dp += CellSize;
+            tos = *restDataStack++;
+        }
+        continue;
+
+        CCOMMA:
+        {
+            CHECK_STACK(1, 0);
+            *this->dp++ = tos.u & 0xff;
+            tos = *restDataStack++;
+        }
+        continue;
+
+        TUCK:
+        {
+            Cell second = *restDataStack;
+            *restDataStack = tos;
+            *--restDataStack = second;
+        }
+        continue;
+
+        ALIGN:
+        {
+            // TODO Implement this as part of DOCOLON8/DOCOLON16
+        }
+        continue;
+
+        MOVE:
+        {
+            CHECK_STACK(3, 0);
+            Cell arg3 = tos;
+            Cell arg2 = *restDataStack++;
+            Cell arg1 = *restDataStack++;
+            memcpy(arg2.pRAM, arg1.pRAM, arg3.u);
+            tos = *restDataStack++;
+        }
+        continue;
+
+        CPLUSSTORE:
+        {
+            CHECK_STACK(2, 0);
+            uint8_t c = *(uint8_t*)tos.pRAM;
+            c += (restDataStack++)->u & 0xff;
+            *(uint8_t*)tos.pRAM = c;
+            tos = *restDataStack++;
+        }
+        continue;
+
+        ALLOT:
+        {
+            CHECK_STACK(1, 0);
+            this->dp += tos.u;
+            tos = *restDataStack++;
+        }
+        continue;
+
+        NIP:
+        {
+            CHECK_STACK(2, 1);
+            restDataStack++;
+        }
+        continue;
+
+        WCOMMA:
+        {
+            CHECK_STACK(1, 0);
+            *((uint16_t*)this->dp) = (uint16_t)(tos.u & 0xffff);
+            this->dp += 2;
+            tos = *restDataStack++;
         }
         continue;
 
