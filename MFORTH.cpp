@@ -121,25 +121,43 @@ static const char primitives[] PROGMEM =
     "\xff"
 ;
 
-MFORTH::MFORTH(const uint8_t * dictionary, int dictionarySize,
-        int latestOffset, int hereOffset,
+MFORTH::MFORTH(uint8_t * const dictionary, int dictionarySize,
         const FFIDef * const lastFFI,
         KeyQuestion keyQ, Key key, Emit emit)
  : lastFFI(lastFFI),
    keyQ(keyQ), key(key), emit(emit),
    dictionary(dictionary), dictionarySize(dictionarySize),
-   state(0)
+   dp(dictionary), latest(NULL), hld(NULL),
+   state(0),
+   source(NULL), sourceLen(0), toIn(0), prevLeave(NULL)
 {
-    if (latestOffset == -1)
+}
+
+void MFORTH::addDefinition(const uint8_t * const def, int defSize)
+{
+    // Get the address of the start of this definition and the address
+    // of the start of the last definition.
+    const uint8_t * const prevLFA = this->latest;
+    uint8_t * newLFA = this->dp;
+
+    // Add the LFA link.
+    if (this->latest != NULL)
     {
-        this->latest = NULL;
+        *this->dp++ = ((newLFA - prevLFA)     ) & 0xff; // LFAlo
+        *this->dp++ = ((newLFA - prevLFA) >> 8) & 0xff; // LFAhi
     }
     else
     {
-        this->latest = const_cast<uint8_t *>(this->dictionary) + latestOffset;
+        *this->dp++ = 0x00;
+        *this->dp++ = 0x00;
     }
 
-    this->here = const_cast<uint8_t *>(this->dictionary) + hereOffset;
+    // Copy the definition itself.
+    memcpy(this->dp, def, defSize);
+    this->dp += defSize;
+
+    // Update latest.
+    this->latest = newLFA;
 }
 
 MFORTH::Unsigned MFORTH::parenAccept(uint8_t * caddr, MFORTH::Unsigned n1)

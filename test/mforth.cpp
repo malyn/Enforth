@@ -109,96 +109,68 @@ static void mforthCursesEmit(char ch)
 
 
 /* -------------------------------------
+ * Globals.
+ */
+
+static unsigned char mforthDict[512];
+static MFORTH mforth(
+        mforthDict, sizeof(mforthDict),
+        LAST_FFI,
+        mforthCursesKeyQuestion, mforthCursesKey, mforthCursesEmit);
+
+
+/* -------------------------------------
  * main()
  */
 
 int main(int argc, char **argv)
 {
-    /* Initial dictionary with a couple of hand-coded definitions. */
-    unsigned char mforthDict[512];
-    unsigned char * here = mforthDict;
+    /* Add a couple of hand-coded definitions. */
+    const uint8_t favnumDef[] = {
+        0x00, // DOCOLON
+        'F',
+        'A',
+        'V',
+        'N',
+        'U',
+        0x80 | 'M',
+        0x0b,   // CHARLIT
+        27,
+        0x7f }; // EXIT
+    mforth.addDefinition(favnumDef, sizeof(favnumDef));
 
-    unsigned char * favnumLFA = here;
-    *here++ = 0x00; // LFAlo; bogus LFA offset
-    *here++ = 0x00; // LFAhi; bogus LFA offset
-    *here++ = 0x00; // DOCOLON
-    *here++ = 'F';
-    *here++ = 'A';
-    *here++ = 'V';
-    *here++ = 'N';
-    *here++ = 'U';
-    *here++ = 0x80 | 'M';
-    unsigned char * favnumPFA = here;
-    *here++ = 0x0b; // CHARLIT
-    *here++ = 27;
-    *here++ = 0x7f; // EXIT
+    const uint8_t twoxDef[] = {
+        0x00, // DOCOLON
+        '2',
+        0x80 | 'X',
+        0x02,   // DUP
+        0x04,   // +
+        0x7f }; // EXIT
+    mforth.addDefinition(twoxDef, sizeof(twoxDef));
 
-    unsigned char * twoxLFA = here;
-    *here++ = ((twoxLFA - favnumLFA)     ) & 0xff; // LFAlo
-    *here++ = ((twoxLFA - favnumLFA) >> 8) & 0xff; // LFAhi
-    *here++ = 0x00; // DOCOLON
-    *here++ = '2';
-    *here++ = 0x80 | 'X';
-    unsigned char * twoxPFA = here;
-    *here++ = 0x02; // DUP
-    *here++ = 0x04; // +
-    *here++ = 0x7f; // EXIT
+    const uint8_t randDef[] = {
+        0x06, // DOFFI0
+        ((uint32_t)&FFIDEF_rand      ) & 0xff,  // FFIdef LSB
+        ((uint32_t)&FFIDEF_rand >>  8) & 0xff,  // FFIdef
+        ((uint32_t)&FFIDEF_rand >> 16) & 0xff,  // FFIdef
+        ((uint32_t)&FFIDEF_rand >> 24) & 0xff}; // FFIdef MSB
+    mforth.addDefinition(randDef, sizeof(randDef));
 
-    unsigned char * twoxfavnumLFA = here;
-    *here++ = ((twoxfavnumLFA - twoxLFA)     ) & 0xff; // LFAlo
-    *here++ = ((twoxfavnumLFA - twoxLFA) >> 8) & 0xff; // LFAhi
-    *here++ = 0x00; // DOCOLON
-    *here++ = '2';
-    *here++ = 'X';
-    *here++ = 'F';
-    *here++ = 'A';
-    *here++ = 'V';
-    *here++ = 'N';
-    *here++ = 'U';
-    *here++ = 0x80 | 'M';
-    *here++ = 0x70; // DOCOLON
-    *(here+0) = ((here - favnumPFA)     ) & 0xff; // offset LSB
-    *(here+1) = ((here - favnumPFA) >> 8) & 0xff; // offset MSB
-    here += 2;
-    *here++ = 0x70; // DOCOLON
-    *(here+0) = ((here - twoxPFA)     ) & 0xff; // offset LSB
-    *(here+1) = ((here - twoxPFA) >> 8) & 0xff; // offset MSB
-    here += 2;
-    *here++ = 0x7f; // EXIT
+    const uint8_t srandDef[] = {
+        0x07, // DOFFI1
+        ((uint32_t)&FFIDEF_srand      ) & 0xff,  // FFIdef LSB
+        ((uint32_t)&FFIDEF_srand >>  8) & 0xff,  // FFIdef
+        ((uint32_t)&FFIDEF_srand >> 16) & 0xff,  // FFIdef
+        ((uint32_t)&FFIDEF_srand >> 24) & 0xff}; // FFIdef MSB
+    mforth.addDefinition(srandDef, sizeof(srandDef));
 
-    unsigned char * randLFA = here;
-    *here++ = ((randLFA - twoxfavnumLFA)     ) & 0xff; // LFAlo
-    *here++ = ((randLFA - twoxfavnumLFA) >> 8) & 0xff; // LFAhi
-    *here++ = 0x06; // DOFFI0
-    *here++ = ((uint32_t)&FFIDEF_rand      ) & 0xff; // FFIdef LSB
-    *here++ = ((uint32_t)&FFIDEF_rand >>  8) & 0xff; // FFIdef
-    *here++ = ((uint32_t)&FFIDEF_rand >> 16) & 0xff; // FFIdef
-    *here++ = ((uint32_t)&FFIDEF_rand >> 24) & 0xff; // FFIdef MSB
-
-    unsigned char * srandLFA = here;
-    *here++ = ((srandLFA - randLFA)     ) & 0xff; // LFAlo
-    *here++ = ((srandLFA - randLFA) >> 8) & 0xff; // LFAhi
-    *here++ = 0x07; // DOFFI1
-    *here++ = ((uint32_t)&FFIDEF_srand      ) & 0xff; // FFIdef LSB
-    *here++ = ((uint32_t)&FFIDEF_srand >>  8) & 0xff; // FFIdef
-    *here++ = ((uint32_t)&FFIDEF_srand >> 16) & 0xff; // FFIdef
-    *here++ = ((uint32_t)&FFIDEF_srand >> 24) & 0xff; // FFIdef MSB
-
-    unsigned char * clearLFA = here;
-    *here++ = ((clearLFA - srandLFA)     ) & 0xff; // LFAlo
-    *here++ = ((clearLFA - srandLFA) >> 8) & 0xff; // LFAhi
-    *here++ = 0x06; // DOFFI0
-    *here++ = ((uint32_t)&FFIDEF_clear      ) & 0xff; // FFIdef LSB
-    *here++ = ((uint32_t)&FFIDEF_clear >>  8) & 0xff; // FFIdef
-    *here++ = ((uint32_t)&FFIDEF_clear >> 16) & 0xff; // FFIdef
-    *here++ = ((uint32_t)&FFIDEF_clear >> 24) & 0xff; // FFIdef MSB
-
-    /* MFORTH VM */
-    MFORTH mforth(mforthDict, sizeof(mforthDict),
-            clearLFA - mforthDict, here - mforthDict,
-            LAST_FFI,
-            mforthCursesKeyQuestion, mforthCursesKey, mforthCursesEmit);
-
+    const uint8_t clearDef[] = {
+        0x06, // DOFFI0
+        ((uint32_t)&FFIDEF_clear      ) & 0xff,  // FFIdef LSB
+        ((uint32_t)&FFIDEF_clear >>  8) & 0xff,  // FFIdef
+        ((uint32_t)&FFIDEF_clear >> 16) & 0xff,  // FFIdef
+        ((uint32_t)&FFIDEF_clear >> 24) & 0xff}; // FFIdef MSB
+    mforth.addDefinition(clearDef, sizeof(clearDef));
 
     /* Initialize curses: disable line buffering and local echo, enable
      * line-oriented scrolling. */

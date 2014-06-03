@@ -246,35 +246,47 @@ class MFORTH
 
 
     public:
-        MFORTH(const uint8_t * dictionary, int dictionarySize,
-                int latestOffset, int hereOffset,
+        MFORTH(uint8_t * const dictionary, int dictionarySize,
                 const FFIDef * const lastFFI,
+                // TODO Remove this and just have it be in the FFI
+                // (which we look up in the constructor and then stash
+                // into our private function pointers).
                 KeyQuestion keyQ, Key key, Emit emit);
+        void addDefinition(const uint8_t * const def, int defSize);
         void go();
 
     private:
+        // VM constants
         const FFIDef * const lastFFI;
 
         const KeyQuestion keyQ;
         const Key key;
         const Emit emit;
 
-        const uint8_t * dictionary;
+        uint8_t * const dictionary;
         const int dictionarySize;
+
+        // Dictionary vars
+        uint8_t * dp;
         uint8_t * latest; // NULL means empty dictionary
-        uint8_t * here;
 
+        // Transient (dictionary-based) vars
+        uint8_t * hld;
+
+        // Text Interpreter vars
         Int state;
-        Unsigned base;
 
-        Cell dataStack[32];
-        Cell returnStack[32];
-
-        char tib[80];
-
+        uint8_t tib[80];
         uint8_t * source;
         Int sourceLen;
         Int toIn;
+
+        uint8_t * prevLeave;
+
+        // Task vars
+        Unsigned base;
+        Cell dataStack[32];
+        Cell returnStack[32];
 
         Unsigned parenAccept(uint8_t * caddr, Unsigned n1);
         bool parenFindWord(uint8_t * caddr, Unsigned u, XT &xt, bool &isImmediate);

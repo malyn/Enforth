@@ -11,6 +11,12 @@ Provided as an Arduino Library with a small handful of entry points.  Two key en
 1. Minimize RAM usage.  When faced with a design decision, the option that minimizes RAM usage is almost always the one that was taken.
 2. Ensure that the entire dictionary and all values therein are relocatable without requiring values to be rewritten.  This allows us to copy the dictionary as-is back and forth between RAM, EEPROM, and flash.  In addition to supporting on-device development -- build up your code and then copy it to EEPROM for a turn-key app -- this may allow us to dump the contents of the dictionary as a C-style (PROGMEM) array and then compile that into flash.  Note that there are subtleties here: XTs must also be relocatable since you could get the XT for a word and then store that in a CONSTANT or array in the dictionary.
 
+# Memory Layout
+
+One plan was to use a single block of memory for the entire MFORTH VM (similar to what is done for MF100) and put things like the DP, HERE, etc. globals into that block.  The problem there is that those addresses are absolute and would not be valid after a persistence operation.  We have to deal with that anyway, but I question if making the problem worse with more variables makes sense.  Similarly, there is no reason to persist TIB, which was going to exist in the VM block as well.
+
+The new proposal is to stick with the original design where we only have a dictionary block and then all of the other pointers are transient pointers stored in the C++ object itself.  We can then deal with persisting those (by making them relative) on an individual basis as necessary.  Similarly, some fields will just not be persisted -- those for the text interpreter.
+
 # Operation
 
 * Flash contains your Arduino sketch, which includes the MFORTH "kernel" (just another Arduino Library), any linked-in libraries, and all of your predefined words.  The flash dictionary is stored here.

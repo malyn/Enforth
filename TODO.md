@@ -1,30 +1,28 @@
-* Adopt the MF100 memory layout -- a single `vm` buffer which we then divide up into different sections.  Sections are: Globals, TIB, Dictionary, Tasks.  Free space in dictionary is used for HLD.  Tasks contain: Return Stack, Data Stack, User Vars.
-  * Global vars get moved out of the C++ object and into the `vm` buffer in order to make it possible to snapshot the system by making a copy of `vm`.
-  * TIB can be zero if you do not need the text interpreter.
-  * HLD is 3x the bit size in order to account for binary output with 50% extra stuff.  So 48/96 bytes.
-  * Stacks are at the start of the buffer so that we don't have the issue with sometimes reading TOS from beyond the data stack when the stack is in fact empty.
-  * Tasks are 32 return stack cells (64/128 bytes), 16 data stack cells (32/64 bytes), 16 user cells (32/64 bytes) for a total of 128/256 bytes per task.
-    * Note that tasks go into the dictionary and not at the end!  This allows dictionaries to be resized or only partially copied to storage.
-    * Need one task cell to act as a link to the previously-created task as well as a global that points to the newest task (similar to the dictionary itself).
-  * A 512-byte VM buffer gives you 256 bytes of empty dictionary space, assuming that you use an 80-byte TIB and one task.  Basically the VM has 128 bytes of overhead on a 16-bit processor and each task also has 128 bytes of overhead.  Everything beyond that is free to use.
-    * Also globals, so probably more than 128 bytes for the system.  Could slightly reduce this if we go with the 2n+2 size (34/66) for HLD per the standard.
-    * PAD would make this worse, because each task would then need an additional 84 bytes at minimum.  I recommend that we not offer PAD for now.
-  * Interestingly enough, this actually makes tasks a realistic concept even on the Arduino Uno with only 2.5KB of RAM...  A 1.5KB VM would give you 512 bytes for four tasks and still leave ~1KB for the dictionary, with the remaining 1KB free for Arduino libraries.
-* Reorganize/Clean up source files.  Maybe auto-generate opcodes so that we can avoid some of the duplication, for example.
-* Implement pictured numeric output (putting `HLD` in the `vm` buffer).
 * Implement compilation (`:`, `COMPILE,`, `;`, etc.).
   * The compiler needs to figure out what kind of word is being compiled and put that opcode into the definition.  This trades compiler expense -- need to interrogate the target word -- for runtime efficiency -- a single jump table for everything.  `COMPILE,` has to convert XTs into a separate 8-bit opcode and 16-bit, dictionary-relative offset (which is already what the XT is, but without the high bit set).  Note that `COMPILE,` will need to use `>BODY` to skip over the LFA, flags, and NFA.
     * Should probably just make DOCOLON8 and DOCOLON16 and then align PFAs to 16-bits so that DOCOLON8 can span a full -512 bytes.
+* Implement pictured numeric output.
+  * HLD is 3x the bit size in order to account for binary output with 50% extra stuff.  So 48/96 bytes.
+  * Could make this 2n+2 per the Standard...
 * Move some of the non-critical C++ primitives over to Forth (whatever is uses the least flash).
   * Program space definitions should have a special DOCOLON opcode that can be used to invoke them.  We are currently duplicating the logic to store and set the IP in each of those definitions.  Instead, each of these Forth-based primitive words should just set IP to the word's PFA and then jump to `DOCOLONROM`.
   * And then we should put them all together in a block so that DOCOLONROM can expect the IP to be relative to that block.
   * Might be able to avoid needing tokens for these if we modify XTs to specify if the XT is ROM- or RAM-based.  This would allow us to pack a large number of primitives into ROM without having to assign tokens to all of them.  Tokens would only be needed for high-performance, internal primitives.
     * This is not worth doing because then every reference to those primitives would require three bytes (`DOCOLONROM` token and the XT) instead of just one byte.  We don't actually care about lots of definitions, we just don't want to have it be a pain to define these things.  Using primitives is fine though, we'll just set the Word Pointer to the ROM IP and then `goto` a common block of code that does the return stack pushing and stuff (*i.e.,* `DOPCOLONROM`, although in this case there is no `DOCOLONROM`).
 * Modify `test/mforth` to optionally take a list of files on the command line and then interpret each file in order (by just feeding the data through `KEY` for now).  This will allow us to start running the anstests.
+* Reorganize/Clean up source files.  Maybe auto-generate opcodes so that we can avoid some of the duplication, for example.
+* Do something about absolute RAM addresses on the stack, in variables, etc.  These prevent the VM from being saved to/from storage (such as EEPROM).
+  * We can't relativize everything on save, because we don't always know what we are looking at -- how do we know that a dictionary variable contains a RAM address?  We could probably relativize all addresses in the VM though and then `@`, `!`, etc. would do the adjustment as necessary (and could offer bounds-checking).  All of these addresses are VM-relative and that VM base address will probably end up being stored in a constant register pair.  Access to memory-mapped CPU resources gets messy (this is mostly an ARM problem), although we could offer special fetch and store operations for those.  Similarly, FFI interop involving addresses is now a problem because we need to convert those back and forth.
+  * Note that the VM itself has quite a few absolute addresses (DP, HERE, SOURCE, etc.) and we'll need to deal with those on load/save.  Most of these have to do with the text interpreter though and we could easily just say that persistence resets the state of the text interpreter and can only be performed when *not* in compilation mode.  That would leave a very small number of pointers in the VM and those could just be serialized as part of persisting the dictionary.
+* Add a single default task and move the stacks and BASE into that memory area.  No `PAUSE` yet.
+  * Tasks are 32 return stack cells (64/128 bytes), 16 data stack cells (32/64 bytes), 16 user cells (32/64 bytes) for a total of 128/256 bytes per task.
+    * Note that tasks go into the dictionary and not at the end!  This allows dictionaries to be resized or only partially copied to storage.
+    * Need one task cell to act as a link to the previously-created task as well as a global that points to the newest task (similar to the dictionary itself).
 * Consider adding [Catch](https://github.com/philsquared/Catch)-based unit tests in order to augment the anstests-based tests.  Maybe even run the test suite using Catch?
 * Forth200x updates (mostly just `TIB` and `#TIB`?, although numeric prefixes look very useful).
 * Add `PAUSE`, which spills the registers to global variables in `vm` and then returns from `go()` similar to what we did in Ficl.
 * Add dumb exceptions that just restart the VM?
+* Consider adding `PAD`, perhaps with a configurable size.  Do not use `PAD` in the kernel though so that we can avoid making it a requirement.
 * Since we have more free opcodes now we can probably code in some of the most frequently used FFI functions (`pinWrite` and stuff) as tokens, perhaps through compiler directives.
   * I wonder if we can find a way to predefine a set of trampolines in Flash instead of in RAM?  *i.e.,* we reserve the last 32 opcodes for precompiled trampolines and then provide a simplified way to build up that flash array.  This table-based method would actually work since it would just be a list of other addresses (which conveniently we already have thanks to the `FFIDEF_*` vars that are being used for the linked list).  This would give users a way to modify their MFORTH compile to predefine externals in a way that consumes no RAM.  You still need to define the FFIs, but you don't need to reference them at runtime.
   * This feels like a good balance between ROM and RAM: you can access any FFI at runtime if you are willing to consume memory on that (which is probably fine during development) and then you switch to a ROM-based FFI primitive once you know you'll be using an FFI a lot.  This breaks your flash, of course, but your source is unchanged (and we could make the `EXTERNAL:` word just do nothing in the case where you are trying to reference a ROM-based FFI primitive).
