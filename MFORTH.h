@@ -207,6 +207,13 @@ class MFORTH
             ALLOT,
             NIP,
             WCOMMA,
+            COLON,
+            HIDE,
+            RTBRACKET,
+            CSTORE,
+            SEMICOLON,
+            REVEAL,
+            LTBRACKET,
 
             //...
 

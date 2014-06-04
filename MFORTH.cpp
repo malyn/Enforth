@@ -50,6 +50,7 @@
 // TODO Should move all of the internal words (BRANCH, CHARLIT, etc.) to
 // the end of the opcode table so that they don't need to waste space in
 // the primitive list.
+// A length with a high bit set indicates that the word is immediate.
 static const char primitives[] PROGMEM =
     // $00 - $07
     "\x00"
@@ -133,6 +134,16 @@ static const char primitives[] PROGMEM =
     "\x05" "ALLOT"
     "\x03" "NIP"
     "\x02" "W,"
+
+    // $40 - $47
+    "\x01" ":"
+    "\x00" // HIDE
+    "\x01" "]"
+    "\x02" "C!"
+
+    "\x81" ";"
+    "\x00" // REVEAL
+    "\x81" "["
 
     // End byte
     "\xff"
@@ -283,19 +294,21 @@ bool MFORTH::parenFindWord(uint8_t * caddr, MFORTH::Unsigned u, XT &xt, bool &is
     {
         // Get the length of this primitive; we're done if this is the
         // end value (0xff).
-        uint8_t primitiveLength = (uint8_t)pgm_read_byte(pPrimitives++);
-        if (primitiveLength == 0xff)
+        uint8_t primitiveFlags = (uint8_t)pgm_read_byte(pPrimitives++);
+        if (primitiveFlags == 0xff)
         {
             break;
         }
+
+        uint8_t primitiveLength = primitiveFlags & 0x7f;
+        bool primitiveIsImmediate = (primitiveFlags & 0x80) != 0;
 
         // Is this a match?  If so, return the XT.
         if ((primitiveLength == searchLen)
             && (strncasecmp_P(searchName, pPrimitives, searchLen) == 0))
         {
-            // TODO isImmediate needs to come from the primitive table
             xt = opcode;
-            isImmediate = false;
+            isImmediate = primitiveIsImmediate;
             return true;
         }
 
@@ -418,7 +431,7 @@ void MFORTH::go()
 #if ENABLE_STACK_CHECKING
     // Check for available stack space and abort with a message if this
     // operation would run out of space.
-    // FIXME The overflow logic seems slightly too aggressive -- it
+    // TODO The overflow logic seems slightly too aggressive -- it
     // probably needs a "- 1" in there given that we store TOS in a
     // register.
 #define CHECK_STACK(numArgs, numResults) \
@@ -525,10 +538,17 @@ void MFORTH::go()
         &&NIP,
         &&WCOMMA,
 
-        0, 0, 0, 0,
+        &&COLON,
+        &&HIDE,
+        &&RTBRACKET,
+        &&CSTORE,
 
         // $40 - $47
-        0, 0, 0, 0,
+        &&SEMICOLON,
+        &&REVEAL,
+        &&LTBRACKET,
+        0,
+
         0, 0, 0, 0,
 
         // $48 - $4F
@@ -827,33 +847,44 @@ DISPATCH_OPCODE:
 
         COMPILECOMMA:
         {
-            // TODO Needs to differentiate between XTs for primitive
-            // words and user-defined words.  The latter will be encoded
-            // as a 16-bit value with the high bit set and the remaining
-            // 15 bits specifying the relative offset to the target word
-            // from the start of the dictionary (so that XTs relocate
-            // with the dictionary).  XTs for user-defined words will
-            // then be converted into a DO* opcode and a relative offset
-            // from the current call site (IP).  Initially these offsets
-            // will be 16-bits, but we can create DO*8 opcodes that are
-            // used if the range fits into 8 bits.  COMPILECOMMA will
-            // need to look up the type of word that is being targed and
-            // compile in the appropriate DO* opcode.  This creates
-            // additional work for COMPILECOMMA, but the benefit is that
-            // XTs can use the entire 15-bit range and do not need any
-            // flag bits.
-            //
-            // XTs that reference primitive words will just be compiled
-            // as-is.
-            //
-            // Note that the compiled offset is a native endian relative
-            // offset to the word's PFA (no CFAs in MFORTH) and that the
-            // offset is as of the address *after* the opcode and
-            // *before* the offset since that's where the IP will be in
-            // the DO* opcode when we calculate the address.
-            //
-            // TODO Implement this
-            tos = *restDataStack++;
+            CHECK_STACK(1, 0);
+
+            // Does this XT reference a primitive word or a user-defined
+            // word?  If the former, just compile the token.  If the
+            // latter, look up the type of user-defined word and compile
+            // the address of the PFA into the definition.
+            if ((tos.u & 0x8000) == 0)
+            {
+                *this->dp++ = tos.u & 0xff;
+                tos = *restDataStack++;
+            }
+            else
+            {
+                // This XT is a 16-bit value with the high bit set and
+                // the remaining 15 bits specifying the relative offset
+                // to the target word from the start of the dictionary
+                // (so that XTs relocate with the dictionary).  XTs for
+                // user-defined words will then be converted into a DO*
+                // opcode and a relative offset from the current call
+                // site (IP).  Initially these offsets will be 16-bits,
+                // but we can create DO*8 opcodes that are used if the
+                // range fits into 8 bits.  COMPILECOMMA will need to
+                // look up the type of word that is being targed and
+                // compile in the appropriate DO* opcode.  This creates
+                // additional work for COMPILECOMMA, but the benefit is
+                // that XTs can use the entire 15-bit range and do not
+                // need any flag bits.
+                //
+                // Note that the compiled offset is a native endian
+                // relative offset to the word's PFA (no CFAs in MFORTH)
+                // and that the offset is as of the address *after* the
+                // opcode and *before* the offset since that's where the
+                // IP will be in the DO* opcode when we calculate the
+                // address.
+                //
+                // TODO Implement this
+                tos = *restDataStack++;
+            }
         }
         continue;
 
@@ -961,7 +992,21 @@ DISPATCH_OPCODE:
 
         LITERAL:
         {
-            // TODO Implement this.
+            // Compile this literal as a character literal if it would
+            // fit in 8 bits, otherwise compile a normal cell.
+            if ((tos.u & ~0xff) == 0)
+            {
+                *this->dp++ = CHARLIT;
+                *this->dp++ = tos.u & 0xff;
+            }
+            else
+            {
+                *this->dp++ = LIT;
+                *((Cell*)this->dp) = tos;
+                this->dp += CellSize;
+            }
+
+            tos = *restDataStack++;
         }
         continue;
 
@@ -1682,6 +1727,127 @@ DISPATCH_OPCODE:
             *((uint16_t*)this->dp) = (uint16_t)(tos.u & 0xffff);
             this->dp += 2;
             tos = *restDataStack++;
+        }
+        continue;
+
+        // -------------------------------------------------------------
+        // : [CORE] 6.1.0450 "colon" ( C: "<spaces>name" -- colon-sys )
+        //
+        // Skip leading space delimiters.  Parse name delimited by a
+        // space.  Create a definition for name, called a "colon
+        // definition".  Enter compilation state and start the
+        // current definition, producing colon-sys.  Append the
+        // initiation semantics given below to the current definition.
+        //
+        // The execution semantics of name will be determined by the
+        // words compiled into the body of the definition.  The current
+        // definition shall not be findable in the dictionary until it
+        // is ended (or until the execution of DOES> in some systems).
+        //
+        // Initiation: ( i*x -- i*x ) ( R: -- nest-sys )
+        //   Save implementation-dependent information nest-sys about
+        //   the calling definition.  The stack effects i*x represent
+        //   arguments to name.
+        //
+        // name Execution: ( i*x -- j*x )
+        //       Execute the definition name.  The stack effects i*x and
+        //       j*x represent arguments to and results from name,
+        //       respectively.
+        //
+        // : LFA>CFA ( addr -- addr)  1+ 1+ ;
+        // : : ( "<spaces>name" -- )
+        //   CREATE  HIDE  CFADOCOLON LATEST @ LFA>CFA C!  ] ;
+        COLON:
+        {
+            static const int8_t parenColon[] PROGMEM = {
+                CREATE, HIDE, CHARLIT, CFADOCOLON, LATEST, FETCH,
+                // LFA>CFA
+                    ONEPLUS, ONEPLUS,
+                CSTORE, RTBRACKET,
+                EXIT
+            };
+
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                ip = (uint8_t*)((unsigned int)ip | 0x8000);
+            }
+#endif
+            (--returnTop)->pRAM = (void *)ip;
+
+            ip = (uint8_t*)&parenColon;
+#ifdef __AVR__
+            inProgramSpace = true;
+#endif
+        }
+        continue;
+
+        // -------------------------------------------------------------
+        // HIDE [MFORTH] ( -- )
+        //
+        // Prevent the most recent definition from being found in the
+        // dictionary.
+        HIDE:
+        {
+            *(this->latest + 2) |= 0x80;
+        }
+        continue;
+
+        // -------------------------------------------------------------
+        // ] [CORE] 6.1.2540 "right-bracket" ( -- )
+        //
+        // Enter compilation state.
+        RTBRACKET:
+        {
+            this->state = -1;
+        }
+        continue;
+
+        // -------------------------------------------------------------
+        // C! [CORE] 6.1.0850 "c-store" ( char c-addr -- )
+        //
+        // Store char at c-addr.  When character size is smaller than
+        // cell size, only the number of low-order bits corresponding to
+        // character size are transferred.
+        CSTORE:
+        {
+            CHECK_STACK(2, 0);
+            *(uint8_t*)tos.pRAM = restDataStack++->u;
+            tos = *restDataStack++;
+        }
+        continue;
+
+        SEMICOLON:
+        {
+            static const int8_t parenSemicolon[] PROGMEM = {
+                CHARLIT, EXIT, COMPILECOMMA, REVEAL, LTBRACKET,
+                EXIT
+            };
+
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                ip = (uint8_t*)((unsigned int)ip | 0x8000);
+            }
+#endif
+            (--returnTop)->pRAM = (void *)ip;
+
+            ip = (uint8_t*)&parenSemicolon;
+#ifdef __AVR__
+            inProgramSpace = true;
+#endif
+        }
+        continue;
+
+        REVEAL:
+        {
+            *(this->latest + 2) &= 0x7f;
+        }
+        continue;
+
+        LTBRACKET:
+        {
+            this->state = 0;
         }
         continue;
 
