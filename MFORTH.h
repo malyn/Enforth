@@ -227,6 +227,8 @@ class MFORTH
             UDSLASHMOD,
             GREATERTHAN,
             AND,
+            NOTEQUALS,
+            UDOT,
 
             //...
 

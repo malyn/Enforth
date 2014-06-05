@@ -1,14 +1,16 @@
-* Implement `.` for non-decimal bases.
 * Consider making compiled PFA offsets relative to the start of the dictionary instead of the IP where those offers are used.  This would eliminate the usefulness of/need for DOCOLON8, but it would make address calculation easier since we could just store the current start-of-dictionary address in a constant register pair.
   * If we don't do this then we should create DOCOLON8/16 in order to minimize dictionary size.
   * We can also align PFAs to 16-bits if we go the DOCOLON8/16 route, which will let DOCOLON8 span up to 512 bytes.
+* Store a relative offset to the FFIDef trampoline PFA as part of compiling a `DOFFI*` opcode.  We're currently storing the function pointer itself, but that is twice as large on 32-bit platforms as an offset.  Similarly, the function pointer will be 22 bits on some AVRs and so we're wasting space there as well.
+* We may not need to blow 16 opcodes on the `PDO*` opcodes; instead we can just create a dedicated jump table in `EXECUTE` for those opcodes.  `EXECUTE` is almost only ever used when we are doing text interpretation, so spilling and filling registers here should be fine.
 * Fix the primitive/token/opcode/etc. naming issue.
 * Support backspace in `ACCEPT`.
-* Move some of the non-critical C++ primitives over to Forth (whatever is uses the least flash).
+* Move some of the non-critical C++ primitives over to Forth (whatever uses the least flash).
   * Program space definitions should have a special DOCOLON opcode that can be used to invoke them.  We are currently duplicating the logic to store and set the IP in each of those definitions.  Instead, each of these Forth-based primitive words should just set IP to the word's PFA and then jump to `DOCOLONROM`.
   * And then we should put them all together in a block so that DOCOLONROM can expect the IP to be relative to that block.
   * Might be able to avoid needing tokens for these if we modify XTs to specify if the XT is ROM- or RAM-based.  This would allow us to pack a large number of primitives into ROM without having to assign tokens to all of them.  Tokens would only be needed for high-performance, internal primitives.
     * This is not worth doing because then every reference to those primitives would require three bytes (`DOCOLONROM` token and the XT) instead of just one byte.  We don't actually care about lots of definitions, we just don't want to have it be a pain to define these things.  Using primitives is fine though, we'll just set the Word Pointer to the ROM IP and then `goto` a common block of code that does the return stack pushing and stuff (*i.e.,* `DOPCOLONROM`, although in this case there is no `DOCOLONROM`).
+      * Slight variation: we load the jump table for these opcodes with `DOCOLONROM` and then use a separate lookup table to turn the opcode into an offset in the definition block.
 * Modify `test/mforth` to optionally take a list of files on the command line and then interpret each file in order (by just feeding the data through `KEY` for now).  This will allow us to start running the anstests.
 * Reorganize/Clean up source files.  Maybe auto-generate opcodes so that we can avoid some of the duplication, for example.
 * Do something about absolute RAM addresses on the stack, in variables, etc.  These prevent the VM from being saved to/from storage (such as EEPROM).

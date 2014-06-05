@@ -136,33 +136,36 @@ static const char primitives[] PROGMEM =
     "\x03" "NIP"
     "\x02" "W,"
 
-    // $40 - $47
     "\x01" ":"
     "\x00" // HIDE
     "\x01" "]"
     "\x02" "C!"
 
+    // $40 - $47
     "\x81" ";"
     "\x00" // REVEAL
     "\x81" "["
     "\x03" "ABS"
 
-    // $48 - $4F
     "\x02" "<#"
     "\x02" "#S"
     "\x03" "ROT"
     "\x04" "SIGN"
 
+    // $48 - $4F
     "\x02" "#>"
     "\x01" "#"
     "\x02" "0<"
     "\x04" "HOLD"
 
-    // $50 - $57
     "\x04" "BASE"
     "\x06" "UD/MOD"
     "\x01" ">"
     "\x03" "AND"
+
+    // $50 - $57
+    "\x02" "<>"
+    "\x02" "U."
 
     // End byte
     "\xff"
@@ -585,7 +588,10 @@ void MFORTH::go()
         &&AND,
 
         // $50 - $57
-        0, 0, 0, 0,
+        &&NOTEQUALS,
+        &&UDOT,
+        0, 0,
+
         0, 0, 0, 0,
 
         // $58 - $5F
@@ -1547,8 +1553,7 @@ DISPATCH_OPCODE:
             CHECK_STACK(1, 0);
 
             static const int8_t parenDot[] PROGMEM = {
-                // TODO Implement this
-                //BASE, FETCH, CHARLIT, 10, NOTEQUALS, ZBRANCH, 3, UDOT, EXIT,
+                BASE, FETCH, CHARLIT, 10, NOTEQUALS, ZBRANCH, 3, UDOT, EXIT,
                 DUP, ABS, ZERO, LESSNUMSIGN, NUMSIGNS, ROT, SIGN,
                     NUMSIGNGRTR, TYPE, SPACE,
                 EXIT
@@ -2158,6 +2163,37 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(2, 1);
             tos.i &= restDataStack++->i;
+        }
+        continue;
+
+        NOTEQUALS:
+        {
+            CHECK_STACK(2, 1);
+            tos.i = restDataStack++->i != tos.i ? -1 : 0;
+        }
+        continue;
+
+        UDOT:
+        {
+            CHECK_STACK(1, 0);
+
+            static const int8_t parenUDot[] PROGMEM = {
+                ZERO, LESSNUMSIGN, NUMSIGNS, NUMSIGNGRTR, TYPE, SPACE,
+                EXIT
+            };
+
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                ip = (uint8_t*)((unsigned int)ip | 0x8000);
+            }
+#endif
+            (--returnTop)->pRAM = (void *)ip;
+
+            ip = (uint8_t*)&parenUDot;
+#ifdef __AVR__
+            inProgramSpace = true;
+#endif
         }
         continue;
 
