@@ -1,11 +1,11 @@
-* Support backspace in `ACCEPT`.
-* Make `COMPILE,` support user definitions and FFI trampolines.
-  * `COMPILE,` has to convert XTs into a separate 8-bit opcode and 16-bit, dictionary-relative offset (which is already what the XT is, but without the high bit set).  Note that `COMPILE,` will need to use `>BODY` to skip over the LFA, flags, and NFA.
-  * Should probably just make DOCOLON8 and DOCOLON16 and then align PFAs to 16-bits so that DOCOLON8 can span a full -512 bytes.
 * Implement pictured numeric output.
   * HLD is 3x the bit size in order to account for binary output with 50% extra stuff.  So 48/96 bytes.
   * Could make this 2n+2 per the Standard...
+* Consider making compiled PFA offsets relative to the start of the dictionary instead of the IP where those offers are used.  This would eliminate the usefulness of/need for DOCOLON8, but it would make address calculation easier since we could just store the current start-of-dictionary address in a constant register pair.
+  * If we don't do this then we should create DOCOLON8/16 in order to minimize dictionary size.
+  * We can also align PFAs to 16-bits if we go the DOCOLON8/16 route, which will let DOCOLON8 span up to 512 bytes.
 * Fix the primitive/token/opcode/etc. naming issue.
+* Support backspace in `ACCEPT`.
 * Move some of the non-critical C++ primitives over to Forth (whatever is uses the least flash).
   * Program space definitions should have a special DOCOLON opcode that can be used to invoke them.  We are currently duplicating the logic to store and set the IP in each of those definitions.  Instead, each of these Forth-based primitive words should just set IP to the word's PFA and then jump to `DOCOLONROM`.
   * And then we should put them all together in a block so that DOCOLONROM can expect the IP to be relative to that block.

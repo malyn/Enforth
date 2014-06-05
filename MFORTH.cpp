@@ -624,6 +624,9 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(0, 1);
 
+            // TODO Store the FFIDef here instead of the FFI function
+            // pointer; smaller and it might make it easier to relocate
+            // the dictionary.
             w = *(uint8_t**)ip;
             ip += FFIProcPtrSize;
 
@@ -637,6 +640,9 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(1, 1);
 
+            // TODO Store the FFIDef here instead of the FFI function
+            // pointer; smaller and it might make it easier to relocate
+            // the dictionary.
             w = *(uint8_t**)ip;
             ip += FFIProcPtrSize;
 
@@ -649,6 +655,9 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(2, 1);
 
+            // TODO Store the FFIDef here instead of the FFI function
+            // pointer; smaller and it might make it easier to relocate
+            // the dictionary.
             w = *(uint8_t**)ip;
             ip += FFIProcPtrSize;
 
@@ -860,29 +869,60 @@ DISPATCH_OPCODE:
             }
             else
             {
-                // This XT is a 16-bit value with the high bit set and
-                // the remaining 15 bits specifying the relative offset
-                // to the target word from the start of the dictionary
-                // (so that XTs relocate with the dictionary).  XTs for
-                // user-defined words will then be converted into a DO*
-                // opcode and a relative offset from the current call
-                // site (IP).  Initially these offsets will be 16-bits,
-                // but we can create DO*8 opcodes that are used if the
-                // range fits into 8 bits.  COMPILECOMMA will need to
-                // look up the type of word that is being targed and
-                // compile in the appropriate DO* opcode.  This creates
-                // additional work for COMPILECOMMA, but the benefit is
-                // that XTs can use the entire 15-bit range and do not
-                // need any flag bits.
-                //
-                // Note that the compiled offset is a native endian
-                // relative offset to the word's PFA (no CFAs in MFORTH)
-                // and that the offset is as of the address *after* the
-                // opcode and *before* the offset since that's where the
-                // IP will be in the DO* opcode when we calculate the
-                // address.
-                //
-                // TODO Implement this
+                // TODO Most of this is >BODY and is duplicated in
+                // EXECUTE; we should move it into a helper function
+                // (and just rewrite this in Forth).
+
+                // Calculate the absolute RAM address of the target
+                // word's PFA (the "W" register).
+                uint8_t * pTarget = (uint8_t*)this->dictionary + (tos.u & 0x7fff);
+                pTarget += 2; // Skip LFA
+                uint8_t definitionType = *pTarget++;
+
+                // Compile the CFA opcode.  By design, the compilation
+                // opcodes for each definition are 0x70 greater than the
+                // definition type value, so we can just OR 0x70 with
+                // the definition type and then use that as the opcode.
+                *this->dp++ = 0x70 | definitionType;
+
+                // Find W.  For user-defined words this is the address
+                // of the PFA (which is after the variable-length NFA).
+                // For FFI trampolines it is the FFI function pointer
+                // itself (which we get by dereferencing the FFI linked
+                // list entry that is stored after the dictionary
+                // flags).
+                if (definitionType < CFADOFFI0)
+                {
+                    while ((*pTarget++ & 0x80) == 0)
+                    {
+                        // Loop
+                    }
+
+                    w = pTarget;
+
+                    // Compile the relative offset to the PFA.
+                    uint16_t relativeOffset = this->dp - w;
+                    *((uint16_t*)this->dp) = relativeOffset;
+                    this->dp += 2;
+                }
+                else
+                {
+                    // Dereference the linked list entry in order to get
+                    // the FFI function pointer.
+                    const FFIDef * ffi = *(FFIDef **)pTarget;
+                    const void * ffiFn = (void *)pgm_read_word(&ffi->fn);
+                    w = (uint8_t*)ffiFn;
+
+                    // Compile the absolute address of the FFI function
+                    // pointer.
+                    // TODO Store the FFIDef here instead of the FFI
+                    // function pointer; smaller and it might make it
+                    // easier to relocate the dictionary.
+                    *((void**)this->dp) = w;
+                    this->dp += FFIProcPtrSize;
+                }
+
+                // Drop the XT and get a new TOS.
                 tos = *restDataStack++;
             }
         }
@@ -973,10 +1013,10 @@ DISPATCH_OPCODE:
                 tos = *restDataStack++;
 
                 // Dispatch to the opcode that handles this type of
-                // definition.  By design, the opcodes for each
-                // definition are 0x60 greater than the definition
-                // type value, so we can just OR 0x60 with the
-                // definition type and then use that as the opcode.
+                // definition.  By design, the EXECUTE opcodes for each
+                // definition are 0x60 greater than the definition type
+                // value, so we can just OR 0x60 with the definition
+                // type and then use that as the opcode.
                 op = 0x60 | definitionType;
                 goto DISPATCH_OPCODE;
             }
