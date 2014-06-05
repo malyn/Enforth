@@ -214,6 +214,19 @@ class MFORTH
             SEMICOLON,
             REVEAL,
             LTBRACKET,
+            ABS,
+            LESSNUMSIGN,
+            NUMSIGNS,
+            ROT,
+            SIGN,
+            NUMSIGNGRTR,
+            NUMSIGN,
+            ZEROLESS,
+            HOLD,
+            BASE,
+            UDSLASHMOD,
+            GREATERTHAN,
+            AND,
 
             //...
 

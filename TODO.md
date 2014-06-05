@@ -1,6 +1,4 @@
-* Implement pictured numeric output.
-  * HLD is 3x the bit size in order to account for binary output with 50% extra stuff.  So 48/96 bytes.
-  * Could make this 2n+2 per the Standard...
+* Implement `.` for non-decimal bases.
 * Consider making compiled PFA offsets relative to the start of the dictionary instead of the IP where those offers are used.  This would eliminate the usefulness of/need for DOCOLON8, but it would make address calculation easier since we could just store the current start-of-dictionary address in a constant register pair.
   * If we don't do this then we should create DOCOLON8/16 in order to minimize dictionary size.
   * We can also align PFAs to 16-bits if we go the DOCOLON8/16 route, which will let DOCOLON8 span up to 512 bytes.

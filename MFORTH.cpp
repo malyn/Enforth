@@ -32,6 +32,7 @@
  */
 
 #include <ctype.h>
+#include <stdlib.h>
 
 #ifdef __AVR__
 #include <avr/pgmspace.h>
@@ -144,6 +145,24 @@ static const char primitives[] PROGMEM =
     "\x81" ";"
     "\x00" // REVEAL
     "\x81" "["
+    "\x03" "ABS"
+
+    // $48 - $4F
+    "\x02" "<#"
+    "\x02" "#S"
+    "\x03" "ROT"
+    "\x04" "SIGN"
+
+    "\x02" "#>"
+    "\x01" "#"
+    "\x02" "0<"
+    "\x04" "HOLD"
+
+    // $50 - $57
+    "\x04" "BASE"
+    "\x06" "UD/MOD"
+    "\x01" ">"
+    "\x03" "AND"
 
     // End byte
     "\xff"
@@ -547,13 +566,23 @@ void MFORTH::go()
         &&SEMICOLON,
         &&REVEAL,
         &&LTBRACKET,
-        0,
+        &&ABS,
 
-        0, 0, 0, 0,
+        &&LESSNUMSIGN,
+        &&NUMSIGNS,
+        &&ROT,
+        &&SIGN,
 
         // $48 - $4F
-        0, 0, 0, 0,
-        0, 0, 0, 0,
+        &&NUMSIGNGRTR,
+        &&NUMSIGN,
+        &&ZEROLESS,
+        &&HOLD,
+
+        &&BASE,
+        &&UDSLASHMOD,
+        &&GREATERTHAN,
+        &&AND,
 
         // $50 - $57
         0, 0, 0, 0,
@@ -1509,26 +1538,34 @@ DISPATCH_OPCODE:
         // . [CORE] 6.1.0180 "dot" ( n -- )
         //
         // Display n in free field format.
+        // ---
+        // : . ( n -- )
+        //   BASE @ 10 <>  IF U. EXIT THEN
+        //   DUP ABS 0 <# #S ROT SIGN #> TYPE SPACE ;
         DOT:
         {
             CHECK_STACK(1, 0);
 
-            if (this->emit != NULL)
+            static const int8_t parenDot[] PROGMEM = {
+                // TODO Implement this
+                //BASE, FETCH, CHARLIT, 10, NOTEQUALS, ZBRANCH, 3, UDOT, EXIT,
+                DUP, ABS, ZERO, LESSNUMSIGN, NUMSIGNS, ROT, SIGN,
+                    NUMSIGNGRTR, TYPE, SPACE,
+                EXIT
+            };
+
+#ifdef __AVR__
+            if (inProgramSpace)
             {
-                // TODO These numbers are printing backwards; we need to
-                // implement pictured numeric output.
-                // TODO Use BASE.
-                do
-                {
-                    Int i = tos.i - ((tos.i / 10) * 10);
-                    this->emit('0' + i);
-                    tos.i = tos.i / 10;
-                } while (tos.i != 0);
-
-                this->emit(' ');
+                ip = (uint8_t*)((unsigned int)ip | 0x8000);
             }
+#endif
+            (--returnTop)->pRAM = (void *)ip;
 
-            tos = *restDataStack++;
+            ip = (uint8_t*)&parenDot;
+#ifdef __AVR__
+            inProgramSpace = true;
+#endif
         }
         continue;
 
@@ -1888,6 +1925,239 @@ DISPATCH_OPCODE:
         LTBRACKET:
         {
             this->state = 0;
+        }
+        continue;
+
+        ABS:
+        {
+            CHECK_STACK(1, 1);
+            tos.i = abs(tos.i);
+        }
+        continue;
+
+        LESSNUMSIGN:
+        {
+            this->hld = this->dp + (CellSize*8*3);
+        }
+        continue;
+
+        // -------------------------------------------------------------
+        // #S [CORE] 6.1.0050 "number-sign-s" ( ud1 -- ud2 )
+        //
+        // Convert one digit of ud1 according to the rule for #.
+        // Continue conversion until the quotient is zero.  ud2 is zero.
+        // An ambiguous condition exists if #S executes outside of a <#
+        // #> delimited number conversion.
+        //
+        // ---
+        // : #S ( ud1 -- 0 )   BEGIN # 2DUP OR WHILE REPEAT ;
+        NUMSIGNS:
+        {
+            CHECK_STACK(2, 2);
+
+            static const int8_t parenNumSignS[] PROGMEM = {
+                NUMSIGN, TWODUP, OR, ZBRANCH, 3, BRANCH, -6,
+                EXIT
+            };
+
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                ip = (uint8_t*)((unsigned int)ip | 0x8000);
+            }
+#endif
+            (--returnTop)->pRAM = (void *)ip;
+
+            ip = (uint8_t*)&parenNumSignS;
+#ifdef __AVR__
+            inProgramSpace = true;
+#endif
+        }
+        continue;
+
+        // -------------------------------------------------------------
+        // ROT [CORE] 6.1.2160 "rote" ( x1 x2 x3 -- x2 x3 x1 )
+        //
+        // Rotate the top three stack entries.
+        ROT:
+        {
+            CHECK_STACK(3, 3);
+            Cell x3 = tos;
+            Cell x2 = *restDataStack++;
+            Cell x1 = *restDataStack++;
+            *--restDataStack = x2;
+            *--restDataStack = x3;
+            tos = x1;
+        }
+        continue;
+
+        // -------------------------------------------------------------
+        // SIGN [CORE] 6.1.2210 ( n -- )
+        //
+        // If n is negative, add a minus sign to the beginning of the
+        // pictured numeric output string.  An ambiguous condition
+        // exists if SIGN executes outside of a <# #> delimited number
+        // conversion.
+        //
+        // ---
+        // : SIGN ( n -- )   0< IF [CHAR] - HOLD THEN ;
+        SIGN:
+        {
+            CHECK_STACK(1, 0);
+
+            static const int8_t parenSign[] PROGMEM = {
+                ZEROLESS, ZBRANCH, 4, CHARLIT, '-', HOLD,
+                EXIT
+            };
+
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                ip = (uint8_t*)((unsigned int)ip | 0x8000);
+            }
+#endif
+            (--returnTop)->pRAM = (void *)ip;
+
+            ip = (uint8_t*)&parenSign;
+#ifdef __AVR__
+            inProgramSpace = true;
+#endif
+        }
+        continue;
+
+        // -------------------------------------------------------------
+        // #> [CORE] 6.1.0040 "number-sign-greater" ( xd -- c-addr u )
+        //
+        // Drop xd.  Make the pictured numeric output string available
+        // as a character string.  c-addr and u specify the resulting
+        // character string.  A program may replace characters within
+        // the string.
+        //
+        // ---
+        // : #> ( xd -- c-addr u ) DROP DROP  HLD @  HERE HLDEND +  OVER - ;
+        NUMSIGNGRTR:
+        {
+            restDataStack->pRAM = this->hld;
+            tos.u = (this->dp + (CellSize*8*3)) - this->hld;
+        }
+        continue;
+
+        // -------------------------------------------------------------
+        // # [CORE] 6.1.0030 "number-sign" ( ud1 -- ud2 )
+        //
+        // Divide ud1 by the number in BASE giving the quotient ud2 and
+        // the remainder n.  (n is the least-significant digit of ud1.)
+        // Convert n to external form and add the resulting character to
+        // the beginning of the pictured numeric output string.  An
+        // ambiguous condition exists if # executes outside of a <# #>
+        // delimited number conversion.
+        //
+        // ---
+        // : >DIGIT ( u -- c ) DUP 9 > 7 AND + 48 + ;
+        // : # ( ud1 -- ud2 )   BASE @ UD/MOD ROT >digit HOLD ;
+        NUMSIGN:
+        {
+            CHECK_STACK(2, 2);
+
+            static const int8_t parenNumSign[] PROGMEM = {
+                BASE, FETCH, UDSLASHMOD, ROT,
+                // TODIGIT
+                    DUP, CHARLIT, 9, GREATERTHAN, CHARLIT, 7, AND,
+                    PLUS, CHARLIT, 48, PLUS,
+                HOLD,
+                EXIT
+            };
+
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                ip = (uint8_t*)((unsigned int)ip | 0x8000);
+            }
+#endif
+            (--returnTop)->pRAM = (void *)ip;
+
+            ip = (uint8_t*)&parenNumSign;
+#ifdef __AVR__
+            inProgramSpace = true;
+#endif
+        }
+        continue;
+
+        // -------------------------------------------------------------
+        // 0< [CORE] 6.1.0250 "zero-less" ( b -- flag )
+        //
+        // flag is true if and only if n is less than zero.
+        ZEROLESS:
+        {
+            CHECK_STACK(1, 0);
+            tos.i = tos.i < 0 ? -1 : 0;
+        }
+        continue;
+
+        // -------------------------------------------------------------
+        // HOLD [CORE] 6.1.1670 ( char -- )
+        //
+        // Add char to the beginning of the pictured numeric output
+        // string.  An ambiguous condition exists if HOLD executes
+        // outside of a <# #> delimited number conversion.
+        HOLD:
+        {
+            CHECK_STACK(1, 0);
+            *--this->hld = tos.u;
+            tos = *restDataStack++;
+        }
+        continue;
+
+        // -------------------------------------------------------------
+        // BASE [CORE] 6.1.0750 ( -- a-addr )
+        //
+        // a-addr is the address of a cell containing the current
+        // number-conversion radix {{2...36}}.
+        BASE:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos.pRAM = &this->base;
+        }
+        continue;
+
+        // -------------------------------------------------------------
+        // UD/MOD [MFORTH] "u-d-slash-mod" ( ud1 u1 -- n ud2 )
+        //
+        // Divide ud1 by u1 giving the quotient ud2 and the remainder n.
+        UDSLASHMOD:
+        {
+            CHECK_STACK(3, 3);
+#ifdef __AVR__
+#error TODO Implement 32-bit division
+#else
+            uint32_t u1 = tos.u;
+            uint32_t ud1_msb = restDataStack++->u;
+            uint32_t ud1_lsb = restDataStack++->u;
+            uint64_t ud1 = ((uint64_t)ud1_msb << 32) | ud1_lsb;
+            lldiv_t result = lldiv(ud1, u1);
+            (--restDataStack)->u = result.rem;
+            (--restDataStack)->u = result.quot;
+            tos.u = (uint32_t)(result.quot >> 32);
+#endif
+        }
+        continue;
+
+        // -------------------------------------------------------------
+        // > [CORE] 6.1.0540 "greater-than" ( n1 n2 -- flag )
+        //
+        // flag is true if and only if n1 is greater than n2.
+        GREATERTHAN:
+        {
+            CHECK_STACK(2, 1);
+            tos.i = restDataStack++->i > tos.i ? -1 : 0;
+        }
+        continue;
+
+        AND:
+        {
+            CHECK_STACK(2, 1);
+            tos.i &= restDataStack++->i;
         }
         continue;
 
