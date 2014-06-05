@@ -84,8 +84,8 @@ MFORTH programs are created interactively.  The program manifests itself as a di
 This works for the following reasons:
 
 * Branch addresses are 8-bit relative offsets and so relocate with the word, even if the word was to change its starting location (which doesn't happen).
-* References to user-defined words are relative offsets into prior parts of the dictionary and so the entire dictionary is relocatable.
-* XTs are relative references from the start of the dictionary and so are relocatable as well.
+* References to user-defined words are relative offsets from the start of the dictionary and so the entire dictionary is relocatable.
+* XTs are also relative references from the start of the dictionary and so are relocatable as well.
 
 # Optimizations
 

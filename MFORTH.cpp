@@ -659,15 +659,20 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(0, 1);
 
-            // TODO Store the FFIDef here instead of the FFI function
-            // pointer; smaller and it might make it easier to relocate
-            // the dictionary.
-            w = *(uint8_t**)ip;
-            ip += FFIProcPtrSize;
+            // The IP is pointing at the dictionary-relative offset of
+            // the PFA of the FFI trampoline.  Convert that to a pointer
+            // and store it in W.
+            w = (uint8_t*)(this->dictionary + *(uint16_t*)ip);
+            ip += 2;
 
         PDOFFI0:
+            // W contains a pointer to the PFA of the FFI definition;
+            // get the FFI definition pointer and then use that to get
+            // the FFI function pointer.
+            ZeroArgFFI fn = (ZeroArgFFI)(*(FFIDef**)w)->fn;
+
             *--restDataStack = tos;
-            tos = (*(ZeroArgFFI)w)();
+            tos = (*fn)();
         }
         continue;
 
@@ -675,14 +680,19 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(1, 1);
 
-            // TODO Store the FFIDef here instead of the FFI function
-            // pointer; smaller and it might make it easier to relocate
-            // the dictionary.
-            w = *(uint8_t**)ip;
-            ip += FFIProcPtrSize;
+            // The IP is pointing at the dictionary-relative offset of
+            // the PFA of the FFI trampoline.  Convert that to a pointer
+            // and store it in W.
+            w = (uint8_t*)(this->dictionary + *(uint16_t*)ip);
+            ip += 2;
 
         PDOFFI1:
-            tos = (*(OneArgFFI)w)(tos);
+            // W contains a pointer to the PFA of the FFI definition;
+            // get the FFI definition pointer and then use that to get
+            // the FFI function pointer.
+            OneArgFFI fn = (OneArgFFI)(*(FFIDef**)w)->fn;
+
+            tos = (*fn)(tos);
         }
         continue;
 
@@ -690,16 +700,18 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(2, 1);
 
-            // TODO Store the FFIDef here instead of the FFI function
-            // pointer; smaller and it might make it easier to relocate
-            // the dictionary.
-            w = *(uint8_t**)ip;
-            ip += FFIProcPtrSize;
+            // The IP is pointing at the dictionary-relative offset of
+            // the PFA of the FFI trampoline.  Convert that to a pointer
+            // and store it in W.
+            w = (uint8_t*)(this->dictionary + *(uint16_t*)ip);
+            ip += 2;
 
         PDOFFI2:
+            TwoArgFFI fn = (TwoArgFFI)(*(FFIDef**)w)->fn;
+
             Cell arg2 = tos;
             Cell arg1 = *restDataStack++;
-            tos = (*(TwoArgFFI)w)(arg1, arg2);
+            tos = (*fn)(arg1, arg2);
         }
         continue;
 
@@ -920,42 +932,21 @@ DISPATCH_OPCODE:
                 // the definition type and then use that as the opcode.
                 *this->dp++ = 0x70 | definitionType;
 
-                // Find W.  For user-defined words this is the address
-                // of the PFA (which is after the variable-length NFA).
-                // For FFI trampolines it is the FFI function pointer
-                // itself (which we get by dereferencing the FFI linked
-                // list entry that is stored after the dictionary
-                // flags).
+                // Find the PFA.  We're already there for FFI
+                // trampolines, but for user-defined words we need to
+                // skip over the variable-length NFA.
                 if (definitionType < CFADOFFI0)
                 {
                     while ((*pTarget++ & 0x80) == 0)
                     {
                         // Loop
                     }
-
-                    w = pTarget;
-
-                    // Compile the relative offset to the PFA.
-                    uint16_t relativeOffset = this->dp - w;
-                    *((uint16_t*)this->dp) = relativeOffset;
-                    this->dp += 2;
                 }
-                else
-                {
-                    // Dereference the linked list entry in order to get
-                    // the FFI function pointer.
-                    const FFIDef * ffi = *(FFIDef **)pTarget;
-                    const void * ffiFn = (void *)pgm_read_word(&ffi->fn);
-                    w = (uint8_t*)ffiFn;
 
-                    // Compile the absolute address of the FFI function
-                    // pointer.
-                    // TODO Store the FFIDef here instead of the FFI
-                    // function pointer; smaller and it might make it
-                    // easier to relocate the dictionary.
-                    *((void**)this->dp) = w;
-                    this->dp += FFIProcPtrSize;
-                }
+                // Compile the relative offset to the PFA.
+                uint16_t relativeOffset = pTarget - this->dictionary;
+                *((uint16_t*)this->dp) = relativeOffset;
+                this->dp += 2;
 
                 // Drop the XT and get a new TOS.
                 tos = *restDataStack++;
@@ -1020,29 +1011,19 @@ DISPATCH_OPCODE:
                 pTarget += 2; // Skip LFA
                 uint8_t definitionType = *pTarget++;
 
-                // Find W.  For user-defined words this is the address
-                // of the PFA (which is after the variable-length NFA).
-                // For FFI trampolines it is the FFI function pointer
-                // itself (which we get by dereferencing the FFI linked
-                // list entry that is stored after the dictionary
-                // flags).
+                // Find the PFA.  We're already there for FFI
+                // trampolines, but for user-defined words we need to
+                // skip over the variable-length NFA.
                 if (definitionType < CFADOFFI0)
                 {
                     while ((*pTarget++ & 0x80) == 0)
                     {
                         // Loop
                     }
+                }
 
-                    w = pTarget;
-                }
-                else
-                {
-                    // Dereference the linked list entry in order to get
-                    // the FFI function pointer.
-                    const FFIDef * ffi = *(FFIDef **)pTarget;
-                    const void * ffiFn = (void *)pgm_read_word(&ffi->fn);
-                    w = (uint8_t*)ffiFn;
-                }
+                // Set W to the PFA.
+                w = pTarget;
 
                 // Drop the XT and get a new TOS.
                 tos = *restDataStack++;
@@ -1763,7 +1744,8 @@ DISPATCH_OPCODE:
 
         ALIGN:
         {
-            // TODO Implement this as part of DOCOLON8/DOCOLON16
+            // No alignment necessary (unless we want to expand the
+            // range of the dictionary-relative offsets at some point).
         }
         continue;
 
@@ -2202,7 +2184,7 @@ DISPATCH_OPCODE:
             // IP currently points to the relative offset of the PFA of
             // the target word.  Read that offset and advance IP to the
             // opcode after the offset.
-            w = ip - *(uint16_t*)ip;
+            w = this->dictionary + *(uint16_t*)ip;
             ip += 2;
 
         PDOCOLON:
