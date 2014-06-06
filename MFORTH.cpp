@@ -142,7 +142,7 @@ static const char primitives[] PROGMEM =
     "\x02" "C!"
 
     // $40 - $47
-    "\x81" ";"
+    "\x00" // UNUSED
     "\x00" // REVEAL
     "\x81" "["
     "\x03" "ABS"
@@ -165,6 +165,33 @@ static const char primitives[] PROGMEM =
 
     // $50 - $57
     "\x02" "<>"
+    "\x00" "\x00" "\x00"
+
+    "\x00" "\x00" "\x00" "\x00"
+
+    // $58 - $5F
+    "\x00" "\x00" "\x00" "\x00"
+    "\x00" "\x00" "\x00" "\x00"
+
+    // $60 - $67
+    "\x00" "\x00" "\x00" "\x00"
+    "\x00" "\x00" "\x00" "\x00"
+
+    // $68 - $6F
+    "\x00" "\x00" "\x00" "\x00"
+    "\x00" "\x00" "\x00" "\x00"
+
+    // $70 - $77
+    "\x00" "\x00" "\x00" "\x00"
+    "\x00" "\x00" "\x00" "\x00"
+
+    // $78 - $7F
+    "\x00" "\x00" "\x00" "\x00"
+    "\x00" "\x00" "\x00" "\x00"
+
+    // $80 - $87
+    "\x81" ";"
+    "\x00" // UNUSED
     "\x02" "U."
 
     // End byte
@@ -476,7 +503,7 @@ void MFORTH::go()
         this->emit('\n');
     }
 
-    static const void * const jtb[128] PROGMEM = {
+    static const void * const jtb[256] PROGMEM = {
         // $00 - $07
         0,
         &&LIT,
@@ -566,7 +593,7 @@ void MFORTH::go()
         &&CSTORE,
 
         // $40 - $47
-        &&SEMICOLON,
+        0, // UNUSED
         &&REVEAL,
         &&LTBRACKET,
         &&ABS,
@@ -589,8 +616,7 @@ void MFORTH::go()
 
         // $50 - $57
         &&NOTEQUALS,
-        &&UDOT,
-        0, 0,
+        0, 0, 0,
 
         0, 0, 0, 0,
 
@@ -630,6 +656,20 @@ void MFORTH::go()
         &&DOFFI7,
         &&DOFFI8,
         &&EXIT,
+
+        // $80 - $87
+        &&DOCOLONROM, // Offset=0 (SEMICOLON)
+        0,
+        &&DOCOLONROM, // Offset=8 (UDOT)
+    };
+
+    static const int8_t primitiveDefinitions[] PROGMEM = {
+        // SEMICOLON, Offset=0, Length=6
+        // : ; ( --)   ['] EXIT COMPILE,  REVEAL  [ ; IMMEDIATE
+        CHARLIT, EXIT, COMPILECOMMA, REVEAL, LTBRACKET, EXIT, 0, 0,
+
+        // UDOT, Offset=8, Length=7
+        ZERO, LESSNUMSIGN, NUMSIGNS, NUMSIGNGRTR, TYPE, SPACE, EXIT, 0,
     };
 
     // Jump to ABORT, which initializes the IP, our stacks, etc.
@@ -1881,28 +1921,6 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        SEMICOLON:
-        {
-            static const int8_t parenSemicolon[] PROGMEM = {
-                CHARLIT, EXIT, COMPILECOMMA, REVEAL, LTBRACKET,
-                EXIT
-            };
-
-#ifdef __AVR__
-            if (inProgramSpace)
-            {
-                ip = (uint8_t*)((unsigned int)ip | 0x8000);
-            }
-#endif
-            (--returnTop)->pRAM = (void *)ip;
-
-            ip = (uint8_t*)&parenSemicolon;
-#ifdef __AVR__
-            inProgramSpace = true;
-#endif
-        }
-        continue;
-
         REVEAL:
         {
             *(this->latest + 2) &= 0x7f;
@@ -2155,30 +2173,6 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        UDOT:
-        {
-            CHECK_STACK(1, 0);
-
-            static const int8_t parenUDot[] PROGMEM = {
-                ZERO, LESSNUMSIGN, NUMSIGNS, NUMSIGNGRTR, TYPE, SPACE,
-                EXIT
-            };
-
-#ifdef __AVR__
-            if (inProgramSpace)
-            {
-                ip = (uint8_t*)((unsigned int)ip | 0x8000);
-            }
-#endif
-            (--returnTop)->pRAM = (void *)ip;
-
-            ip = (uint8_t*)&parenUDot;
-#ifdef __AVR__
-            inProgramSpace = true;
-#endif
-        }
-        continue;
-
         DOCOLON:
         {
             // IP currently points to the relative offset of the PFA of
@@ -2207,6 +2201,28 @@ DISPATCH_OPCODE:
             // Now set the IP to the PFA of the word that is being
             // called and continue execution inside of that word.
             ip = w;
+        }
+        continue;
+
+        DOCOLONROM:
+        {
+            // Push IP to the stack, marking IP as in-program-space as
+            // necessary.
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                ip = (uint8_t*)((unsigned int)ip | 0x8000);
+            }
+#endif
+            (--returnTop)->pRAM = (void *)ip;
+
+            // Calculate the offset of the definition and set the IP to
+            // the absolute address.
+            int definitionOffset = (op & ~0x80) << 2;
+            ip = (uint8_t*)primitiveDefinitions + definitionOffset;
+#ifdef __AVR__
+            inProgramSpace = true;
+#endif
         }
         continue;
 

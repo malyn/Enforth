@@ -211,7 +211,7 @@ class MFORTH
             HIDE,
             RTBRACKET,
             CSTORE,
-            SEMICOLON,
+            unused1, // UNUSED
             REVEAL,
             LTBRACKET,
             ABS,
@@ -228,7 +228,7 @@ class MFORTH
             GREATERTHAN,
             AND,
             NOTEQUALS,
-            UDOT,
+            unused2, // UNUSED
 
             //...
 
@@ -278,6 +278,14 @@ class MFORTH
             // This is a normal opcode and is placed at the end in order
             // to make it easier to identify in definitions.
             EXIT = 0x7F,
+
+            // ROM definitions
+            // TODO: Ultimately these will be scattered throughout the
+            // token space, but for now we're just putting them here
+            // until we have the build tool that will organize the
+            // tokens and generate .h/.cpp files.
+            SEMICOLON = 0x80,
+            UDOT = 0x82,
         } Opcode;
 
 
