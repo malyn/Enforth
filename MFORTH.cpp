@@ -33,12 +33,12 @@
 
 #include <ctype.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef __AVR__
 #include <avr/pgmspace.h>
 #else
 #define PROGMEM
-#include <string.h>
 #define pgm_read_byte(p) (*(uint8_t*)(p))
 #define pgm_read_word(p) (*(int *)(p))
 #define memcpy_P memcpy
@@ -1013,7 +1013,7 @@ DISPATCH_OPCODE:
             // W contains a pointer to the PFA of the FFI definition;
             // get the FFI definition pointer and then use that to get
             // the FFI function pointer.
-            ZeroArgFFI fn = (ZeroArgFFI)(*(FFIDef**)w)->fn;
+            ZeroArgFFI fn = (ZeroArgFFI)pgm_read_word(&(*(FFIDef**)w)->fn);
 
             *--restDataStack = tos;
             tos = (*fn)();
@@ -1034,7 +1034,7 @@ DISPATCH_OPCODE:
             // W contains a pointer to the PFA of the FFI definition;
             // get the FFI definition pointer and then use that to get
             // the FFI function pointer.
-            OneArgFFI fn = (OneArgFFI)(*(FFIDef**)w)->fn;
+            OneArgFFI fn = (OneArgFFI)pgm_read_word(&(*(FFIDef**)w)->fn);
 
             tos = (*fn)(tos);
         }
@@ -1051,7 +1051,7 @@ DISPATCH_OPCODE:
             ip += 2;
 
         PDOFFI2:
-            TwoArgFFI fn = (TwoArgFFI)(*(FFIDef**)w)->fn;
+            TwoArgFFI fn = (TwoArgFFI)pgm_read_word(&(*(FFIDef**)w)->fn);
 
             Cell arg2 = tos;
             Cell arg1 = *restDataStack++;
@@ -2089,7 +2089,14 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(3, 3);
 #ifdef __AVR__
-#error TODO Implement 32-bit division
+            uint16_t u1 = tos.u;
+            uint16_t ud1_msb = restDataStack++->u;
+            uint16_t ud1_lsb = restDataStack++->u;
+            uint32_t ud1 = ((uint32_t)ud1_msb << 16) | ud1_lsb;
+            ldiv_t result = ldiv(ud1, u1);
+            (--restDataStack)->u = result.rem;
+            (--restDataStack)->u = result.quot;
+            tos.u = (uint16_t)(result.quot >> 16);
 #else
             uint32_t u1 = tos.u;
             uint32_t ud1_msb = restDataStack++->u;
