@@ -1,11 +1,25 @@
+* Rename the project to enforth -- the easiest way to put some Forth into your application.
+* Switch to C from C++, but with an EnforthDuino.cpp/.h wrapper for interacting with C++ environments.
+  * Fix the primitive/token/opcode/etc. naming issue as part of this change.
+  * Reorganize the source/header files as part of this change:
+    * `enforth.h`: Public include file.
+    * `enforth_types.h`: Public types.
+    * `enforth_private.h`: Private types.
+    * `enforth_tokens.h`: Token enum (auto-generated).
+    * `enforth_definitions.c`: Primitive (Forth) definitions (auto-generated).
+    * `enforth_primitives.c`: Primitive (C) definitions (auto-generated).
+    * `enforth_lookup.c`: String containing the giant lookup table of definitions/primitives (auto-generated).
+    * `enforth.c`: Primary code file; includes `enforth_definitions.c` and `enforth_primitives.c` for auto-generated stuff.
+* See about moving some/all of the paren\* methods into Forth definitions.
 * Make ROM definition IPs on the return stack relative to the start of the ROM definition block.  We can do this now that all of the ROM definitions are finally in this one block.
-* Fix the primitive/token/opcode/etc. naming issue.
 * Support backspace in `ACCEPT`.
+* Add `USE:` for creating FFI trampolines.
+* Add flow control words (`IF`, `THEN`, `DO`, `WHILE`, etc.).
 * Modify `test/mforth` to optionally take a list of files on the command line and then interpret each file in order (by just feeding the data through `KEY` for now).  This will allow us to start running the anstests.
 * Improve the stack checking code.
   * First, the code is probably too aggressive and may not let us use the last stack item.
   * Second, we have the macro scattered everywhere, but it would be better if the stack sizes were declared in a separate table, organized by opcode, and then checked in a single place right before DISPATCH\_OPCODE.  Similar to the rest of these tables, the source auto-generator will make it easier to build this table.
-* Reorganize/Clean up source files.  Maybe auto-generate opcodes so that we can avoid some of the duplication, for example.
+* Consider auto-generating opcodes so that we can avoid some of the duplication/hand-editing.
   * The first pass should pack the ROM definitions as tightly as possible, which consumes tokens throughout the 8-bit token space.
     * Maybe we should multiply the token by a prime (3?) instead of 4 so that we can pack these in more/perfectly tightly?  Something along the lines of a Golomb Ruler?  Multiplication on the AVR takes two cycles, just like two left shifts (for x4), so we might as well multiply if it gets us better packing.
   * Then we'll fill in all of the public definitions starting from the beginning of token-space.
