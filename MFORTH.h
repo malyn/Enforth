@@ -183,7 +183,7 @@ class MFORTH
             TIB,
             TIBSIZE,
             ACCEPT,
-            INTERPRET,
+            unused_was_INTERPRET, // UNUSED
             PSQUOTE,
             BL,
             CFETCH,
@@ -230,6 +230,8 @@ class MFORTH
             NOTEQUALS,
             unused_was_UDOT, // UNUSED
             INITRP,
+            TICKSOURCE,
+            TICKSOURCELEN,
 
             //...
 
@@ -294,6 +296,7 @@ class MFORTH
             SIGN = 0x98,
             NUMSIGN = 0x9a,
             QUIT = 0x9f,
+            INTERPRET = 0xa5,
         } Opcode;
 
 
@@ -329,8 +332,8 @@ class MFORTH
         Int state;
 
         uint8_t tib[80];
-        uint8_t * source;
-        Int sourceLen;
+        Cell source;
+        Cell sourceLen;
         Int toIn;
 
         uint8_t * prevLeave;

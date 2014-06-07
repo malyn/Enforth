@@ -103,7 +103,7 @@ static const char primitives[] PROGMEM =
     "\x00" // TIBSIZE
     "\x06" "ACCEPT"
 
-    "\x00" // INTERPRET
+    "\x00" // UNUSED
     "\x00" // (S")
     "\x02" "BL"
     "\x02" "C@"
@@ -167,9 +167,10 @@ static const char primitives[] PROGMEM =
     "\x02" "<>"
     "\x00"
     "\x00" // INITRP
-    "\x00"
+    "\x00" // TICKSOURCE
 
-    "\x00" "\x00" "\x00" "\x00"
+    "\x00" // TICKSOURCELEN
+    "\x00" "\x00" "\x00"
 
     // $58 - $5F
     "\x00" "\x00" "\x00" "\x00"
@@ -229,6 +230,19 @@ static const char primitives[] PROGMEM =
     "\x00" // UNUSED
     "\x00" // UNUSED
     "\x00" // UNUSED
+    "\x00" // INTERPRET
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
 
     // End byte
     "\xff"
@@ -242,7 +256,7 @@ MFORTH::MFORTH(uint8_t * const dictionary, int dictionarySize,
    dictionary(dictionary), dictionarySize(dictionarySize),
    dp(dictionary), latest(NULL), hld(NULL),
    state(0),
-   source(NULL), sourceLen(0), toIn(0), prevLeave(NULL)
+   toIn(0), prevLeave(NULL)
 {
 }
 
@@ -479,8 +493,8 @@ void MFORTH::parenParseWord(uint8_t delim, uint8_t * &caddr, MFORTH::Unsigned &u
 {
     // Skip over the start of the string until we find a non-delimiter
     // character or we hit the end of the parse area.
-    while ((*(this->source + this->toIn) == delim)
-            && (this->toIn < this->sourceLen))
+    while ((*((uint8_t*)this->source.pRAM + this->toIn) == delim)
+            && (this->toIn < this->sourceLen.i))
     {
         this->toIn++;
     }
@@ -489,9 +503,9 @@ void MFORTH::parenParseWord(uint8_t delim, uint8_t * &caddr, MFORTH::Unsigned &u
     // the end of the parse area; point caddr at the current location
     // and then scan forwards until we hit another delimiter or we
     // exhaust the parse area.
-    caddr = this->source + this->toIn;
+    caddr = (uint8_t*)this->source.pRAM + this->toIn;
     char * pParse = (char *)caddr;
-    while ((*pParse != delim) && (this->toIn < this->sourceLen))
+    while ((*pParse != delim) && (this->toIn < this->sourceLen.i))
     {
         pParse++;
         this->toIn++;
@@ -590,7 +604,7 @@ void MFORTH::go()
         &&TIBSIZE,
         &&ACCEPT,
 
-        &&INTERPRET,
+        0, // UNUSED
         &&PSQUOTE,
         &&BL,
         &&CFETCH,
@@ -654,9 +668,10 @@ void MFORTH::go()
         &&NOTEQUALS,
         0, // UNUSED
         &&INITRP,
-        0,
+        &&TICKSOURCE,
 
-        0, 0, 0, 0,
+        &&TICKSOURCELEN,
+        0, 0, 0,
 
         // $58 - $5F
         0, 0, 0, 0,
@@ -733,6 +748,19 @@ void MFORTH::go()
         0, // UNUSED, Offset=136
         0, // UNUSED, Offset=140
         0, // UNUSED, Offset=144
+        &&DOCOLONROM, // Offset=148 (INTERPRET)
+        0, // UNUSED, Offset=152
+        0, // UNUSED, Offset=156
+        0, // UNUSED, Offset=160
+        0, // UNUSED, Offset=164
+        0, // UNUSED, Offset=168
+        0, // UNUSED, Offset=172
+        0, // UNUSED, Offset=176
+        0, // UNUSED, Offset=180
+        0, // UNUSED, Offset=184
+        0, // UNUSED, Offset=188
+        0, // UNUSED, Offset=192
+        0, // UNUSED, Offset=196
     };
 
     static const int8_t primitiveDefinitions[] PROGMEM = {
@@ -909,6 +937,39 @@ void MFORTH::go()
         PDOTQUOTE, 3, 'o', 'k', ' ',
         BRANCH, -18,
         0,
+
+        // : INTERPRET ( i*x c-addr u -- j*x )
+        //   'SOURCELEN !  'SOURCE !  0 >IN !
+        //   BEGIN  PARSE-WORD  DUP WHILE
+        //       FIND-WORD ( ca u 0=notfound | xt 1=imm | xt -1=interp)
+        //       ?DUP IF ( xt 1=imm | xt -1=interp)
+        //           1+  STATE @ 0=  OR ( xt 2=imm | xt 0=interp)
+        //           IF EXECUTE ELSE COMPILE, THEN
+        //       ELSE
+        //           NUMBER? IF
+        //               STATE @ IF POSTPONE LITERAL THEN
+        //               -- Interpreting; leave number on stack.
+        //           ELSE
+        //               TYPE  SPACE  [CHAR] ? EMIT  CR  ABORT
+        //           THEN
+        //       THEN
+        //   REPEAT ( j*x ca u) 2DROP ;
+        //
+        // Offset=148, Length=49
+        TICKSOURCELEN, STORE, TICKSOURCE, STORE,
+        ZERO, TOIN, STORE,
+        PARSEWORD, DUP, ZBRANCH, 37,
+        FINDWORD, QDUP, ZBRANCH, 14,
+        ONEPLUS, STATE, FETCH, ZEROEQUALS, OR, ZBRANCH, 4,
+        EXECUTE, BRANCH, 21,
+        COMPILECOMMA, BRANCH, 18,
+        NUMBERQ, ZBRANCH, 8,
+        STATE, FETCH, ZBRANCH, 11,
+        LITERAL, BRANCH, 8,
+        TYPE, SPACE, CHARLIT, '?', EMIT, CR, ABORT,
+        BRANCH, -39,
+        TWODROP,
+        EXIT, 0, 0, 0,
     };
 
     // Initialize RP so that we can use threading to get to QUIT from
@@ -1611,64 +1672,6 @@ DISPATCH_OPCODE:
         }
         continue;
 
-        // -----------------------------------------------------------------
-        // INTERPRET [MFORTH] ( i*x c-addr u -- j*x )
-        //
-        // Interpret the given string.
-        INTERPRET:
-        {
-            CHECK_STACK(2, 0);
-            this->source = (uint8_t *)restDataStack++->pRAM;
-            this->sourceLen = tos.u;
-            tos = *restDataStack++;
-
-            // : (INTERPRET) ( i*x -- j*x )
-            //   0 >IN !
-            //   BEGIN  PARSE-WORD  DUP WHILE
-            //       FIND-WORD ( ca u 0=notfound | xt 1=imm | xt -1=interp)
-            //       ?DUP IF ( xt 1=imm | xt -1=interp)
-            //           1+  STATE @ 0=  OR ( xt 2=imm | xt 0=interp)
-            //           IF EXECUTE ELSE COMPILE, THEN
-            //       ELSE
-            //           NUMBER? IF
-            //               STATE @ IF POSTPONE LITERAL THEN
-            //               -- Interpreting; leave number on stack.
-            //           ELSE
-            //               TYPE  SPACE  [CHAR] ? EMIT  CR  ABORT
-            //           THEN
-            //       THEN
-            //   REPEAT ( j*x ca u) 2DROP ;
-            static const int8_t parenInterpret[] PROGMEM = {
-                ZERO, TOIN, STORE,
-                PARSEWORD, DUP, ZBRANCH, 37,
-                FINDWORD, QDUP, ZBRANCH, 14,
-                ONEPLUS, STATE, FETCH, ZEROEQUALS, OR, ZBRANCH, 4,
-                EXECUTE, BRANCH, 21,
-                COMPILECOMMA, BRANCH, 18,
-                NUMBERQ, ZBRANCH, 8,
-                STATE, FETCH, ZBRANCH, 11,
-                LITERAL, BRANCH, 8,
-                TYPE, SPACE, CHARLIT, '?', EMIT, CR, ABORT,
-                BRANCH, -39,
-                TWODROP,
-                EXIT,
-            };
-
-#ifdef __AVR__
-            if (inProgramSpace)
-            {
-                ip = (uint8_t*)((unsigned int)ip | 0x8000);
-            }
-#endif
-            (--returnTop)->pRAM = (void *)ip;
-
-            ip = (uint8_t*)&parenInterpret;
-#ifdef __AVR__
-            inProgramSpace = true;
-#endif
-        }
-        continue;
-
         // -------------------------------------------------------------
         // (s") [MFORTH] "paren-s-quote-paren" ( -- c-addr u )
         //
@@ -1831,7 +1834,7 @@ DISPATCH_OPCODE:
         //   immediate word.
         BACKSLASH:
         {
-            this->toIn = this->sourceLen;
+            this->toIn = this->sourceLen.i;
         }
         continue;
 
@@ -2132,6 +2135,22 @@ DISPATCH_OPCODE:
         }
         continue;
 
+        TICKSOURCE:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos.pRAM = &this->source;
+        }
+        continue;
+
+        TICKSOURCELEN:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos.pRAM = &this->sourceLen;
+        }
+        continue;
+
         DOCOLON:
         {
             // IP currently points to the relative offset of the PFA of
@@ -2147,6 +2166,8 @@ DISPATCH_OPCODE:
 #ifdef __AVR__
             if (inProgramSpace)
             {
+                // TODO Needs to be relative to the ROM definition
+                // block.
                 ip = (uint8_t*)((unsigned int)ip | 0x8000);
 
                 // We are no longer in program space since, by design,
@@ -2192,9 +2213,8 @@ DISPATCH_OPCODE:
 #ifdef __AVR__
             if (((unsigned int)ip & 0x8000) != 0)
             {
-                // TODO Needs to be relative to something (such as the
-                // block of ROM definitions, should we create such a
-                // thing).
+                // TODO Needs to be relative to the ROM definition
+                // block.
                 ip = (uint8_t*)((unsigned int)ip & 0x7FFF);
                 inProgramSpace = true;
             }

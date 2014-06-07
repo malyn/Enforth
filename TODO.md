@@ -1,14 +1,13 @@
-* Move some of the non-critical C++ primitives over to Forth (whatever uses the least flash).
-  * Create a `DOCOLONROM` jump label that we use whenever a token refers to a ROM definition (as opposed to a C++ primitive).  `DOCOLONROM` then uses the token to find the offset of the definition in a single block where these definitions are stored.  IP is set appropriately and we enter that definition.
-  * Note that we do not want to use a special set of bits or something in the XT in order to identify these definitions, because then the compiled XTs for those tokens has to be 16 bits instead of 8 bits.  We want the implementation of the primitive -- C++ or Forth -- to be hidden from the user and so primitives should always be referenced by an 8-bit token.
-  * Organize the opcodes for these definitions through the 8-bit opcode space so that we can multiply/shift/whatever by some value in order to convert the opcode into the offset of the definition in the block.  We can put these definitions wherever we want, so we should be able to come up with a mechanism for locating them in ROM with minimal wastage.  The goal here is to avoid needing yet another 128\*2 byte ROM lookup table for all of these definitions and instead to just be able to calculate the offset, perhaps with the rare padding byte here and there.
-    * Probably we should just multiply the opcode by 4 and then organize the definitions so that they line up as naturally as possible on 4-byte boundaries.  Padding can be used where necessary, but hopefully we can minimize that.
-    * Or perhaps multiply it by a prime number so that we can pack this in anywhere in space?  Something along the lines of a Golomb Ruler?  Multiplication on the AVR takes two cycles, just like two left shifts (for x4), so we might as well multiply if it gets us better packing.
+* Make ROM definition IPs on the return stack relative to the start of the ROM definition block.  We can do this now that all of the ROM definitions are finally in this one block.
 * Fix the primitive/token/opcode/etc. naming issue.
 * Support backspace in `ACCEPT`.
 * Modify `test/mforth` to optionally take a list of files on the command line and then interpret each file in order (by just feeding the data through `KEY` for now).  This will allow us to start running the anstests.
+* Improve the stack checking code.
+  * First, the code is probably too aggressive and may not let us use the last stack item.
+  * Second, we have the macro scattered everywhere, but it would be better if the stack sizes were declared in a separate table, organized by opcode, and then checked in a single place right before DISPATCH\_OPCODE.  Similar to the rest of these tables, the source auto-generator will make it easier to build this table.
 * Reorganize/Clean up source files.  Maybe auto-generate opcodes so that we can avoid some of the duplication, for example.
   * The first pass should pack the ROM definitions as tightly as possible, which consumes tokens throughout the 8-bit token space.
+    * Maybe we should multiply the token by a prime (3?) instead of 4 so that we can pack these in more/perfectly tightly?  Something along the lines of a Golomb Ruler?  Multiplication on the AVR takes two cycles, just like two left shifts (for x4), so we might as well multiply if it gets us better packing.
   * Then we'll fill in all of the public definitions starting from the beginning of token-space.
   * All of the non-public definitions should go at the end so that they do not waste space in the primitives lookup table (which is currently what is happening due to the hand-generated table that we are using).
 * Do something about absolute RAM addresses on the stack, in variables, etc.  These prevent the VM from being saved to/from storage (such as EEPROM).
