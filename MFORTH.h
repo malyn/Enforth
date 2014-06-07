@@ -190,11 +190,11 @@ class MFORTH
             COUNT,
             TONUMBER,
             DEPTH,
-            DOT,
+            unused_was_DOT, // UNUSED
             PDOTQUOTE,
             BACKSLASH,
             HEX,
-            CREATE,
+            unused_was_CREATE, // UNUSED
             HERE,
             LATEST,
             TWODUP,
@@ -207,20 +207,20 @@ class MFORTH
             ALLOT,
             NIP,
             WCOMMA,
-            COLON,
+            unused_was_COLON, // COLON
             HIDE,
             RTBRACKET,
             CSTORE,
-            unused1, // UNUSED
+            unused_was_SEMICOLON, // UNUSED
             REVEAL,
             LTBRACKET,
             ABS,
             LESSNUMSIGN,
-            NUMSIGNS,
+            unused_was_NUMSIGNS, // UNUSED
             ROT,
-            SIGN,
+            unused_was_SIGN, // UNUSED
             NUMSIGNGRTR,
-            NUMSIGN,
+            unused_was_NUMSIGN, // UNUSED
             ZEROLESS,
             HOLD,
             BASE,
@@ -228,7 +228,7 @@ class MFORTH
             GREATERTHAN,
             AND,
             NOTEQUALS,
-            unused2, // UNUSED
+            unused_was_UDOT, // UNUSED
 
             //...
 
@@ -286,6 +286,12 @@ class MFORTH
             // tokens and generate .h/.cpp files.
             SEMICOLON = 0x80,
             UDOT = 0x82,
+            DOT = 0x84,
+            CREATE = 0x89,
+            COLON = 0x93,
+            NUMSIGNS = 0x96,
+            SIGN = 0x98,
+            NUMSIGN = 0x9a,
         } Opcode;
 
 

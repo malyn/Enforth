@@ -112,12 +112,12 @@ static const char primitives[] PROGMEM =
     "\x05" "COUNT"
     "\x07" ">NUMBER"
     "\x05" "DEPTH"
-    "\x01" "."
+    "\x00" // UNUSED
 
     "\x00" // (.")
     "\x01" "\\"
     "\x03" "HEX"
-    "\x06" "CREATE"
+    "\x00" // UNUSED
 
     // $30 - $37
     "\x04" "HERE"
@@ -136,7 +136,7 @@ static const char primitives[] PROGMEM =
     "\x03" "NIP"
     "\x02" "W,"
 
-    "\x01" ":"
+    "\x00" // UNUSED
     "\x00" // HIDE
     "\x01" "]"
     "\x02" "C!"
@@ -148,7 +148,7 @@ static const char primitives[] PROGMEM =
     "\x03" "ABS"
 
     "\x02" "<#"
-    "\x02" "#S"
+    "\x00" // UNUSED
     "\x03" "ROT"
     "\x04" "SIGN"
 
@@ -193,6 +193,34 @@ static const char primitives[] PROGMEM =
     "\x81" ";"
     "\x00" // UNUSED
     "\x02" "U."
+    "\x00" // UNUSED
+    "\x01" "."
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x06" "CREATE"
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x01" ":"
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x02" "#S"
+    "\x00" // UNUSED
+    "\x04" "SIGN"
+    "\x00" // UNUSED
+    "\x01" "#"
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
 
     // End byte
     "\xff"
@@ -563,12 +591,12 @@ void MFORTH::go()
         &&COUNT,
         &&TONUMBER,
         &&DEPTH,
-        &&DOT,
+        0, // UNUSED
 
         &&PDOTQUOTE,
         &&BACKSLASH,
         &&HEX,
-        &&CREATE,
+        0, // UNUSED
 
         // $30 - $37
         &&HERE,
@@ -587,7 +615,7 @@ void MFORTH::go()
         &&NIP,
         &&WCOMMA,
 
-        &&COLON,
+        0, // UNUSED
         &&HIDE,
         &&RTBRACKET,
         &&CSTORE,
@@ -599,13 +627,13 @@ void MFORTH::go()
         &&ABS,
 
         &&LESSNUMSIGN,
-        &&NUMSIGNS,
+        0, // UNUSED
         &&ROT,
-        &&SIGN,
+        0, // UNUSED
 
         // $48 - $4F
         &&NUMSIGNGRTR,
-        &&NUMSIGN,
+        0, // UNUSED
         &&ZEROLESS,
         &&HOLD,
 
@@ -659,17 +687,181 @@ void MFORTH::go()
 
         // $80 - $87
         &&DOCOLONROM, // Offset=0 (SEMICOLON)
-        0,
+        0, // UNUSED, Offset=4
         &&DOCOLONROM, // Offset=8 (UDOT)
+        0, // UNUSED, Offset=12
+        &&DOCOLONROM, // Offset=16 (DOT)
+        0, // UNUSED, Offset=20
+        0, // UNUSED, Offset=24
+        0, // UNUSED, Offset=28
+        0, // UNUSED, Offset=32
+        &&DOCOLONROM, // Offset=36 (CREATE)
+        0, // UNUSED, Offset=40
+        0, // UNUSED, Offset=44
+        0, // UNUSED, Offset=48
+        0, // UNUSED, Offset=52
+        0, // UNUSED, Offset=56
+        0, // UNUSED, Offset=60
+        0, // UNUSED, Offset=64
+        0, // UNUSED, Offset=68
+        0, // UNUSED, Offset=72
+        &&DOCOLONROM, // Offset=76 (COLON)
+        0, // UNUSED, Offset=80
+        0, // UNUSED, Offset=84
+        &&DOCOLONROM, // Offset=88 (NUMSIGNS)
+        0, // UNUSED, Offset=92
+        &&DOCOLONROM, // Offset=96 (SIGN)
+        0, // UNUSED, Offset=100
+        &&DOCOLONROM, // Offset=104 (NUMSIGN)
+        0, // UNUSED, Offset=108
+        0, // UNUSED, Offset=112
+        0, // UNUSED, Offset=116
+        0, // UNUSED, Offset=120
     };
 
     static const int8_t primitiveDefinitions[] PROGMEM = {
         // SEMICOLON, Offset=0, Length=6
-        // : ; ( --)   ['] EXIT COMPILE,  REVEAL  [ ; IMMEDIATE
+        //   : ; ( --)   ['] EXIT COMPILE,  REVEAL  [ ; IMMEDIATE
         CHARLIT, EXIT, COMPILECOMMA, REVEAL, LTBRACKET, EXIT, 0, 0,
 
         // UDOT, Offset=8, Length=7
+        //   : U. ( u --)  0 <# #S #> TYPE SPACE ;
         ZERO, LESSNUMSIGN, NUMSIGNS, NUMSIGNGRTR, TYPE, SPACE, EXIT, 0,
+
+        // DOT, Offset=16, Length=20
+        // : . ( n -- )
+        //   BASE @ 10 <>  IF U. EXIT THEN
+        //   DUP ABS 0 <# #S ROT SIGN #> TYPE SPACE ;
+        BASE, FETCH, CHARLIT, 10, NOTEQUALS, ZBRANCH, 3, UDOT, EXIT,
+        DUP, ABS, ZERO, LESSNUMSIGN, NUMSIGNS, ROT, SIGN,
+            NUMSIGNGRTR, TYPE, SPACE,
+        EXIT,
+
+        // -------------------------------------------------------------
+        // CREATE [CORE] 6.1.1000 ( "<spaces>name" -- )
+        //
+        // Skip leading space delimiters.  Parse name delimited by a
+        // space.  Create a definition for name with the execution
+        // semantics defined below.  If the data-space pointer is not
+        // aligned, reserve enough data space to align it.  The new
+        // data-space pointer defines name's data field.  CREATE does
+        // not allocate data space in name's data field.
+        //
+        //   name Execution:	( -- a-addr )
+        //       a-addr is the address of name's data field.  The
+        //       execution semantics of name may be extended by using
+        //       DOES>.
+        //
+        // : TERMINATE-NAME ( ca u -- ca u)  2DUP 1- +  $80 SWAP C+! ;
+        // : S, ( ca u --)  TUCK  HERE SWAP MOVE  ALLOT ;
+        // : NAME, ( ca u --)  TERMINATE-NAME S, ;
+        // : >LATEST-OFFSET ( addr -- u)  LATEST @ DUP IF - ELSE NIP THEN ;
+        // : CREATE ( "<spaces>name" -- )
+        //   PARSE-WORD DUP 0= IF ABORT THEN ( ca u)
+        //   HERE  DUP >LATEST-OFFSET W,  LATEST ! ( ca u)
+        //   CFADOCREATE C, ( ca u)  NAME,  ALIGN ;
+        //
+        // Offset=36, Length=37
+        PARSEWORD, DUP, ZEROEQUALS, ZBRANCH, 2, ABORT,
+        HERE, DUP,
+        // >LATEST-OFFSET
+            LATEST, FETCH, DUP, ZBRANCH, 4,
+                MINUS, BRANCH, 2,
+                NIP,
+        WCOMMA, LATEST, STORE,
+        CHARLIT, CFADOCREATE, CCOMMA,
+        // NAME,
+            // TERMINATE-NAME
+                TWODUP, ONEMINUS, PLUS, CHARLIT, 0x80, SWAP, CPLUSSTORE,
+            // S,
+                TUCK, HERE, SWAP, MOVE, ALLOT,
+        ALIGN,
+        EXIT, 0, 0, 0,
+
+        // -------------------------------------------------------------
+        // : [CORE] 6.1.0450 "colon" ( C: "<spaces>name" -- colon-sys )
+        //
+        // Skip leading space delimiters.  Parse name delimited by a
+        // space.  Create a definition for name, called a "colon
+        // definition".  Enter compilation state and start the
+        // current definition, producing colon-sys.  Append the
+        // initiation semantics given below to the current definition.
+        //
+        // The execution semantics of name will be determined by the
+        // words compiled into the body of the definition.  The current
+        // definition shall not be findable in the dictionary until it
+        // is ended (or until the execution of DOES> in some systems).
+        //
+        // Initiation: ( i*x -- i*x ) ( R: -- nest-sys )
+        //   Save implementation-dependent information nest-sys about
+        //   the calling definition.  The stack effects i*x represent
+        //   arguments to name.
+        //
+        // name Execution: ( i*x -- j*x )
+        //       Execute the definition name.  The stack effects i*x and
+        //       j*x represent arguments to and results from name,
+        //       respectively.
+        //
+        // : LFA>CFA ( addr -- addr)  1+ 1+ ;
+        // : : ( "<spaces>name" -- )
+        //   CREATE  HIDE  CFADOCOLON LATEST @ LFA>CFA C!  ] ;
+        //
+        // Offset=76, Length=11
+        CREATE, HIDE, CHARLIT, CFADOCOLON, LATEST, FETCH,
+        // LFA>CFA
+            ONEPLUS, ONEPLUS,
+        CSTORE, RTBRACKET,
+        EXIT, 0,
+
+        // -------------------------------------------------------------
+        // #S [CORE] 6.1.0050 "number-sign-s" ( ud1 -- ud2 )
+        //
+        // Convert one digit of ud1 according to the rule for #.
+        // Continue conversion until the quotient is zero.  ud2 is zero.
+        // An ambiguous condition exists if #S executes outside of a <#
+        // #> delimited number conversion.
+        //
+        // ---
+        // : #S ( ud1 -- 0 )   BEGIN # 2DUP OR WHILE REPEAT ;
+        //
+        // Offset=88, Length=8
+        NUMSIGN, TWODUP, OR, ZBRANCH, 3, BRANCH, -6, EXIT,
+
+        // -------------------------------------------------------------
+        // SIGN [CORE] 6.1.2210 ( n -- )
+        //
+        // If n is negative, add a minus sign to the beginning of the
+        // pictured numeric output string.  An ambiguous condition
+        // exists if SIGN executes outside of a <# #> delimited number
+        // conversion.
+        //
+        // ---
+        // : SIGN ( n -- )   0< IF [CHAR] - HOLD THEN ;
+        //
+        // Offset=96, Length=7
+        ZEROLESS, ZBRANCH, 4, CHARLIT, '-', HOLD, EXIT, 0,
+
+        // -------------------------------------------------------------
+        // # [CORE] 6.1.0030 "number-sign" ( ud1 -- ud2 )
+        //
+        // Divide ud1 by the number in BASE giving the quotient ud2 and
+        // the remainder n.  (n is the least-significant digit of ud1.)
+        // Convert n to external form and add the resulting character to
+        // the beginning of the pictured numeric output string.  An
+        // ambiguous condition exists if # executes outside of a <# #>
+        // delimited number conversion.
+        //
+        // ---
+        // : >DIGIT ( u -- c ) DUP 9 > 7 AND + 48 + ;
+        // : # ( ud1 -- ud2 )   BASE @ UD/MOD ROT >digit HOLD ;
+        //
+        // Offset=104, Length=17
+        BASE, FETCH, UDSLASHMOD, ROT,
+        // TODIGIT
+            DUP, CHARLIT, 9, GREATERTHAN, CHARLIT, 7, AND,
+            PLUS, CHARLIT, 48, PLUS,
+        HOLD,
+        EXIT, 0, 0, 0,
     };
 
     // Jump to ABORT, which initializes the IP, our stacks, etc.
@@ -1562,40 +1754,6 @@ DISPATCH_OPCODE:
         continue;
 
         // -------------------------------------------------------------
-        // . [CORE] 6.1.0180 "dot" ( n -- )
-        //
-        // Display n in free field format.
-        // ---
-        // : . ( n -- )
-        //   BASE @ 10 <>  IF U. EXIT THEN
-        //   DUP ABS 0 <# #S ROT SIGN #> TYPE SPACE ;
-        DOT:
-        {
-            CHECK_STACK(1, 0);
-
-            static const int8_t parenDot[] PROGMEM = {
-                BASE, FETCH, CHARLIT, 10, NOTEQUALS, ZBRANCH, 3, UDOT, EXIT,
-                DUP, ABS, ZERO, LESSNUMSIGN, NUMSIGNS, ROT, SIGN,
-                    NUMSIGNGRTR, TYPE, SPACE,
-                EXIT
-            };
-
-#ifdef __AVR__
-            if (inProgramSpace)
-            {
-                ip = (uint8_t*)((unsigned int)ip | 0x8000);
-            }
-#endif
-            (--returnTop)->pRAM = (void *)ip;
-
-            ip = (uint8_t*)&parenDot;
-#ifdef __AVR__
-            inProgramSpace = true;
-#endif
-        }
-        continue;
-
-        // -------------------------------------------------------------
         // (.") [MFORTH] "paren-dot-quote-paren" ( -- )
         //
         // Prints the string that was compiled into the definition.
@@ -1671,64 +1829,6 @@ DISPATCH_OPCODE:
         HEX:
         {
             this->base = 16;
-        }
-        continue;
-
-        // -------------------------------------------------------------
-        // CREATE [CORE] 6.1.1000 ( "<spaces>name" -- )
-        //
-        // Skip leading space delimiters.  Parse name delimited by a
-        // space.  Create a definition for name with the execution
-        // semantics defined below.  If the data-space pointer is not
-        // aligned, reserve enough data space to align it.  The new
-        // data-space pointer defines name's data field.  CREATE does
-        // not allocate data space in name's data field.
-        //
-        //   name Execution:	( -- a-addr )
-        //       a-addr is the address of name's data field.  The
-        //       execution semantics of name may be extended by using
-        //       DOES>.
-        //
-        // : TERMINATE-NAME ( ca u -- ca u)  2DUP 1- +  $80 SWAP C+! ;
-        // : S, ( ca u --)  TUCK  HERE SWAP MOVE  ALLOT ;
-        // : NAME, ( ca u --)  TERMINATE-NAME S, ;
-        // : >LATEST-OFFSET ( addr -- u)  LATEST @ DUP IF - ELSE NIP THEN ;
-        // : CREATE ( "<spaces>name" -- )
-        //   PARSE-WORD DUP 0= IF ABORT THEN ( ca u)
-        //   HERE  DUP >LATEST-OFFSET W,  LATEST ! ( ca u)
-        //   CFADOCREATE C, ( ca u)  NAME,  ALIGN ;
-        CREATE:
-        {
-            static const int8_t parenCreate[] PROGMEM = {
-                PARSEWORD, DUP, ZEROEQUALS, ZBRANCH, 2, ABORT,
-                HERE, DUP,
-                // >LATEST-OFFSET
-                    LATEST, FETCH, DUP, ZBRANCH, 4,
-                        MINUS, BRANCH, 2,
-                        NIP,
-                WCOMMA, LATEST, STORE,
-                CHARLIT, CFADOCREATE, CCOMMA,
-                // NAME,
-                    // TERMINATE-NAME
-                        TWODUP, ONEMINUS, PLUS, CHARLIT, 0x80, SWAP, CPLUSSTORE,
-                    // S,
-                        TUCK, HERE, SWAP, MOVE, ALLOT,
-                ALIGN,
-                EXIT
-            };
-
-#ifdef __AVR__
-            if (inProgramSpace)
-            {
-                ip = (uint8_t*)((unsigned int)ip | 0x8000);
-            }
-#endif
-            (--returnTop)->pRAM = (void *)ip;
-
-            ip = (uint8_t*)&parenCreate;
-#ifdef __AVR__
-            inProgramSpace = true;
-#endif
         }
         continue;
 
@@ -1835,58 +1935,6 @@ DISPATCH_OPCODE:
         continue;
 
         // -------------------------------------------------------------
-        // : [CORE] 6.1.0450 "colon" ( C: "<spaces>name" -- colon-sys )
-        //
-        // Skip leading space delimiters.  Parse name delimited by a
-        // space.  Create a definition for name, called a "colon
-        // definition".  Enter compilation state and start the
-        // current definition, producing colon-sys.  Append the
-        // initiation semantics given below to the current definition.
-        //
-        // The execution semantics of name will be determined by the
-        // words compiled into the body of the definition.  The current
-        // definition shall not be findable in the dictionary until it
-        // is ended (or until the execution of DOES> in some systems).
-        //
-        // Initiation: ( i*x -- i*x ) ( R: -- nest-sys )
-        //   Save implementation-dependent information nest-sys about
-        //   the calling definition.  The stack effects i*x represent
-        //   arguments to name.
-        //
-        // name Execution: ( i*x -- j*x )
-        //       Execute the definition name.  The stack effects i*x and
-        //       j*x represent arguments to and results from name,
-        //       respectively.
-        //
-        // : LFA>CFA ( addr -- addr)  1+ 1+ ;
-        // : : ( "<spaces>name" -- )
-        //   CREATE  HIDE  CFADOCOLON LATEST @ LFA>CFA C!  ] ;
-        COLON:
-        {
-            static const int8_t parenColon[] PROGMEM = {
-                CREATE, HIDE, CHARLIT, CFADOCOLON, LATEST, FETCH,
-                // LFA>CFA
-                    ONEPLUS, ONEPLUS,
-                CSTORE, RTBRACKET,
-                EXIT
-            };
-
-#ifdef __AVR__
-            if (inProgramSpace)
-            {
-                ip = (uint8_t*)((unsigned int)ip | 0x8000);
-            }
-#endif
-            (--returnTop)->pRAM = (void *)ip;
-
-            ip = (uint8_t*)&parenColon;
-#ifdef __AVR__
-            inProgramSpace = true;
-#endif
-        }
-        continue;
-
-        // -------------------------------------------------------------
         // HIDE [MFORTH] ( -- )
         //
         // Prevent the most recent definition from being found in the
@@ -1947,40 +1995,6 @@ DISPATCH_OPCODE:
         continue;
 
         // -------------------------------------------------------------
-        // #S [CORE] 6.1.0050 "number-sign-s" ( ud1 -- ud2 )
-        //
-        // Convert one digit of ud1 according to the rule for #.
-        // Continue conversion until the quotient is zero.  ud2 is zero.
-        // An ambiguous condition exists if #S executes outside of a <#
-        // #> delimited number conversion.
-        //
-        // ---
-        // : #S ( ud1 -- 0 )   BEGIN # 2DUP OR WHILE REPEAT ;
-        NUMSIGNS:
-        {
-            CHECK_STACK(2, 2);
-
-            static const int8_t parenNumSignS[] PROGMEM = {
-                NUMSIGN, TWODUP, OR, ZBRANCH, 3, BRANCH, -6,
-                EXIT
-            };
-
-#ifdef __AVR__
-            if (inProgramSpace)
-            {
-                ip = (uint8_t*)((unsigned int)ip | 0x8000);
-            }
-#endif
-            (--returnTop)->pRAM = (void *)ip;
-
-            ip = (uint8_t*)&parenNumSignS;
-#ifdef __AVR__
-            inProgramSpace = true;
-#endif
-        }
-        continue;
-
-        // -------------------------------------------------------------
         // ROT [CORE] 6.1.2160 "rote" ( x1 x2 x3 -- x2 x3 x1 )
         //
         // Rotate the top three stack entries.
@@ -1993,40 +2007,6 @@ DISPATCH_OPCODE:
             *--restDataStack = x2;
             *--restDataStack = x3;
             tos = x1;
-        }
-        continue;
-
-        // -------------------------------------------------------------
-        // SIGN [CORE] 6.1.2210 ( n -- )
-        //
-        // If n is negative, add a minus sign to the beginning of the
-        // pictured numeric output string.  An ambiguous condition
-        // exists if SIGN executes outside of a <# #> delimited number
-        // conversion.
-        //
-        // ---
-        // : SIGN ( n -- )   0< IF [CHAR] - HOLD THEN ;
-        SIGN:
-        {
-            CHECK_STACK(1, 0);
-
-            static const int8_t parenSign[] PROGMEM = {
-                ZEROLESS, ZBRANCH, 4, CHARLIT, '-', HOLD,
-                EXIT
-            };
-
-#ifdef __AVR__
-            if (inProgramSpace)
-            {
-                ip = (uint8_t*)((unsigned int)ip | 0x8000);
-            }
-#endif
-            (--returnTop)->pRAM = (void *)ip;
-
-            ip = (uint8_t*)&parenSign;
-#ifdef __AVR__
-            inProgramSpace = true;
-#endif
         }
         continue;
 
@@ -2044,47 +2024,6 @@ DISPATCH_OPCODE:
         {
             restDataStack->pRAM = this->hld;
             tos.u = (this->dp + (CellSize*8*3)) - this->hld;
-        }
-        continue;
-
-        // -------------------------------------------------------------
-        // # [CORE] 6.1.0030 "number-sign" ( ud1 -- ud2 )
-        //
-        // Divide ud1 by the number in BASE giving the quotient ud2 and
-        // the remainder n.  (n is the least-significant digit of ud1.)
-        // Convert n to external form and add the resulting character to
-        // the beginning of the pictured numeric output string.  An
-        // ambiguous condition exists if # executes outside of a <# #>
-        // delimited number conversion.
-        //
-        // ---
-        // : >DIGIT ( u -- c ) DUP 9 > 7 AND + 48 + ;
-        // : # ( ud1 -- ud2 )   BASE @ UD/MOD ROT >digit HOLD ;
-        NUMSIGN:
-        {
-            CHECK_STACK(2, 2);
-
-            static const int8_t parenNumSign[] PROGMEM = {
-                BASE, FETCH, UDSLASHMOD, ROT,
-                // TODIGIT
-                    DUP, CHARLIT, 9, GREATERTHAN, CHARLIT, 7, AND,
-                    PLUS, CHARLIT, 48, PLUS,
-                HOLD,
-                EXIT
-            };
-
-#ifdef __AVR__
-            if (inProgramSpace)
-            {
-                ip = (uint8_t*)((unsigned int)ip | 0x8000);
-            }
-#endif
-            (--returnTop)->pRAM = (void *)ip;
-
-            ip = (uint8_t*)&parenNumSign;
-#ifdef __AVR__
-            inProgramSpace = true;
-#endif
         }
         continue;
 
@@ -2206,8 +2145,8 @@ DISPATCH_OPCODE:
 
         DOCOLONROM:
         {
-            // Push IP to the stack, marking IP as in-program-space as
-            // necessary.
+            // Push IP to the return stack, marking IP as
+            // in-program-space as necessary.
 #ifdef __AVR__
             if (inProgramSpace)
             {
