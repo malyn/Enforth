@@ -179,7 +179,7 @@ class MFORTH
             ZBRANCH,
             ZERO,
             ZEROEQUALS,
-            QUIT,
+            unused_was_QUIT, // UNUSED
             TIB,
             TIBSIZE,
             ACCEPT,
@@ -229,6 +229,7 @@ class MFORTH
             AND,
             NOTEQUALS,
             unused_was_UDOT, // UNUSED
+            INITRP,
 
             //...
 
@@ -292,6 +293,7 @@ class MFORTH
             NUMSIGNS = 0x96,
             SIGN = 0x98,
             NUMSIGN = 0x9a,
+            QUIT = 0x9f,
         } Opcode;
 
 

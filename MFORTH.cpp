@@ -98,7 +98,7 @@ static const char primitives[] PROGMEM =
     "\x02" "0="
 
     // $20 - $27
-    "\x04" "QUIT"
+    "\x00" // UNUSED
     "\x00" // TIB
     "\x00" // TIBSIZE
     "\x06" "ACCEPT"
@@ -165,7 +165,9 @@ static const char primitives[] PROGMEM =
 
     // $50 - $57
     "\x02" "<>"
-    "\x00" "\x00" "\x00"
+    "\x00"
+    "\x00" // INITRP
+    "\x00"
 
     "\x00" "\x00" "\x00" "\x00"
 
@@ -217,6 +219,12 @@ static const char primitives[] PROGMEM =
     "\x04" "SIGN"
     "\x00" // UNUSED
     "\x01" "#"
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x00" // UNUSED
+    "\x04" "QUIT"
+    "\x00" // UNUSED
     "\x00" // UNUSED
     "\x00" // UNUSED
     "\x00" // UNUSED
@@ -577,7 +585,7 @@ void MFORTH::go()
         &&ZEROEQUALS,
 
         // $20 - $27
-        &&QUIT,
+        0, // UNUSED
         &&TIB,
         &&TIBSIZE,
         &&ACCEPT,
@@ -644,7 +652,9 @@ void MFORTH::go()
 
         // $50 - $57
         &&NOTEQUALS,
-        0, 0, 0,
+        0, // UNUSED
+        &&INITRP,
+        0,
 
         0, 0, 0, 0,
 
@@ -717,6 +727,12 @@ void MFORTH::go()
         0, // UNUSED, Offset=112
         0, // UNUSED, Offset=116
         0, // UNUSED, Offset=120
+        &&DOCOLONROM, // Offset=124 (QUIT)
+        0, // UNUSED, Offset=128
+        0, // UNUSED, Offset=132
+        0, // UNUSED, Offset=136
+        0, // UNUSED, Offset=140
+        0, // UNUSED, Offset=144
     };
 
     static const int8_t primitiveDefinitions[] PROGMEM = {
@@ -862,7 +878,42 @@ void MFORTH::go()
             PLUS, CHARLIT, 48, PLUS,
         HOLD,
         EXIT, 0, 0, 0,
+
+        // -------------------------------------------------------------
+        // QUIT [CORE] 6.1.2050 ( -- ) ( R:  i*x -- )
+        //
+        // Empty the return stack, store zero in SOURCE-ID if it is
+        // present, make the user input device the input source, and
+        // enter interpretation state.  Do not display a message.
+        // Repeat the following:
+        //   - Accept a line from the input source into the input
+        //     buffer, set >IN to zero, and interpret.
+        //   - Display the implementation-defined system prompt if in
+        //     interpretation state, all processing has been completed,
+        //     and no ambiguous condition exists.
+        //
+        // ---
+        // : QUIT  ( --; R: i*x --)
+        //   INITRP  0 STATE !
+        //   BEGIN
+        //       TIB  DUP TIBSIZE ACCEPT  SPACE
+        //       INTERPRET
+        //       CR  STATE @ 0= IF ." ok " THEN
+        //   AGAIN ;
+        //
+        // Offset=124, Length=24
+        INITRP, ZERO, STATE, STORE,
+        TIB, DUP, TIBSIZE, ACCEPT, SPACE,
+        INTERPRET,
+        CR, STATE, FETCH, ZEROEQUALS, ZBRANCH, 6,
+        PDOTQUOTE, 3, 'o', 'k', ' ',
+        BRANCH, -18,
+        0,
     };
+
+    // Initialize RP so that we can use threading to get to QUIT from
+    // ABORT.  QUIT will immediately reset RP as well, of course.
+    returnTop = (Cell *)&this->returnStack[32];
 
     // Jump to ABORT, which initializes the IP, our stacks, etc.
     goto ABORT;
@@ -1110,7 +1161,8 @@ DISPATCH_OPCODE:
             tos.i = 0;
             restDataStack = (Cell*)&this->dataStack[32];
             this->base = 10;
-            goto QUIT;
+            op = QUIT;
+            goto DISPATCH_OPCODE;
         }
         continue;
 
@@ -1514,45 +1566,6 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(1, 1);
             tos.i = tos.i == 0 ? -1 : 0;
-        }
-        continue;
-
-        // -------------------------------------------------------------
-        // QUIT [CORE] 6.1.2050 ( -- ) ( R:  i*x -- )
-        //
-        // Empty the return stack, store zero in SOURCE-ID if it is
-        // present, make the user input device the input source, and
-        // enter interpretation state.  Do not display a message.
-        // Repeat the following:
-        //   - Accept a line from the input source into the input
-        //     buffer, set >IN to zero, and interpret.
-        //   - Display the implementation-defined system prompt if in
-        //     interpretation state, all processing has been completed,
-        //     and no ambiguous condition exists.
-        QUIT:
-        {
-            CHECK_STACK(0, 0);
-            returnTop = (Cell *)&this->returnStack[32];
-            this->state = 0;
-
-            // : (QUIT)  ( --)
-            //   BEGIN
-            //       TIB  DUP TIBSIZE ACCEPT  SPACE
-            //       INTERPRET
-            //       CR  STATE @ 0= IF ." ok " THEN
-            //   AGAIN ;
-            static const int8_t parenQuit[] PROGMEM = {
-                TIB, DUP, TIBSIZE, ACCEPT, SPACE,
-                INTERPRET,
-                CR, STATE, FETCH, ZEROEQUALS, ZBRANCH, 6,
-                PDOTQUOTE, 3, 'o', 'k', ' ',
-                BRANCH, -18
-            };
-
-            ip = (uint8_t*)&parenQuit;
-#ifdef __AVR__
-            inProgramSpace = true;
-#endif
         }
         continue;
 
@@ -2109,6 +2122,13 @@ DISPATCH_OPCODE:
         {
             CHECK_STACK(2, 1);
             tos.i = restDataStack++->i != tos.i ? -1 : 0;
+        }
+        continue;
+
+        INITRP:
+        {
+            CHECK_STACK(0, 0);
+            returnTop = (Cell *)&this->returnStack[32];
         }
         continue;
 
