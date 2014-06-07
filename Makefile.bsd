@@ -1,7 +1,7 @@
-all: test/mforth test/mforthsimple
+all: test/enforth test/enforthsimple
 
-test/mforth: MFORTH.h MFORTH.cpp test/mforth.cpp
-	c++ -g -I. -lcurses -o $@ -DENABLE_STACK_CHECKING=1 MFORTH.cpp test/mforth.cpp
+test/enforth: enforth.h enforth.cpp test/enforth.cpp
+	c++ -g -I. -lcurses -o $@ -DENABLE_STACK_CHECKING=1 enforth.cpp test/enforth.cpp
 
-test/mforthsimple: MFORTH.h MFORTH.cpp test/mforthsimple.cpp
-	c++ -g -I. -o $@ -DENABLE_STACK_CHECKING=1 MFORTH.cpp test/mforthsimple.cpp
+test/enforthsimple: enforth.h enforth.cpp test/enforthsimple.cpp
+	c++ -g -I. -o $@ -DENABLE_STACK_CHECKING=1 enforth.cpp test/enforthsimple.cpp

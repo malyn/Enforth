@@ -46,7 +46,7 @@
 #define strncasecmp_P strncasecmp
 #endif
 
-#include "MFORTH.h"
+#include "enforth.h"
 
 // TODO Should move all of the internal words (BRANCH, CHARLIT, etc.) to
 // the end of the opcode table so that they don't need to waste space in
@@ -248,7 +248,7 @@ static const char primitives[] PROGMEM =
     "\xff"
 ;
 
-MFORTH::MFORTH(uint8_t * const dictionary, int dictionarySize,
+ENFORTH::ENFORTH(uint8_t * const dictionary, int dictionarySize,
         const FFIDef * const lastFFI,
         KeyQuestion keyQ, Key key, Emit emit)
  : lastFFI(lastFFI),
@@ -260,7 +260,7 @@ MFORTH::MFORTH(uint8_t * const dictionary, int dictionarySize,
 {
 }
 
-void MFORTH::addDefinition(const uint8_t * const def, int defSize)
+void ENFORTH::addDefinition(const uint8_t * const def, int defSize)
 {
     // Get the address of the start of this definition and the address
     // of the start of the last definition.
@@ -287,7 +287,7 @@ void MFORTH::addDefinition(const uint8_t * const def, int defSize)
     this->latest = newLFA;
 }
 
-MFORTH::Unsigned MFORTH::parenAccept(uint8_t * caddr, MFORTH::Unsigned n1)
+ENFORTH::Unsigned ENFORTH::parenAccept(uint8_t * caddr, ENFORTH::Unsigned n1)
 {
     char * p = (char *)caddr;
     Unsigned n2 = 0;
@@ -316,7 +316,7 @@ MFORTH::Unsigned MFORTH::parenAccept(uint8_t * caddr, MFORTH::Unsigned n1)
     return n2;
 }
 
-bool MFORTH::parenFindWord(uint8_t * caddr, MFORTH::Unsigned u, XT &xt, bool &isImmediate)
+bool ENFORTH::parenFindWord(uint8_t * caddr, ENFORTH::Unsigned u, XT &xt, bool &isImmediate)
 {
     int searchLen = u;
     char * searchName = (char *)caddr;
@@ -419,12 +419,12 @@ bool MFORTH::parenFindWord(uint8_t * caddr, MFORTH::Unsigned u, XT &xt, bool &is
     return false;
 }
 
-// NUMBER? [MFORTH] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
+// NUMBER? [ENFORTH] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
 //
 // Attempt to convert a string at c-addr of length u into digits, using
 // the radix in BASE.  The number and -1 is returned if the conversion
 // was successful, otherwise 0 is returned.
-bool MFORTH::parenNumberQ(uint8_t * caddr, MFORTH::Unsigned u, MFORTH::Int &n)
+bool ENFORTH::parenNumberQ(uint8_t * caddr, ENFORTH::Unsigned u, ENFORTH::Int &n)
 {
     // Store the sign as a value to be multipled against the final
     // number.
@@ -462,7 +462,7 @@ bool MFORTH::parenNumberQ(uint8_t * caddr, MFORTH::Unsigned u, MFORTH::Int &n)
 // string if the string was entirely converted.  u2 is the number of
 // unconverted characters in the string.  An ambiguous condition exists
 // if ud2 overflows during the conversion.
-void MFORTH::parenToNumber(MFORTH::Unsigned &ud, uint8_t * &caddr, MFORTH::Unsigned &u)
+void ENFORTH::parenToNumber(ENFORTH::Unsigned &ud, uint8_t * &caddr, ENFORTH::Unsigned &u)
 {
     while (u > 0)
     {
@@ -489,7 +489,7 @@ void MFORTH::parenToNumber(MFORTH::Unsigned &ud, uint8_t * &caddr, MFORTH::Unsig
     }
 }
 
-void MFORTH::parenParseWord(uint8_t delim, uint8_t * &caddr, MFORTH::Unsigned &u)
+void ENFORTH::parenParseWord(uint8_t delim, uint8_t * &caddr, ENFORTH::Unsigned &u)
 {
     // Skip over the start of the string until we find a non-delimiter
     // character or we hit the end of the parse area.
@@ -515,7 +515,7 @@ void MFORTH::parenParseWord(uint8_t delim, uint8_t * &caddr, MFORTH::Unsigned &u
     u = (uint8_t*)pParse - caddr;
 }
 
-void MFORTH::go()
+void ENFORTH::go()
 {
     register uint8_t *ip;
     register Cell tos;
@@ -1412,7 +1412,7 @@ DISPATCH_OPCODE:
         continue;
 
         // -------------------------------------------------------------
-        // NUMBER? [MFORTH] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
+        // NUMBER? [ENFORTH] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
         //
         // Attempt to convert a string at c-addr of length u into
         // digits, using the radix in BASE.  The number and -1 is
@@ -1449,7 +1449,7 @@ DISPATCH_OPCODE:
         continue;
 
         // -------------------------------------------------------------
-        // PARSE-WORD [MFORTH] ( "<spaces>name<space>" -- c-addr u )
+        // PARSE-WORD [ENFORTH] ( "<spaces>name<space>" -- c-addr u )
         //
         // Skip leading spaces and parse name delimited by a space.
         // c-addr is the address within the input buffer and u is the
@@ -1470,7 +1470,7 @@ DISPATCH_OPCODE:
         continue;
 
         // -------------------------------------------------------------
-        // FIND-WORD [MFORTH] "paren-find-paren" ( c-addr u -- c-addr u 0 | xt 1 | xt -1 )
+        // FIND-WORD [ENFORTH] "paren-find-paren" ( c-addr u -- c-addr u 0 | xt 1 | xt -1 )
         //
         // Find the definition named in the string at c-addr with length
         // u in the word list whose latest definition is pointed to by
@@ -1673,7 +1673,7 @@ DISPATCH_OPCODE:
         continue;
 
         // -------------------------------------------------------------
-        // (s") [MFORTH] "paren-s-quote-paren" ( -- c-addr u )
+        // (s") [ENFORTH] "paren-s-quote-paren" ( -- c-addr u )
         //
         // Runtime behavior of S": return c-addr and u.
         // NOTE: Cannot be used in program space!
@@ -1770,7 +1770,7 @@ DISPATCH_OPCODE:
         continue;
 
         // -------------------------------------------------------------
-        // (.") [MFORTH] "paren-dot-quote-paren" ( -- )
+        // (.") [ENFORTH] "paren-dot-quote-paren" ( -- )
         //
         // Prints the string that was compiled into the definition.
         PDOTQUOTE:
@@ -1951,7 +1951,7 @@ DISPATCH_OPCODE:
         continue;
 
         // -------------------------------------------------------------
-        // HIDE [MFORTH] ( -- )
+        // HIDE [ENFORTH] ( -- )
         //
         // Prevent the most recent definition from being found in the
         // dictionary.
@@ -2082,7 +2082,7 @@ DISPATCH_OPCODE:
         continue;
 
         // -------------------------------------------------------------
-        // UD/MOD [MFORTH] "u-d-slash-mod" ( ud1 u1 -- n ud2 )
+        // UD/MOD [ENFORTH] "u-d-slash-mod" ( ud1 u1 -- n ud2 )
         //
         // Divide ud1 by u1 giving the quotient ud2 and the remainder n.
         UDSLASHMOD:

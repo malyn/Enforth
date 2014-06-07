@@ -31,8 +31,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MFORTH_H_
-#define MFORTH_H_
+#ifndef ENFORTH_H_
+#define ENFORTH_H_
 
 #include <stdlib.h>
 #include <inttypes.h>
@@ -46,13 +46,13 @@
 // FFI Macros
 #define LAST_FFI NULL
 
-#define MFORTH_EXTERN(name, fn, arity) \
+#define ENFORTH_EXTERN(name, fn, arity) \
     static const char FFIDEF_ ## name ## _NAME[] PROGMEM = #name; \
-    static const MFORTH::FFIDef FFIDEF_##name PROGMEM = { LAST_FFI, FFIDEF_ ## name ## _NAME, arity, (void*)fn };
+    static const ENFORTH::FFIDef FFIDEF_##name PROGMEM = { LAST_FFI, FFIDEF_ ## name ## _NAME, arity, (void*)fn };
 
 #define GET_LAST_FFI(name) &FFIDEF_ ## name
 
-class MFORTH
+class ENFORTH
 {
     // Public Typedefs
     public:
@@ -83,7 +83,7 @@ class MFORTH
 
         // Execution Tokens (XTs) are always 16-bits, even on 32-bit
         // processors or processors with more than 16 bits of program
-        // space.  MFORTH handles this constraint by ensuring that all
+        // space.  ENFORTH handles this constraint by ensuring that all
         // XTs are relative to the start of the dictionary.
         typedef uint16_t XT;
 
@@ -93,7 +93,7 @@ class MFORTH
             Unsigned u;
 
             // Pointer to RAM.  Why not just a generic pointer?  Because
-            // MFORTH works on processors that have more program space
+            // ENFORTH works on processors that have more program space
             // than can be referenced by a cell-sized pointer.  The name
             // of this field is designed to make it clear that cells can
             // only reference addresses in RAM.
@@ -144,7 +144,7 @@ class MFORTH
         //
         // The key point here is that the PFA contains a list of tokens
         // to primitive words.  There is no longer a concept of "opcode"
-        // since MFORTH is a Forth machine and not a CPU.
+        // since ENFORTH is a Forth machine and not a CPU.
         typedef enum
         {
             //COLD = 0x00,
@@ -301,7 +301,7 @@ class MFORTH
 
 
     public:
-        MFORTH(uint8_t * const dictionary, int dictionarySize,
+        ENFORTH(uint8_t * const dictionary, int dictionarySize,
                 const FFIDef * const lastFFI,
                 // TODO Remove this and just have it be in the FFI
                 // (which we look up in the constructor and then stash
@@ -350,4 +350,4 @@ class MFORTH
         void parenParseWord(uint8_t delim, uint8_t * &caddr, Unsigned &u);
 };
 
-#endif /* MFORTH_H_ */
+#endif /* ENFORTH_H_ */

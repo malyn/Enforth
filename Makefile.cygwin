@@ -1,4 +1,4 @@
-all: test/mforthsimple
+all: test/enforthsimple
 
-test/mforthsimple: MFORTH.h MFORTH.cpp test/mforthsimple.cpp
-	c++ -g -I. -o $@ -DENABLE_STACK_CHECKING=1 MFORTH.cpp test/mforthsimple.cpp
+test/enforthsimple: enforth.h enforth.cpp test/enforthsimple.cpp
+	c++ -g -I. -o $@ -DENABLE_STACK_CHECKING=1 enforth.cpp test/enforthsimple.cpp

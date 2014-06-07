@@ -39,8 +39,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* MFORTH includes. */
-#include "MFORTH.h"
+/* Curses includes. */
+#include <curses.h>
+
+/* enforth includes. */
+#include "enforth.h"
 
 
 
@@ -49,21 +52,25 @@
  */
 
 // Externs
-MFORTH_EXTERN(rand, rand, 0)
+ENFORTH_EXTERN(clear, clear, 0)
+#undef LAST_FFI
+#define LAST_FFI GET_LAST_FFI(clear)
+
+ENFORTH_EXTERN(rand, rand, 0)
 #undef LAST_FFI
 #define LAST_FFI GET_LAST_FFI(rand)
 
-MFORTH_EXTERN(srand, srand, 1)
+ENFORTH_EXTERN(srand, srand, 1)
 #undef LAST_FFI
 #define LAST_FFI GET_LAST_FFI(srand)
 
 
 
 /* -------------------------------------
- * MFORTH I/O primitives.
+ * enforth I/O primitives.
  */
 
-static bool mforthSimpleKeyQuestion(void)
+static bool enforthCursesKeyQuestion(void)
 {
     return true;
 }
@@ -87,14 +94,16 @@ static bool mforthSimpleKeyQuestion(void)
 
  * See: 10.6.2.1305 EKEY , 10.6.1.1755 KEY?
  */
-static char mforthSimpleKey(void)
+static char enforthCursesKey(void)
 {
-    return getchar();
+    return getch();
 }
 
-static void mforthSimpleEmit(char ch)
+static void enforthCursesEmit(char ch)
 {
-    putchar(ch);
+    /* Output the character and refresh the screen. */
+    addch(ch);
+    refresh();
 }
 
 
@@ -103,11 +112,11 @@ static void mforthSimpleEmit(char ch)
  * Globals.
  */
 
-static unsigned char mforthDict[512];
-static MFORTH mforth(
-        mforthDict, sizeof(mforthDict),
+static unsigned char enforthDict[512];
+static ENFORTH enforth(
+        enforthDict, sizeof(enforthDict),
         LAST_FFI,
-        mforthSimpleKeyQuestion, mforthSimpleKey, mforthSimpleEmit);
+        enforthCursesKeyQuestion, enforthCursesKey, enforthCursesEmit);
 
 
 /* -------------------------------------
@@ -128,7 +137,7 @@ int main(int argc, char **argv)
         0x0b,   // CHARLIT
         27,
         0x7f }; // EXIT
-    mforth.addDefinition(favnumDef, sizeof(favnumDef));
+    enforth.addDefinition(favnumDef, sizeof(favnumDef));
 
     const uint8_t twoxDef[] = {
         0x00, // DOCOLON
@@ -137,7 +146,7 @@ int main(int argc, char **argv)
         0x02,   // DUP
         0x04,   // +
         0x7f }; // EXIT
-    mforth.addDefinition(twoxDef, sizeof(twoxDef));
+    enforth.addDefinition(twoxDef, sizeof(twoxDef));
 
     const uint8_t randDef[] = {
         0x06, // DOFFI0
@@ -145,7 +154,7 @@ int main(int argc, char **argv)
         ((uint32_t)&FFIDEF_rand >>  8) & 0xff,  // FFIdef
         ((uint32_t)&FFIDEF_rand >> 16) & 0xff,  // FFIdef
         ((uint32_t)&FFIDEF_rand >> 24) & 0xff}; // FFIdef MSB
-    mforth.addDefinition(randDef, sizeof(randDef));
+    enforth.addDefinition(randDef, sizeof(randDef));
 
     const uint8_t srandDef[] = {
         0x07, // DOFFI1
@@ -153,10 +162,29 @@ int main(int argc, char **argv)
         ((uint32_t)&FFIDEF_srand >>  8) & 0xff,  // FFIdef
         ((uint32_t)&FFIDEF_srand >> 16) & 0xff,  // FFIdef
         ((uint32_t)&FFIDEF_srand >> 24) & 0xff}; // FFIdef MSB
-    mforth.addDefinition(srandDef, sizeof(srandDef));
+    enforth.addDefinition(srandDef, sizeof(srandDef));
 
-    /* Launch the MFORTH interpreter. */
-    mforth.go();
+    const uint8_t clearDef[] = {
+        0x06, // DOFFI0
+        ((uint32_t)&FFIDEF_clear      ) & 0xff,  // FFIdef LSB
+        ((uint32_t)&FFIDEF_clear >>  8) & 0xff,  // FFIdef
+        ((uint32_t)&FFIDEF_clear >> 16) & 0xff,  // FFIdef
+        ((uint32_t)&FFIDEF_clear >> 24) & 0xff}; // FFIdef MSB
+    enforth.addDefinition(clearDef, sizeof(clearDef));
+
+    /* Initialize curses: disable line buffering and local echo, enable
+     * line-oriented scrolling. */
+    initscr();
+    cbreak();
+    noecho();
+    idlok(stdscr, TRUE);
+    scrollok(stdscr, TRUE);
+
+    /* Launch the enforth interpreter. */
+    enforth.go();
+
+    /* Destroy curses. */
+    endwin();
 
     /* Exit the application. */
     return 0;

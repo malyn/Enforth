@@ -41,8 +41,8 @@
 /* AVR includes. */
 #include <avr/pgmspace.h>
 
-/* MFORTH includes. */
-#include "..\MFORTH.h"
+/* enforth includes. */
+#include "..\enforth.h"
 
 
 
@@ -50,18 +50,18 @@
  * Sample FFI definitions.
  */
 
-MFORTH_EXTERN(rand, rand, 0)
+ENFORTH_EXTERN(rand, rand, 0)
 #undef LAST_FFI
 #define LAST_FFI GET_LAST_FFI(rand)
 
-MFORTH_EXTERN(srand, srand, 1)
+ENFORTH_EXTERN(srand, srand, 1)
 #undef LAST_FFI
 #define LAST_FFI GET_LAST_FFI(srand)
 
 
 
 /* -------------------------------------
- * MFORTH I/O primitives.
+ * enforth I/O primitives.
  */
 
 unsigned int inputOffset = 0;
@@ -71,12 +71,12 @@ static const uint8_t input[] PROGMEM = {
     //'r','a','n','d', ' ', '.', '\n'
 };
 
-static bool mforthStaticKeyQuestion(void)
+static bool enforthStaticKeyQuestion(void)
 {
     return inputOffset < sizeof(input);
 }
 
-static char mforthStaticKey(void)
+static char enforthStaticKey(void)
 {
     if (inputOffset < sizeof(input))
     {
@@ -92,7 +92,7 @@ static char mforthStaticKey(void)
 }
 
 static char lastCh = 0;
-static void mforthStaticEmit(char ch)
+static void enforthStaticEmit(char ch)
 {
     lastCh = ch;
 }
@@ -103,11 +103,11 @@ static void mforthStaticEmit(char ch)
  * Globals.
  */
 
-static unsigned char mforthDict[512];
-static MFORTH mforth(
-        mforthDict, sizeof(mforthDict),
+static unsigned char enforthDict[512];
+static ENFORTH enforth(
+        enforthDict, sizeof(enforthDict),
         LAST_FFI,
-        mforthStaticKeyQuestion, mforthStaticKey, mforthStaticEmit);
+        enforthStaticKeyQuestion, enforthStaticKey, enforthStaticEmit);
 
 
 /* -------------------------------------
@@ -128,7 +128,7 @@ int main(void)
         0x0b,   // CHARLIT
         27,
         0x7f }; // EXIT
-    mforth.addDefinition(favnumDef, sizeof(favnumDef));
+    enforth.addDefinition(favnumDef, sizeof(favnumDef));
 
     const uint8_t twoxDef[] = {
         0x00, // DOCOLON
@@ -137,20 +137,20 @@ int main(void)
         0x02,   // DUP
         0x04,   // +
         0x7f }; // EXIT
-    mforth.addDefinition(twoxDef, sizeof(twoxDef));
+    enforth.addDefinition(twoxDef, sizeof(twoxDef));
 
     const uint8_t randDef[] = {
         0x06, // DOFFI0
         (uint8_t)(((uint16_t)&FFIDEF_rand      ) & 0xff),  // FFIdef LSB
         (uint8_t)(((uint16_t)&FFIDEF_rand >>  8) & 0xff)}; // FFIdef MSB
-    mforth.addDefinition(randDef, sizeof(randDef));
+    enforth.addDefinition(randDef, sizeof(randDef));
 
     const uint8_t srandDef[] = {
         0x07, // DOFFI1
         (uint8_t)(((uint16_t)&FFIDEF_srand      ) & 0xff),  // FFIdef LSB
         (uint8_t)(((uint16_t)&FFIDEF_srand >>  8) & 0xff)}; // FFIdef MSB
-    mforth.addDefinition(srandDef, sizeof(srandDef));
+    enforth.addDefinition(srandDef, sizeof(srandDef));
 
-    /* Launch the MFORTH interpreter. */
-    mforth.go();
+    /* Launch the enforth interpreter. */
+    enforth.go();
 }

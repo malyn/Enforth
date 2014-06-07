@@ -1,4 +1,3 @@
-* Rename the project to enforth -- the easiest way to put some Forth into your application.
 * Switch to C from C++, but with an EnforthDuino.cpp/.h wrapper for interacting with C++ environments.
   * Fix the primitive/token/opcode/etc. naming issue as part of this change.
   * Reorganize the source/header files as part of this change:
@@ -15,7 +14,7 @@
 * Support backspace in `ACCEPT`.
 * Add `USE:` for creating FFI trampolines.
 * Add flow control words (`IF`, `THEN`, `DO`, `WHILE`, etc.).
-* Modify `test/mforth` to optionally take a list of files on the command line and then interpret each file in order (by just feeding the data through `KEY` for now).  This will allow us to start running the anstests.
+* Modify `test/enforth` to optionally take a list of files on the command line and then interpret each file in order (by just feeding the data through `KEY` for now).  This will allow us to start running the anstests.
 * Improve the stack checking code.
   * First, the code is probably too aggressive and may not let us use the last stack item.
   * Second, we have the macro scattered everywhere, but it would be better if the stack sizes were declared in a separate table, organized by opcode, and then checked in a single place right before DISPATCH\_OPCODE.  Similar to the rest of these tables, the source auto-generator will make it easier to build this table.
@@ -43,6 +42,6 @@
 * We may not need to blow 16 opcodes on the `PDO*` opcodes; instead we can just create a dedicated jump table in `EXECUTE` for those opcodes.  `EXECUTE` is almost only ever used when we are doing text interpretation, so spilling and filling registers here should be fine.
   * The only thing that this does is save us opcode space, it still uses the same amount of ROM.  This is only valuable/necessary if we are running low on opcodes.
 * Since we have more free opcodes now we can probably code in some of the most frequently used FFI functions (`pinWrite` and stuff) as tokens, perhaps through compiler directives.
-  * I wonder if we can find a way to predefine a set of trampolines in Flash instead of in RAM?  *i.e.,* we reserve the last 32 opcodes for precompiled trampolines and then provide a simplified way to build up that flash array.  This table-based method would actually work since it would just be a list of other addresses (which conveniently we already have thanks to the `FFIDEF_*` vars that are being used for the linked list).  This would give users a way to modify their MFORTH compile to predefine externals in a way that consumes no RAM.  You still need to define the FFIs, but you don't need to reference them at runtime.
+  * I wonder if we can find a way to predefine a set of trampolines in Flash instead of in RAM?  *i.e.,* we reserve the last 32 opcodes for precompiled trampolines and then provide a simplified way to build up that flash array.  This table-based method would actually work since it would just be a list of other addresses (which conveniently we already have thanks to the `FFIDEF_*` vars that are being used for the linked list).  This would give users a way to modify their enforth compile to predefine externals in a way that consumes no RAM.  You still need to define the FFIs, but you don't need to reference them at runtime.
   * This feels like a good balance between ROM and RAM: you can access any FFI at runtime if you are willing to consume memory on that (which is probably fine during development) and then you switch to a ROM-based FFI primitive once you know you'll be using an FFI a lot.  This breaks your flash, of course, but your source is unchanged (and we could make the `EXTERNAL:` word just do nothing in the case where you are trying to reference a ROM-based FFI primitive).
   * This makes the ATtiny85 possible again, because we'll just define the primitives that we care about as ROM primitives.

@@ -1,7 +1,7 @@
 /Debug
 /Release
-test/mforth
-test/mforthsimple
+test/enforth
+test/enforthsimple
 *.atsuo
 *.core
 *.diff

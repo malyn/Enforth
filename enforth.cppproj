@@ -12,9 +12,9 @@
     <OutputFileName>$(MSBuildProjectName)</OutputFileName>
     <OutputFileExtension>.elf</OutputFileExtension>
     <OutputDirectory>$(MSBuildProjectDirectory)\$(Configuration)</OutputDirectory>
-    <AssemblyName>MFORTH</AssemblyName>
-    <Name>MFORTH</Name>
-    <RootNamespace>MFORTH</RootNamespace>
+    <AssemblyName>enforth</AssemblyName>
+    <Name>enforth</Name>
+    <RootNamespace>enforth</RootNamespace>
     <ToolchainFlavour>Native</ToolchainFlavour>
     <KeepTimersRunning>true</KeepTimersRunning>
     <OverrideVtor>false</OverrideVtor>
@@ -128,10 +128,10 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="MFORTH.cpp">
+    <Compile Include="enforth.cpp">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="MFORTH.h">
+    <Compile Include="enforth.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="test\main.cpp">
