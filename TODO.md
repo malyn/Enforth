@@ -1,7 +1,4 @@
-* Switch to C from C++, but with an EnforthDuino.cpp/.h wrapper for interacting with C++ environments.
-  * Fix the primitive/token/opcode/etc. naming issue as part of this change.
-  * We're not going to reorganize the source files.  This ended up being a huge pain and precompiler tricks didn't really accomplish anything useful.  Instead, we just need to focus on auto-generating sections of the `enforth.c` file.  Keeping everything in one file (plus a `.h` file) will probably make it easier to port this around anyway.
-* See about moving some/all of the paren\* methods into Forth definitions.
+* See about moving some/all of the paren\* methods into Forth definitions.  Maybe convert some of the existing code primitives into Forth definitions as well (when they aren't perf-sensitive).
 * Make ROM definition IPs on the return stack relative to the start of the ROM definition block.  We can do this now that all of the ROM definitions are finally in this one block.
 * Support backspace in `ACCEPT`.
 * Add `USE:` for creating FFI trampolines.
@@ -9,8 +6,9 @@
 * Modify `test/enforth` to optionally take a list of files on the command line and then interpret each file in order (by just feeding the data through `KEY` for now).  This will allow us to start running the anstests.
 * Improve the stack checking code.
   * First, the code is probably too aggressive and may not let us use the last stack item.
-  * Second, we have the macro scattered everywhere, but it would be better if the stack sizes were declared in a separate table, organized by opcode, and then checked in a single place right before DISPATCH\_OPCODE.  Similar to the rest of these tables, the source auto-generator will make it easier to build this table.
-* Consider auto-generating opcodes so that we can avoid some of the duplication/hand-editing.
+  * Second, we have the macro scattered everywhere, but it would be better if the stack sizes were declared in a separate table, organized by token, and then checked in a single place right before DISPATCH\_TOKEN.  Similar to the rest of these tables, the source auto-generator will make it easier to build this table.
+* Consider creating EnforthDuino.cpp/.h wrappers to make it easier to interact with Enforth in the Arduino environment.
+* Consider auto-generating tokens so that we can avoid some of the duplication/hand-editing.
   * The first pass should pack the ROM definitions as tightly as possible, which consumes tokens throughout the 8-bit token space.
     * Maybe we should multiply the token by a prime (3?) instead of 4 so that we can pack these in more/perfectly tightly?  Something along the lines of a Golomb Ruler?  Multiplication on the AVR takes two cycles, just like two left shifts (for x4), so we might as well multiply if it gets us better packing.
   * Then we'll fill in all of the public definitions starting from the beginning of token-space.
@@ -26,14 +24,14 @@
 * Forth200x updates (mostly just `TIB` and `#TIB`?, although numeric prefixes look very useful).
 * Add `PAUSE`, which spills the registers to global variables in `vm` and then returns from `go()` similar to what we did in Ficl.
 * Add dumb exceptions that just restart the VM?
-* Consider optimizing the size of `DOCOLON` references by creating "bank-switched" versions of this opcode.  This would reduce the number of times that calling a definition needs three bytes instead of just two bytes (the primary downside to dictionary-relative instead of IP-relative compilation offsets).
+* Consider optimizing the size of `DOCOLON` references by creating "bank-switched" versions of this token.  This would reduce the number of times that calling a definition needs three bytes instead of just two bytes (the primary downside to dictionary-relative instead of IP-relative compilation offsets).
   * You could call `DOCOLON0` for offsets 0-511 in the dictionary, `DOCOLON1` for 512-1023, etc.  Eight of these would allow us to span 4KB of dictionary, at which point we would just fall back to absolute references.  Most (?) dictionaries probably won't be greater than 4KB anyway, and at that point you probably have plenty of RAM to blow on three-byte references.
   * `ALIGN` would actually be needed now in order to make each bank span as many bytes as possible.
   * Remember that compiled XTs can never be smaller than 16-bits anyway, so the goal here is to try and keep those XTs at 16 bits most of the time if possible.
 * Consider adding `PAD`, perhaps with a configurable size.  Do not use `PAD` in the kernel though so that we can avoid making it a requirement.
-* We may not need to blow 16 opcodes on the `PDO*` opcodes; instead we can just create a dedicated jump table in `EXECUTE` for those opcodes.  `EXECUTE` is almost only ever used when we are doing text interpretation, so spilling and filling registers here should be fine.
-  * The only thing that this does is save us opcode space, it still uses the same amount of ROM.  This is only valuable/necessary if we are running low on opcodes.
-* Since we have more free opcodes now we can probably code in some of the most frequently used FFI functions (`pinWrite` and stuff) as tokens, perhaps through compiler directives.
-  * I wonder if we can find a way to predefine a set of trampolines in Flash instead of in RAM?  *i.e.,* we reserve the last 32 opcodes for precompiled trampolines and then provide a simplified way to build up that flash array.  This table-based method would actually work since it would just be a list of other addresses (which conveniently we already have thanks to the `FFIDEF_*` vars that are being used for the linked list).  This would give users a way to modify their enforth compile to predefine externals in a way that consumes no RAM.  You still need to define the FFIs, but you don't need to reference them at runtime.
+* We may not need to blow 16 tokens on the `PDO*` primitives; instead we can just create a dedicated jump table in `EXECUTE` for those tokens.  `EXECUTE` is almost only ever used when we are doing text interpretation, so spilling and filling registers here should be fine.
+  * The only thing that this does is save us token space, it still uses the same amount of ROM.  This is only valuable/necessary if we are running low on tokens.
+* Since we have more free tokens now we can probably code in some of the most frequently used FFI functions (`pinWrite` and stuff) as tokens, perhaps through compiler directives.
+  * I wonder if we can find a way to predefine a set of trampolines in Flash instead of in RAM?  *i.e.,* we reserve the last 32 tokens for precompiled trampolines and then provide a simplified way to build up that flash array.  This table-based method would actually work since it would just be a list of other addresses (which conveniently we already have thanks to the `FFIDEF_*` vars that are being used for the linked list).  This would give users a way to modify their enforth compile to predefine externals in a way that consumes no RAM.  You still need to define the FFIs, but you don't need to reference them at runtime.
   * This feels like a good balance between ROM and RAM: you can access any FFI at runtime if you are willing to consume memory on that (which is probably fine during development) and then you switch to a ROM-based FFI primitive once you know you'll be using an FFI a lot.  This breaks your flash, of course, but your source is unchanged (and we could make the `EXTERNAL:` word just do nothing in the case where you are trying to reference a ROM-based FFI primitive).
   * This makes the ATtiny85 possible again, because we'll just define the primitives that we care about as ROM primitives.

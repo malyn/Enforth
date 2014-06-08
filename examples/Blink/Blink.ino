@@ -15,9 +15,9 @@ ENFORTH_EXTERN(pinMode, pinMode, 2)
 #define LAST_FFI GET_LAST_FFI(pinMode)
 
 
-bool serialKeyQ()
+int serialKeyQ()
 {
-  return Serial.available() > 0;
+  return Serial.available();
 }
 
 char serialKey()
@@ -50,16 +50,20 @@ void serialEmit(char ch)
   Serial.write(ch);
 }
 
+EnforthVM enforthVM;
 unsigned char enforthDict[512];
-ENFORTH enforth(
-  enforthDict, sizeof(enforthDict),
-  LAST_FFI,
-  serialKeyQ, serialKey, serialEmit);
 
 
 void setup()
 {
   Serial.begin(9600);
+
+  /* Initialize Enforth. */
+  enforth_init(
+    &enforthVM,
+    enforthDict, sizeof(enforthDict),
+    LAST_FFI,
+    serialKeyQ, serialKey, serialEmit);
 
   /* Add a couple of hand-coded definitions. */
   const uint8_t favnumDef[] = {
@@ -73,7 +77,7 @@ void setup()
     0x0b,   // CHARLIT
     27,
     0x7f }; // EXIT
-  enforth.addDefinition(favnumDef, sizeof(favnumDef));
+  enforth_add_definition(&enforthVM, favnumDef, sizeof(favnumDef));
 
   const uint8_t twoxDef[] = {
     0x00, // DOCOLON
@@ -82,29 +86,29 @@ void setup()
     0x02,   // DUP
     0x04,   // +
     0x7f }; // EXIT
-  enforth.addDefinition(twoxDef, sizeof(twoxDef));
+  enforth_add_definition(&enforthVM, twoxDef, sizeof(twoxDef));
 
   const uint8_t delayDef[] = {
     0x08, // DOFFI2
     (uint8_t)(((uint16_t)&FFIDEF_delay      ) & 0xff),  // FFIdef LSB
     (uint8_t)(((uint16_t)&FFIDEF_delay >>  8) & 0xff)}; // FFIdef MSB
-  enforth.addDefinition(delayDef, sizeof(delayDef));
+  enforth_add_definition(&enforthVM, delayDef, sizeof(delayDef));
 
   const uint8_t digitalWriteDef[] = {
     0x08, // DOFFI2
     (uint8_t)(((uint16_t)&FFIDEF_digitalWrite      ) & 0xff),  // FFIdef LSB
     (uint8_t)(((uint16_t)&FFIDEF_digitalWrite >>  8) & 0xff)}; // FFIdef MSB
-  enforth.addDefinition(digitalWriteDef, sizeof(digitalWriteDef));
+  enforth_add_definition(&enforthVM, digitalWriteDef, sizeof(digitalWriteDef));
 
   const uint8_t pinModeDef[] = {
     0x08, // DOFFI2
     (uint8_t)(((uint16_t)&FFIDEF_pinMode      ) & 0xff),  // FFIdef LSB
     (uint8_t)(((uint16_t)&FFIDEF_pinMode >>  8) & 0xff)}; // FFIdef MSB
-  enforth.addDefinition(pinModeDef, sizeof(pinModeDef));
+  enforth_add_definition(&enforthVM, pinModeDef, sizeof(pinModeDef));
 }
 
 void loop()
 {
   /* Launch the enforth interpreter. */
-  enforth.go();
+  enforth_go(&enforthVM);
 }

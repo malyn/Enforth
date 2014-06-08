@@ -128,13 +128,13 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="enforth.cpp">
+    <Compile Include="enforth.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="enforth.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="test\main.cpp">
+    <Compile Include="test\enforthavr.c">
       <SubType>compile</SubType>
     </Compile>
   </ItemGroup>
