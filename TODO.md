@@ -1,14 +1,14 @@
 * Switch to C from C++, but with an EnforthDuino.cpp/.h wrapper for interacting with C++ environments.
   * Fix the primitive/token/opcode/etc. naming issue as part of this change.
-  * Reorganize the source/header files as part of this change:
-    * `enforth.h`: Public include file.
-    * `enforth_types.h`: Public types.
-    * `enforth_private.h`: Private types.
-    * `enforth_tokens.h`: Token enum (auto-generated).
-    * `enforth_definitions.c`: Primitive (Forth) definitions (auto-generated).
-    * `enforth_primitives.c`: Primitive (C) definitions (auto-generated).
-    * `enforth_lookup.c`: String containing the giant lookup table of definitions/primitives (auto-generated).
-    * `enforth.c`: Primary code file; includes `enforth_definitions.c` and `enforth_primitives.c` for auto-generated stuff.
+  * Reorganize the source/header files as part of this change.  The source is organized Arduino-style, with a `utility` directory ([see here](https://code.google.com/p/arduino/wiki/BuildProcess)) used for internal files.  Note that some `.h` files are actually (generated) code that is included in the main `.c` file.
+    * `enforth.h`: Public include file: functions, public types, etc.
+    * `enforth.c`: Primary code file; includes `enforth_definitions.h` and `enforth_primitives.h` for auto-generated stuff.
+    * `utility`
+      * `enforth_private.h`: Private types.
+      * `enforth_tokens.h`: Token enum (auto-generated).
+      * `enforth_definitions.h`: Primitive (Forth) definitions (auto-generated).
+      * `enforth_primitives.h`: Primitive (C) definitions (auto-generated).
+      * `enforth_lookup.h`: String containing the giant lookup table of definitions/primitives (auto-generated).
 * See about moving some/all of the paren\* methods into Forth definitions.
 * Make ROM definition IPs on the return stack relative to the start of the ROM definition block.  We can do this now that all of the ROM definitions are finally in this one block.
 * Support backspace in `ACCEPT`.
