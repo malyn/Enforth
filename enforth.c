@@ -95,7 +95,7 @@ typedef enum EnforthToken
     ABORT,
     CHARLIT,
     COMPILECOMMA,
-    CR,
+    unused_was_CR, /* UNUSED */
     EMIT,
     EXECUTE,
     FETCH,
@@ -105,12 +105,12 @@ typedef enum EnforthToken
     unused_was_PARSEWORD, /* UNUSED */
     FINDWORD,
     QDUP,
-    SPACE,
+    unused_was_SPACE, /* UNUSED */
     STATE,
     STORE,
     TOIN,
     TWODROP,
-    TYPE,
+    unused_was_TYPE, /* UNUSED */
     ZBRANCH,
     ZERO,
     ZEROEQUALS,
@@ -244,6 +244,9 @@ typedef enum EnforthToken
     INTERPRET = 0xa5,
     ACCEPT = 0xb2,
     PARSEWORD = 0xba,
+    TYPE = 0xc7,
+    SPACE = 0xcb,
+    CR = 0xcc,
 } EnforthToken;
 
 
@@ -275,7 +278,7 @@ static const char kDefinitionNames[] PROGMEM =
     "\x00" /* CHARLIT */
 
     "\x08" "COMPILE,"
-    "\x02" "CR"
+    "\x00" /* UNUSED */
     "\x04" "EMIT"
     "\x07" "EXECUTE"
 
@@ -288,7 +291,7 @@ static const char kDefinitionNames[] PROGMEM =
     "\x00" /* UNUSED */
     "\x00" /* FIND-WORD */
     "\x04" "?DUP"
-    "\x05" "SPACE"
+    "\x00" /* UNUSED */
 
     /* $18 - $1F */
     "\x05" "STATE"
@@ -296,7 +299,7 @@ static const char kDefinitionNames[] PROGMEM =
     "\x03" ">IN"
     "\x05" "2DROP"
 
-    "\x04" "TYPE"
+    "\x00" /* UNUSED */
     "\x00" /* ZBRANCH */
     "\x01" "0"
     "\x02" "0="
@@ -477,6 +480,12 @@ static const char kDefinitionNames[] PROGMEM =
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
+    "\x04" "TYPE"
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x05" "SPACE"
+    "\x02" "CR"
 
     /* End byte */
     "\xff"
@@ -795,7 +804,7 @@ void enforth_go(EnforthVM * const vm)
         &&CHARLIT,
 
         &&COMPILECOMMA,
-        &&CR,
+        0, /* UNUSED */
         &&EMIT,
         &&EXECUTE,
 
@@ -808,7 +817,7 @@ void enforth_go(EnforthVM * const vm)
         0, /* UNUSED */
         &&FINDWORD,
         &&QDUP,
-        &&SPACE,
+        0, /* UNUSED */
 
         /* $18 - $1F */
         &&STATE,
@@ -816,7 +825,7 @@ void enforth_go(EnforthVM * const vm)
         &&TOIN,
         &&TWODROP,
 
-        &&TYPE,
+        0, /* UNUSED */
         &&ZBRANCH,
         &&ZERO,
         &&ZEROEQUALS,
@@ -1004,6 +1013,7 @@ void enforth_go(EnforthVM * const vm)
         &&DOCOLONROM, /* Offset=232 (PARSE-WORD) */
         0, /* UNUSED, Offset=236 */
         0, /* UNUSED, Offset=240 */
+        0, /* UNUSED, Offset=244 */
         0, /* UNUSED, Offset=248 */
         0, /* UNUSED, Offset=252 */
         0, /* UNUSED, Offset=256 */
@@ -1012,8 +1022,13 @@ void enforth_go(EnforthVM * const vm)
         0, /* UNUSED, Offset=268 */
         0, /* UNUSED, Offset=272 */
         0, /* UNUSED, Offset=276 */
-        0, /* UNUSED, Offset=276 */
-        0, /* UNUSED, Offset=276 */
+        0, /* UNUSED, Offset=280 */
+        &&DOCOLONROM, /* Offset=284 (TYPE) */
+        0, /* UNUSED, Offset=288 */
+        0, /* UNUSED, Offset=292 */
+        0, /* UNUSED, Offset=296 */
+        &&DOCOLONROM, /* Offset=300 (SPACE) */
+        &&DOCOLONROM, /* Offset=304 (CR) */
     };
 
     static const int8_t definitions[] PROGMEM = {
@@ -1305,6 +1320,27 @@ void enforth_go(EnforthVM * const vm)
         DUP, SOURCE, DROP, MINUS, TOIN, STORE,
         OVER, MINUS,
         EXIT, 0, 0,
+
+        /* : TYPE ( c-addr u --)
+         *   OVER + SWAP  ( ca-end ca-next)
+         *   BEGIN 2DUP <> WHILE DUP C@ EMIT 1+ AGAIN 2DROP ;
+         *
+         * Offset=284, Length=15 */
+        OVER, PLUS, SWAP,
+        TWODUP, NOTEQUALS, ZBRANCH, 7,
+            DUP, CFETCH, EMIT, ONEPLUS, BRANCH, -9,
+        TWODROP,
+        EXIT, 0,
+
+        /* : SPACE ( --)  BL EMIT ;
+         *
+         * Offset=300, Length=3 */
+        BL, EMIT, EXIT, 0,
+
+        /* : CR ( --)  BL EMIT ;
+         *
+         * Offset=304, Length=4 */
+        CHARLIT, 10, EMIT, EXIT,
     };
 
     /* Initialize RP so that we can use threading to get to QUIT from
@@ -1640,17 +1676,6 @@ DISPATCH_TOKEN:
         }
         continue;
 
-        CR:
-        {
-            CHECK_STACK(0, 0);
-
-            if (vm->emit != NULL)
-            {
-                vm->emit('\n');
-            }
-        }
-        continue;
-
         EMIT:
         {
             CHECK_STACK(1, 0);
@@ -1835,17 +1860,6 @@ DISPATCH_TOKEN:
         }
         continue;
 
-        SPACE:
-        {
-            CHECK_STACK(0, 0);
-
-            if (vm->emit != NULL)
-            {
-                vm->emit(' ');
-            }
-        }
-        continue;
-
         STATE:
         {
             CHECK_STACK(0, 1);
@@ -1883,25 +1897,6 @@ DISPATCH_TOKEN:
         TWODROP:
         {
             CHECK_STACK(2, 0);
-            restDataStack++;
-            tos = *restDataStack++;
-        }
-        continue;
-
-        /* NOTE: Only works for strings stored in data space! */
-        TYPE:
-        {
-            CHECK_STACK(2, 0);
-
-            if (vm->emit != NULL)
-            {
-                int i;
-                for (i = 0; i < tos.i; i++)
-                {
-                    vm->emit(*((uint8_t*)restDataStack->ram + i));
-                }
-            }
-
             restDataStack++;
             tos = *restDataStack++;
         }
