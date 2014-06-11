@@ -102,7 +102,7 @@ typedef enum EnforthToken
     LITERAL,
     NUMBERQ,
     OR,
-    PARSEWORD,
+    unused_was_PARSEWORD, /* UNUSED */
     FINDWORD,
     QDUP,
     SPACE,
@@ -117,7 +117,7 @@ typedef enum EnforthToken
     unused_was_QUIT, /* UNUSED */
     TIB,
     TIBSIZE,
-    ACCEPT,
+    unused_was_ACCEPT, /* UNUSED */
     unused_was_INTERPRET, /* UNUSED */
     PSQUOTE,
     BL,
@@ -167,6 +167,16 @@ typedef enum EnforthToken
     INITRP,
     TICKSOURCE,
     TICKSOURCELEN,
+    OVER,
+    TWOOVER,
+    KEY,
+    TOR,
+    RFROM,
+    RFETCH,
+    EQUALS,
+    SOURCE,
+    SLASHSTRING,
+    PLUSSTORE,
 
     /* ... */
 
@@ -231,7 +241,9 @@ typedef enum EnforthToken
     SIGN = 0x98,
     NUMSIGN = 0x9a,
     QUIT = 0x9f,
-    INTERPRET = 0xa5
+    INTERPRET = 0xa5,
+    ACCEPT = 0xb2,
+    PARSEWORD = 0xba,
 } EnforthToken;
 
 
@@ -273,7 +285,7 @@ static const char kDefinitionNames[] PROGMEM =
     "\x07" "NUMBER?"
     "\x02" "OR"
 
-    "\x00" /* PARSE-WORD */
+    "\x00" /* UNUSED */
     "\x00" /* FIND-WORD */
     "\x04" "?DUP"
     "\x05" "SPACE"
@@ -362,11 +374,20 @@ static const char kDefinitionNames[] PROGMEM =
     "\x00" /* TICKSOURCE */
 
     "\x00" /* TICKSOURCELEN */
-    "\x00" "\x00" "\x00"
+    "\x04" "OVER"
+    "\x05" "2OVER"
+    "\x03" "KEY"
 
     /* $58 - $5F */
-    "\x00" "\x00" "\x00" "\x00"
-    "\x00" "\x00" "\x00" "\x00"
+    "\x02" ">R"
+    "\x02" "R>"
+    "\x02" "R@"
+    "\x01" "="
+
+    "\x06" "SOURCE"
+    "\x07" "/STRING"
+    "\x02" "+!"
+    "\x00"
 
     /* $60 - $67 */
     "\x00" "\x00" "\x00" "\x00"
@@ -435,6 +456,27 @@ static const char kDefinitionNames[] PROGMEM =
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
+    "\x06" "ACCEPT"
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* PARSE-WORD */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
 
     /* End byte */
     "\xff"
@@ -445,50 +487,17 @@ static const char kDefinitionNames[] PROGMEM =
  * Private function definitions.
  */
 
-static EnforthUnsigned enforth_paren_accept(EnforthVM * const vm, uint8_t * caddr, EnforthUnsigned n1);
-
 static int enforth_paren_find_word(EnforthVM * const vm, uint8_t * caddr, EnforthUnsigned u, EnforthXT * const xt, int * const isImmediate);
 
 static void enforth_paren_to_number(EnforthVM * const vm, EnforthUnsigned * const ud, uint8_t ** caddr, EnforthUnsigned * const u);
 
 static int enforth_paren_numberq(EnforthVM * vm, uint8_t * caddr, EnforthUnsigned u, EnforthInt * const n);
 
-static void enforth_paren_parse_word(EnforthVM * vm, uint8_t delim, uint8_t ** caddr, EnforthUnsigned * const u);
-
 
 
 /* -------------------------------------
  * Private functions.
  */
-
-static EnforthUnsigned enforth_paren_accept(EnforthVM * const vm, uint8_t * caddr, EnforthUnsigned n1)
-{
-    char * p = (char *)caddr;
-    EnforthUnsigned n2 = 0;
-    char ch;
-
-    /* Read characters until we get a linefeed. */
-    while ((ch = vm->key()) != '\n')
-    {
-        /* Is our buffer full?  If so, ignore this character. */
-        if (n2 == n1)
-        {
-            continue;
-        }
-
-        /* TODO Deal with backspace. */
-
-        /* Emit the character. */
-        vm->emit(ch);
-
-        /* Append the character to our buffer. */
-        *p++ = ch;
-        n2++;
-    }
-
-    /* Return the number of characters that were read. */
-    return n2;
-}
 
 static int enforth_paren_find_word(EnforthVM * const vm, uint8_t * caddr, EnforthUnsigned u, EnforthXT * const xt, int * const isImmediate)
 {
@@ -673,33 +682,6 @@ static int enforth_paren_numberq(EnforthVM * vm, uint8_t * caddr, EnforthUnsigne
     }
 }
 
-static void enforth_paren_parse_word(EnforthVM * vm, uint8_t delim, uint8_t ** caddr, EnforthUnsigned * const u)
-{
-    /* Skip over the start of the string until we find a non-delimiter
-     * character or we hit the end of the parse area. */
-    while ((*((uint8_t*)vm->source.ram + vm->to_in) == delim)
-            && (vm->to_in < vm->source_len.i))
-    {
-        vm->to_in++;
-    }
-
-    /* We're either pointing to a non-delimiter character or we're at
-     * the end of the parse area; point caddr at the current location
-     * and then scan forwards until we hit another delimiter or we
-     * exhaust the parse area. */
-    *caddr = (uint8_t*)vm->source.ram + vm->to_in;
-    char * pParse = (char *)*caddr;
-    while ((*pParse != delim) && (vm->to_in < vm->source_len.i))
-    {
-        pParse++;
-        vm->to_in++;
-    }
-
-    /* Set the string length. */
-    *u = (uint8_t*)pParse - *caddr;
-}
-
-
 
 
 /* -------------------------------------
@@ -823,7 +805,7 @@ void enforth_go(EnforthVM * const vm)
         &&NUMBERQ,
         &&OR,
 
-        &&PARSEWORD,
+        0, /* UNUSED */
         &&FINDWORD,
         &&QDUP,
         &&SPACE,
@@ -843,7 +825,7 @@ void enforth_go(EnforthVM * const vm)
         0, /* UNUSED */
         &&TIB,
         &&TIBSIZE,
-        &&ACCEPT,
+        0, /* UNUSED */
 
         0, /* UNUSED */
         &&PSQUOTE,
@@ -912,11 +894,20 @@ void enforth_go(EnforthVM * const vm)
         &&TICKSOURCE,
 
         &&TICKSOURCELEN,
-        0, 0, 0,
+        &&OVER,
+        &&TWOOVER,
+        &&KEY,
 
         /* $58 - $5F */
-        0, 0, 0, 0,
-        0, 0, 0, 0,
+        &&TOR,
+        &&RFROM,
+        &&RFETCH,
+        &&EQUALS,
+
+        &&SOURCE,
+        &&SLASHSTRING,
+        &&PLUSSTORE,
+        0,
 
         /* $60 - $67 */
         &&PDOCOLON,
@@ -1002,6 +993,27 @@ void enforth_go(EnforthVM * const vm)
         0, /* UNUSED, Offset=188 */
         0, /* UNUSED, Offset=192 */
         0, /* UNUSED, Offset=196 */
+        &&DOCOLONROM, /* Offset=200 (ACCEPT) */
+        0, /* UNUSED, Offset=204 */
+        0, /* UNUSED, Offset=208 */
+        0, /* UNUSED, Offset=212 */
+        0, /* UNUSED, Offset=216 */
+        0, /* UNUSED, Offset=220 */
+        0, /* UNUSED, Offset=224 */
+        0, /* UNUSED, Offset=228 */
+        &&DOCOLONROM, /* Offset=232 (PARSE-WORD) */
+        0, /* UNUSED, Offset=236 */
+        0, /* UNUSED, Offset=240 */
+        0, /* UNUSED, Offset=248 */
+        0, /* UNUSED, Offset=252 */
+        0, /* UNUSED, Offset=256 */
+        0, /* UNUSED, Offset=260 */
+        0, /* UNUSED, Offset=264 */
+        0, /* UNUSED, Offset=268 */
+        0, /* UNUSED, Offset=272 */
+        0, /* UNUSED, Offset=276 */
+        0, /* UNUSED, Offset=276 */
+        0, /* UNUSED, Offset=276 */
     };
 
     static const int8_t definitions[] PROGMEM = {
@@ -1042,12 +1054,12 @@ void enforth_go(EnforthVM * const vm)
          * : NAME, ( ca u --)  TERMINATE-NAME S, ;
          * : >LATEST-OFFSET ( addr -- u)  LATEST @ DUP IF - ELSE NIP THEN ;
          * : CREATE ( "<spaces>name" -- )
-         *   PARSE-WORD DUP 0= IF ABORT THEN ( ca u)
+         *   BL PARSE-WORD DUP 0= IF ABORT THEN ( ca u)
          *   HERE  DUP >LATEST-OFFSET W,  LATEST ! ( ca u)
          *   CFADOCREATE C, ( ca u)  NAME,  ALIGN ;
          *
-         * Offset=36, Length=37 */
-        PARSEWORD, DUP, ZEROEQUALS, ZBRANCH, 2, ABORT,
+         * Offset=36, Length=38 */
+        BL, PARSEWORD, DUP, ZEROEQUALS, ZBRANCH, 2, ABORT,
         HERE, DUP,
         /* >LATEST-OFFSET */
             LATEST, FETCH, DUP, ZBRANCH, 4,
@@ -1061,7 +1073,7 @@ void enforth_go(EnforthVM * const vm)
             /* S, */
                 TUCK, HERE, SWAP, MOVE, ALLOT,
         ALIGN,
-        EXIT, 0, 0, 0,
+        EXIT, 0, 0,
 
         /* -------------------------------------------------------------
          * : [CORE] 6.1.0450 "colon" ( C: "<spaces>name" -- colon-sys )
@@ -1181,7 +1193,7 @@ void enforth_go(EnforthVM * const vm)
 
         /* : INTERPRET ( i*x c-addr u -- j*x )
          *   'SOURCELEN !  'SOURCE !  0 >IN !
-         *   BEGIN  PARSE-WORD  DUP WHILE
+         *   BEGIN  BL PARSE-WORD  DUP WHILE
          *       FIND-WORD ( ca u 0=notfound | xt 1=imm | xt -1=interp)
          *       ?DUP IF ( xt 1=imm | xt -1=interp)
          *           1+  STATE @ 0=  OR ( xt 2=imm | xt 0=interp)
@@ -1196,10 +1208,10 @@ void enforth_go(EnforthVM * const vm)
          *       THEN
          *   REPEAT ( j*x ca u) 2DROP ;
          *
-         * Offset=148, Length=49 */
+         * Offset=148, Length=50 */
         TICKSOURCELEN, STORE, TICKSOURCE, STORE,
         ZERO, TOIN, STORE,
-        PARSEWORD, DUP, ZBRANCH, 37,
+        BL, PARSEWORD, DUP, ZBRANCH, 37,
         FINDWORD, QDUP, ZBRANCH, 14,
         ONEPLUS, STATE, FETCH, ZEROEQUALS, OR, ZBRANCH, 4,
         EXECUTE, BRANCH, 21,
@@ -1208,9 +1220,91 @@ void enforth_go(EnforthVM * const vm)
         STATE, FETCH, ZBRANCH, 11,
         LITERAL, BRANCH, 8,
         TYPE, SPACE, CHARLIT, '?', EMIT, CR, ABORT,
-        BRANCH, -39,
+        BRANCH, -40,
         TWODROP,
+        EXIT, 0, 0,
+
+        /* -------------------------------------------------------------
+         * ACCEPT [CORE] 6.1.0695 ( c-addr +n1 -- +n2 )
+         *
+         * Receive a string of at most +n1 characters.  An ambiguous
+         * condition exists if +n1 is zero or greater than 32,767.
+         * Display graphic characters as they are received.  A program
+         * that depends on the presence or absence of non-graphic
+         * characters in the string has an environmental dependency.
+         * The editing functions, if any, that the system performs in
+         * order to construct the string are implementation-defined.
+         *
+         * Input terminates when an implementation-defined line
+         * terminator is received.  When input terminates, nothing is
+         * appended to the string, and the display is maintained in an
+         * implementation-defined way.
+         *
+         * +n2 is the length of the string stored at c-addr.
+         * ---
+         * TODO Deal with backspace.
+         * : ACCEPT ( c-addr max -- n)
+         *   OVER + OVER ( ca-start ca-end ca-dest)
+         *   BEGIN  KEY  DUP 10 <> WHILE
+         *      DUP 2OVER ( cas cae cad c c cae cad) <> IF
+         *         EMIT OVER C! ( cas cae cad) 1+
+         *      ELSE
+         *         ( cas cae cad c c) 2DROP
+         *      THEN
+         *   REPEAT
+         *   ( ca-start ca-end ca-dest c) DROP NIP SWAP - ;
+         *
+         * Offset=200, Length=29 */
+        OVER, PLUS, OVER,
+        KEY, DUP, CHARLIT, 10, NOTEQUALS, ZBRANCH, 15,
+            DUP, TWOOVER, NOTEQUALS, ZBRANCH, 7,
+                EMIT, OVER, CSTORE, ONEPLUS, BRANCH, 2,
+                TWODROP,
+            BRANCH, -20,
+        DROP, NIP, SWAP, MINUS,
         EXIT, 0, 0, 0,
+
+        /* -------------------------------------------------------------
+         * PARSE-WORD [MFORTH] "parse-word" ( char "ccc<char>" -- c-addr u )
+         *
+         * Parse ccc delimited by the delimiter char, skipping leading
+         * delimiters.
+         *
+         * c-addr is the address (within the input buffer) and u is the
+         * length of the parsed string.  If the parse area was empty,
+         * the resulting string has a zero length.
+         * ---
+         * : SKIP-DELIM ( c-addr1 u1 c -- c-addr2 u2)
+         *   >R  BEGIN  OVER C@  R@ =  ( ca u f R:c) OVER  AND WHILE
+         *      1 /STRING AGAIN  R> DROP ;
+         * : FIND-DELIM ( c-addr1 u1 c -- c-addr2)
+         *   >R  BEGIN  OVER C@  R@ <>  ( ca u f R:c) OVER  AND WHILE
+         *      1 /STRING AGAIN  R> 2DROP ;
+         * : PARSE-WORD ( c -- c-addr u)
+         *   >R  SOURCE >IN @ /STRING ( ca-parse u-parse R:c)
+         *   R@ SKIP-DELIM ( ca u R:c)  OVER SWAP ( ca-word ca-word u R:c)
+         *   R> FIND-DELIM ( ca-word ca-delim)
+         *   DUP SOURCE DROP ( caw cad cad cas) - >IN ! ( caw cad)
+         *   OVER - ;
+         *
+         * Offset=232, Length=50 */
+        TOR, SOURCE, TOIN, FETCH, SLASHSTRING,
+        RFETCH,
+            /* SKIP-DELIM */
+            TOR,
+            OVER, CFETCH, RFETCH, EQUALS, OVER, AND, ZBRANCH, 6,
+                CHARLIT, 1, SLASHSTRING, BRANCH, -12,
+            RFROM, DROP,
+        OVER, SWAP,
+        RFROM,
+            /* FIND-DELIM */
+            TOR,
+            OVER, CFETCH, RFETCH, NOTEQUALS, OVER, AND, ZBRANCH, 6,
+                CHARLIT, 1, SLASHSTRING, BRANCH, -12,
+            RFROM, TWODROP,
+        DUP, SOURCE, DROP, MINUS, TOIN, STORE,
+        OVER, MINUS,
+        EXIT, 0, 0,
     };
 
     /* Initialize RP so that we can use threading to get to QUIT from
@@ -1696,27 +1790,6 @@ DISPATCH_TOKEN:
         continue;
 
         /* -------------------------------------------------------------
-         * PARSE-WORD [ENFORTH] ( "<spaces>name<space>" -- c-addr u )
-         *
-         * Skip leading spaces and parse name delimited by a space.
-         * c-addr is the address within the input buffer and u is the
-         * length of the selected string. If the parse area is empty,
-         * the resulting string has a zero length. */
-        PARSEWORD:
-        {
-            CHECK_STACK(0, 2);
-
-            *--restDataStack = tos;
-
-            uint8_t * caddr;
-            EnforthUnsigned u;
-            enforth_paren_parse_word(vm, ' ', &caddr, &u);
-            (--restDataStack)->ram = caddr;
-            tos.u = u;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
          * FIND-WORD [ENFORTH] "paren-find-paren" ( c-addr u -- c-addr u 0 | xt 1 | xt -1 )
          *
          * Find the definition named in the string at c-addr with length
@@ -1891,32 +1964,6 @@ DISPATCH_TOKEN:
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
             tos.u = sizeof(vm->tib);
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-         * ACCEPT [CORE] 6.1.0695 ( c-addr +n1 -- +n2 )
-         *
-         * Receive a string of at most +n1 characters.  An ambiguous
-         * condition exists if +n1 is zero or greater than 32,767.
-         * Display graphic characters as they are received.  A program
-         * that depends on the presence or absence of non-graphic
-         * characters in the string has an environmental dependency.
-         * The editing functions, if any, that the system performs in
-         * order to construct the string are implementation-defined.
-         *
-         * Input terminates when an implementation-defined line
-         * terminator is received.  When input terminates, nothing is
-         * appended to the string, and the display is maintained in an
-         * implementation-defined way.
-         *
-         * +n2 is the length of the string stored at c-addr. */
-        ACCEPT:
-        {
-            CHECK_STACK(2, 1);
-            EnforthCell n1 = tos;
-            EnforthCell caddr = *restDataStack++;
-            tos.u = enforth_paren_accept(vm, (uint8_t *)caddr.ram, n1.u);
         }
         continue;
 
@@ -2405,6 +2452,91 @@ DISPATCH_TOKEN:
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
             tos.ram = &vm->source_len;
+        }
+        continue;
+
+        OVER:
+        {
+            CHECK_STACK(2, 3);
+            EnforthCell second = restDataStack[0];
+            *--restDataStack = tos;
+            tos = second;
+        }
+        continue;
+
+        TWOOVER:
+        {
+            CHECK_STACK(4, 6);
+            *--restDataStack = tos;
+            EnforthCell x2 = restDataStack[2];
+            EnforthCell x1 = restDataStack[3];
+            *--restDataStack = x1;
+            tos = x2;
+        }
+        continue;
+
+        KEY:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos.i = vm->key();
+        }
+        continue;
+
+        TOR:
+        {
+            CHECK_STACK(1, 0);
+            *--returnTop = tos;
+            tos = *restDataStack++;
+        }
+        continue;
+
+        RFROM:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos = *returnTop++;
+        }
+        continue;
+
+        RFETCH:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos = returnTop[0];
+        }
+        continue;
+
+        EQUALS:
+        {
+            CHECK_STACK(2, 1);
+            tos.i = restDataStack++->i == tos.i ? -1 : 0;
+        }
+        continue;
+
+        SOURCE:
+        {
+            CHECK_STACK(0, 2);
+            *--restDataStack = tos;
+            *--restDataStack = vm->source;
+            tos = vm->source_len;
+        }
+        continue;
+
+        SLASHSTRING:
+        {
+            CHECK_STACK(3, 2);
+            EnforthCell adjust = tos;
+            tos.u = restDataStack++->u - adjust.i;
+            restDataStack[0].u += adjust.i;
+        }
+        continue;
+
+        PLUSSTORE:
+        {
+            CHECK_STACK(2, 0);
+            ((EnforthCell*)tos.ram)->i += restDataStack++->i;
+            tos = *restDataStack++;
         }
         continue;
 

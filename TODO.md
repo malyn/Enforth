@@ -7,6 +7,7 @@
 * Improve the stack checking code.
   * First, the code is probably too aggressive and may not let us use the last stack item.
   * Second, we have the macro scattered everywhere, but it would be better if the stack sizes were declared in a separate table, organized by token, and then checked in a single place right before DISPATCH\_TOKEN.  Similar to the rest of these tables, the source auto-generator will make it easier to build this table.
+  * We should also check the return stack.
 * Consider creating EnforthDuino.cpp/.h wrappers to make it easier to interact with Enforth in the Arduino environment.
 * Consider auto-generating tokens so that we can avoid some of the duplication/hand-editing.
   * The first pass should pack the ROM definitions as tightly as possible, which consumes tokens throughout the 8-bit token space.
