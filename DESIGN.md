@@ -11,6 +11,7 @@ Provided as an Arduino Library with a small handful of entry points.  Two key en
 # Design Goals
 
 1. Minimize RAM usage.  When faced with a design decision, the option that minimizes RAM usage is almost always the one that was taken.
+2. Minimize ROM usage.  Enforth is a complete environment on its own, but its real value is exposed through interfaces to existing C/C++ libraries.  To that end, Enforth itself is as small as possible in order to make room for those companion libraries.  Many of Enforth's definitions are coded in Forth, which makes those definitions smaller than if they were coded in C, but also slower.  Whether to code a definition in C or Forth was based on the expected frequency of use for that definition in embedded environments: definitions involved in the text interpreter and interactive experimentation are almost always in Forth as are routines involved in text input/output.
 2. Ensure that the entire dictionary and all values therein are relocatable without requiring values to be rewritten.  This allows us to copy the dictionary as-is back and forth between RAM, EEPROM, and flash.  In addition to supporting on-device development -- build up your code and then copy it to EEPROM for a turn-key app -- this may allow us to dump the contents of the dictionary as a C-style (PROGMEM) array and then compile that into flash.  Note that there are subtleties here: XTs must also be relocatable since you could get the XT for a word and then store that in a CONSTANT or array in the dictionary.
 
 # Memory Layout
