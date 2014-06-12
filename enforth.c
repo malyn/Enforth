@@ -1352,10 +1352,10 @@ void enforth_go(EnforthVM * const vm)
          * ---
          * : SKIP-DELIM ( c-addr1 u1 c -- c-addr2 u2)
          *   >R  BEGIN  OVER C@  R@ =  ( ca u f R:c) OVER  AND WHILE
-         *      1 /STRING AGAIN  R> DROP ;
+         *      1 /STRING REPEAT  R> DROP ;
          * : FIND-DELIM ( c-addr1 u1 c -- c-addr2)
          *   >R  BEGIN  OVER C@  R@ <>  ( ca u f R:c) OVER  AND WHILE
-         *      1 /STRING AGAIN  R> 2DROP ;
+         *      1 /STRING REPEAT  R> 2DROP ;
          * : PARSE-WORD ( c -- c-addr u)
          *   >R  SOURCE >IN @ /STRING ( ca-parse u-parse R:c)
          *   R@ SKIP-DELIM ( ca u R:c)  OVER SWAP ( ca-word ca-word u R:c)
@@ -1384,7 +1384,7 @@ void enforth_go(EnforthVM * const vm)
 
         /* : TYPE ( c-addr u --)
          *   OVER + SWAP  ( ca-end ca-next)
-         *   BEGIN 2DUP <> WHILE DUP C@ EMIT 1+ AGAIN 2DROP ;
+         *   BEGIN 2DUP <> WHILE DUP C@ EMIT 1+ REPEAT 2DROP ;
          *
          * Offset=284, Length=15 */
         OVER, PLUS, SWAP,
@@ -1424,7 +1424,7 @@ void enforth_go(EnforthVM * const vm)
         /* : FFI? ( xt -- f)  >CFA C@ kDefTypeFFI0 1- > ;
          * : >BODY ( xt -- a-addr)
          *   DUP >CFA 1+  SWAP FFI? IF EXIT THEN
-         *   BEGIN DUP C@ $80 AND 0= WHILE 1+ AGAIN 1+ ;
+         *   BEGIN DUP C@ $80 AND 0= WHILE 1+ REPEAT 1+ ;
          *
          * Offset=320, Length=25 */
         DUP, TOCFA, ONEPLUS, SWAP,
