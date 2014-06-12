@@ -94,8 +94,8 @@ typedef enum EnforthToken
     BRANCH,
     ABORT,
     CHARLIT,
-    COMPILECOMMA,
-    unused_was_CR, /* UNUSED */
+    unused_was_COMPILECOMMA, /* UNUSED */
+    LESSTHAN,
     EMIT,
     EXECUTE,
     FETCH,
@@ -177,6 +177,7 @@ typedef enum EnforthToken
     SOURCE,
     SLASHSTRING,
     PLUSSTORE,
+    TICKDICT,
 
     /* ... */
 
@@ -247,6 +248,9 @@ typedef enum EnforthToken
     TYPE = 0xc7,
     SPACE = 0xcb,
     CR = 0xcc,
+    TOCFA = 0xcd,
+    TOBODY = 0xd0,
+    COMPILECOMMA = 0xd7,
 } EnforthToken;
 
 
@@ -277,8 +281,8 @@ static const char kDefinitionNames[] PROGMEM =
     "\x05" "ABORT"
     "\x00" /* CHARLIT */
 
-    "\x08" "COMPILE,"
     "\x00" /* UNUSED */
+    "\x01" "<"
     "\x04" "EMIT"
     "\x07" "EXECUTE"
 
@@ -390,7 +394,7 @@ static const char kDefinitionNames[] PROGMEM =
     "\x06" "SOURCE"
     "\x07" "/STRING"
     "\x02" "+!"
-    "\x00"
+    "\x00" /* TICKDICT */
 
     /* $60 - $67 */
     "\x00" "\x00" "\x00" "\x00"
@@ -486,6 +490,22 @@ static const char kDefinitionNames[] PROGMEM =
     "\x00" /* UNUSED */
     "\x05" "SPACE"
     "\x02" "CR"
+    "\x00" /* >CFA */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x05" ">BODY"
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x08" "COMPILE,"
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
 
     /* End byte */
     "\xff"
@@ -803,8 +823,8 @@ void enforth_go(EnforthVM * const vm)
         &&ABORT,
         &&CHARLIT,
 
-        &&COMPILECOMMA,
         0, /* UNUSED */
+        &&LESSTHAN,
         &&EMIT,
         &&EXECUTE,
 
@@ -916,7 +936,7 @@ void enforth_go(EnforthVM * const vm)
         &&SOURCE,
         &&SLASHSTRING,
         &&PLUSSTORE,
-        0,
+        &&TICKDICT,
 
         /* $60 - $67 */
         &&PDOCOLON,
@@ -1029,6 +1049,22 @@ void enforth_go(EnforthVM * const vm)
         0, /* UNUSED, Offset=296 */
         &&DOCOLONROM, /* Offset=300 (SPACE) */
         &&DOCOLONROM, /* Offset=304 (CR) */
+        &&DOCOLONROM, /* Offset=308 (>CFA) */
+        0, /* UNUSED, Offset=312 */
+        0, /* UNUSED, Offset=316 */
+        &&DOCOLONROM, /* Offset=320 (>BODY) */
+        0, /* UNUSED, Offset=324 */
+        0, /* UNUSED, Offset=328 */
+        0, /* UNUSED, Offset=332 */
+        0, /* UNUSED, Offset=336 */
+        0, /* UNUSED, Offset=340 */
+        0, /* UNUSED, Offset=344 */
+        &&DOCOLONROM, /* Offset=348 (COMPILE,) */
+        0, /* UNUSED, Offset=352 */
+        0, /* UNUSED, Offset=356 */
+        0, /* UNUSED, Offset=360 */
+        0, /* UNUSED, Offset=364 */
+        0, /* UNUSED, Offset=368 */
     };
 
     static const int8_t definitions[] PROGMEM = {
@@ -1341,6 +1377,66 @@ void enforth_go(EnforthVM * const vm)
          *
          * Offset=304, Length=4 */
         CHARLIT, 10, EMIT, EXIT,
+
+        /* : +LFA ( addr1 -- addr2)  1+ 1+ ;
+         * : >CFA ( xt -- addr)  $7FFF AND  'DICT +  +LFA ;
+         *
+         * Offset=308, Length=9 */
+#ifdef __AVR__
+        LIT, 0xff, 0x7f,
+#else
+        LIT, 0xff, 0x7f, 0x00, 0x00,
+#endif
+        AND, TICKDICT, PLUS,
+        /* PLUSLFA */
+            ONEPLUS, ONEPLUS,
+#ifdef __AVR__
+        EXIT, 0, 0, 0,
+#else
+        EXIT, 0,
+#endif
+
+        /* : FFI? ( xt -- f)  >CFA C@ kDefTypeFFI0 1- > ;
+         * : >BODY ( xt -- a-addr)
+         *   DUP >CFA 1+  SWAP FFI? IF EXIT THEN
+         *   BEGIN DUP C@ $80 AND 0= WHILE 1+ AGAIN 1+ ;
+         *
+         * Offset=320, Length=25 */
+        DUP, TOCFA, ONEPLUS, SWAP,
+        /* FFI? */
+            TOCFA, CFETCH, CHARLIT, kDefTypeFFI0-1, GREATERTHAN,
+        ZBRANCH, 2, EXIT,
+        DUP, CFETCH, CHARLIT, 0x80, AND, ZEROEQUALS, ZBRANCH, 4,
+            ONEPLUS, BRANCH, -10,
+        ONEPLUS,
+        EXIT, 0, 0, 0,
+
+        /* : TOKEN? ( xt -- f)  $8000 AND 0= ;
+         * : CFA>TOKEN ( def-type -- token)  $70 OR ;
+         * : COMPILE, ( xt --)
+         *   DUP TOKEN? IF C, EXIT THEN
+         *   DUP >CFA C@ CFA>TOKEN C,  >BODY 'DICT - W, ;
+         *
+         * Offset=348, Length=22 */
+        DUP,
+        /* TOKEN? */
+#ifdef __AVR__
+            LIT, 0x00, 0x80,
+#else
+            LIT, 0x00, 0x80, 0x00, 0x00,
+#endif
+            AND, ZEROEQUALS,
+        ZBRANCH, 3,
+            CCOMMA, EXIT,
+        DUP, TOCFA, CFETCH,
+        /* CFA>TOKEN */
+            CHARLIT, 0x70, OR,
+        CCOMMA, TOBODY, TICKDICT, MINUS, WCOMMA,
+#ifdef __AVR__
+        EXIT, 0, 0,
+#else
+        EXIT,
+#endif
     };
 
     /* Initialize RP so that we can use threading to get to QUIT from
@@ -1620,59 +1716,6 @@ DISPATCH_TOKEN:
             }
 
             ip++;
-        }
-        continue;
-
-        COMPILECOMMA:
-        {
-            CHECK_STACK(1, 0);
-
-            /* Does this XT reference a primitive word or a user-defined
-             * word?  If the former, just compile the token.  If the
-             * latter, look up the type of user-defined word and compile
-             * the address of the PFA into the definition. */
-            if ((tos.u & 0x8000) == 0)
-            {
-                *vm->dp++ = tos.u & 0xff;
-                tos = *restDataStack++;
-            }
-            else
-            {
-                /* TODO Most of this is >BODY and is duplicated in
-                 * EXECUTE; we should move it into a helper function
-                 * (and just rewrite this in Forth). */
-
-                /* Calculate the absolute RAM address of the target
-                 * word's PFA (the "W" register). */
-                uint8_t * pTarget = (uint8_t*)vm->dictionary + (tos.u & 0x7fff);
-                pTarget += 2; /* Skip LFA */
-                uint8_t definitionType = *pTarget++;
-
-                /* Compile the CFA token.  By design, the compilation
-                 * tokens for each definition are 0x70 greater than the
-                 * definition type value, so we can just OR 0x70 with
-                 * the definition type and then use that as the token. */
-                *vm->dp++ = 0x70 | definitionType;
-
-                /* Find the PFA.  We're already there for FFI
-                 * trampolines, but for user-defined words we need to
-                 * skip over the variable-length NFA. */
-                if (definitionType < kDefTypeFFI0)
-                {
-                    while ((*pTarget++ & 0x80) == 0)
-                    {
-                        /* Loop */
-                    }
-                }
-
-                /* Compile the relative offset to the PFA. */
-                uint16_t relativeOffset = pTarget - vm->dictionary;
-                *((uint16_t*)vm->dp) = relativeOffset;
-                vm->dp += 2;
-
-                /* Drop the XT and get a new TOS. */
-                tos = *restDataStack++;
-            }
         }
         continue;
 
@@ -2532,6 +2575,21 @@ DISPATCH_TOKEN:
             CHECK_STACK(2, 0);
             ((EnforthCell*)tos.ram)->i += restDataStack++->i;
             tos = *restDataStack++;
+        }
+        continue;
+
+        TICKDICT:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos.ram = vm->dictionary;
+        }
+        continue;
+
+        LESSTHAN:
+        {
+            CHECK_STACK(2, 1);
+            tos.i = restDataStack++->i < tos.i ? -1 : 0;
         }
         continue;
 
