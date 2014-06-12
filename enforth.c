@@ -94,12 +94,12 @@ typedef enum EnforthToken
     BRANCH,
     ABORT,
     CHARLIT,
-    unused_was_COMPILECOMMA, /* UNUSED */
+    INVERT,
     LESSTHAN,
     EMIT,
     PEXECUTE,
     FETCH,
-    LITERAL,
+    unused_was_LITERAL, /* UNUSED */
     NUMBERQ,
     OR,
     unused_was_PARSEWORD, /* UNUSED */
@@ -253,6 +253,7 @@ typedef enum EnforthToken
     TOKENQ = 0xd7,
     COMPILECOMMA = 0xd9,
     EXECUTE = 0xde,
+    LITERAL = 0xe3,
 } EnforthToken;
 
 
@@ -283,14 +284,14 @@ static const char kDefinitionNames[] PROGMEM =
     "\x05" "ABORT"
     "\x00" /* CHARLIT */
 
-    "\x00" /* UNUSED */
+    "\x06" "INVERT"
     "\x01" "<"
     "\x04" "EMIT"
     "\x00" /* PEXECUTE */
 
     /* $10 - $17 */
     "\x01" "@"
-    "\x07" "LITERAL"
+    "\x00" /* UNUSED */
     "\x07" "NUMBER?"
     "\x02" "OR"
 
@@ -510,6 +511,11 @@ static const char kDefinitionNames[] PROGMEM =
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x07" "EXECUTE"
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x07" "LITERAL"
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
@@ -831,14 +837,14 @@ void enforth_go(EnforthVM * const vm)
         &&ABORT,
         &&CHARLIT,
 
-        0, /* UNUSED */
+        &&INVERT,
         &&LESSTHAN,
         &&EMIT,
         &&PEXECUTE,
 
         /* $10 - $17 */
         &&FETCH,
-        &&LITERAL,
+        0, /* UNUSED */
         &&NUMBERQ,
         &&OR,
 
@@ -1070,15 +1076,20 @@ void enforth_go(EnforthVM * const vm)
         &&DOCOLONROM, /* Offset=348 (TOKENQ) */
         0, /* UNUSED, Offset=352 */
         &&DOCOLONROM, /* Offset=356 (COMPILE,) */
-        0, /* UNUSED, Offset=352 */
-        0, /* UNUSED, Offset=356 */
         0, /* UNUSED, Offset=360 */
         0, /* UNUSED, Offset=364 */
-        &&DOCOLONROM, /* Offset=368 (EXECUTE) */
+        0, /* UNUSED, Offset=368 */
         0, /* UNUSED, Offset=372 */
-        0, /* UNUSED, Offset=376 */
+        &&DOCOLONROM, /* Offset=376 (EXECUTE) */
         0, /* UNUSED, Offset=380 */
         0, /* UNUSED, Offset=384 */
+        0, /* UNUSED, Offset=388 */
+        0, /* UNUSED, Offset=392 */
+        &&DOCOLONROM, /* Offset=396 (LITERAL) */
+        0, /* UNUSED, Offset=400 */
+        0, /* UNUSED, Offset=404 */
+        0, /* UNUSED, Offset=408 */
+        0, /* UNUSED, Offset=412 */
     };
 
     static const int8_t definitions[] PROGMEM = {
@@ -1475,6 +1486,16 @@ void enforth_go(EnforthVM * const vm)
         SWAP, TOBODY,
         PEXECUTE,
         EXIT, 0, 0, 0,
+
+        /* : LITERAL ( x --)
+         *   DUP $FF INVERT AND 0= IF CHARLIT C, C,
+         *   ELSE LIT C, , THEN ;
+         *
+         * Offset=396, Length=19 */
+        DUP, CHARLIT, 0xff, INVERT, AND, ZEROEQUALS, ZBRANCH, 7,
+            CHARLIT, CHARLIT, CCOMMA, CCOMMA, BRANCH, 5,
+            CHARLIT, LIT, CCOMMA, COMMA,
+        EXIT, 0,
     };
 
     /* Initialize RP so that we can use threading to get to QUIT from
@@ -1783,26 +1804,6 @@ DISPATCH_TOKEN:
         {
             CHECK_STACK(1, 1);
             tos = *(EnforthCell*)tos.ram;
-        }
-        continue;
-
-        LITERAL:
-        {
-            /* Compile this literal as a character literal if it would
-             * fit in 8 bits, otherwise compile a normal cell. */
-            if ((tos.u & ~0xff) == 0)
-            {
-                *vm->dp++ = CHARLIT;
-                *vm->dp++ = tos.u & 0xff;
-            }
-            else
-            {
-                *vm->dp++ = LIT;
-                *((EnforthCell*)vm->dp) = tos;
-                vm->dp += kEnforthCellSize;
-            }
-
-            tos = *restDataStack++;
         }
         continue;
 
@@ -2576,6 +2577,13 @@ DISPATCH_TOKEN:
         {
             CHECK_STACK(2, 1);
             tos.i = restDataStack++->i < tos.i ? -1 : 0;
+        }
+        continue;
+
+        INVERT:
+        {
+            CHECK_STACK(1, 1);
+            tos.i = ~tos.i;
         }
         continue;
 
