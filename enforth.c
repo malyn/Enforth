@@ -99,18 +99,18 @@ typedef enum EnforthToken
     EMIT,
     PEXECUTE,
     FETCH,
-    unused_was_LITERAL, /* UNUSED */
-    NUMBERQ,
+    UGREATERTHAN,
+    unused_was_NUMBERQ, /* UNUSED */
     OR,
-    unused_was_PARSEWORD, /* UNUSED */
+    TWOSWAP,
     FINDWORD,
     QDUP,
-    unused_was_SPACE, /* UNUSED */
+    UMSTAR,
     STATE,
     STORE,
     TOIN,
     TWODROP,
-    unused_was_TYPE, /* UNUSED */
+    MPLUS,
     ZBRANCH,
     ZERO,
     ZEROEQUALS,
@@ -123,7 +123,7 @@ typedef enum EnforthToken
     BL,
     CFETCH,
     COUNT,
-    TONUMBER,
+    unused_was_TONUMBER, /* UNUSED */
     DEPTH,
     unused_was_DOT, /* UNUSED */
     PDOTQUOTE,
@@ -254,6 +254,9 @@ typedef enum EnforthToken
     COMPILECOMMA = 0xd9,
     EXECUTE = 0xde,
     LITERAL = 0xe3,
+    DIGITQ = 0xe8,
+    TONUMBER = 0xf3,
+    NUMBERQ = 0xfc,
 } EnforthToken;
 
 
@@ -291,14 +294,14 @@ static const char kDefinitionNames[] PROGMEM =
 
     /* $10 - $17 */
     "\x01" "@"
+    "\x02" "U>"
     "\x00" /* UNUSED */
-    "\x07" "NUMBER?"
     "\x02" "OR"
 
-    "\x00" /* UNUSED */
+    "\x05" "2SWAP"
     "\x00" /* FIND-WORD */
     "\x04" "?DUP"
-    "\x00" /* UNUSED */
+    "\x03" "UM*"
 
     /* $18 - $1F */
     "\x05" "STATE"
@@ -306,7 +309,7 @@ static const char kDefinitionNames[] PROGMEM =
     "\x03" ">IN"
     "\x05" "2DROP"
 
-    "\x00" /* UNUSED */
+    "\x02" "M+"
     "\x00" /* ZBRANCH */
     "\x01" "0"
     "\x02" "0="
@@ -324,7 +327,7 @@ static const char kDefinitionNames[] PROGMEM =
 
     /* $28 - $2F */
     "\x05" "COUNT"
-    "\x07" ">NUMBER"
+    "\x00" /* UNUSED */
     "\x05" "DEPTH"
     "\x00" /* UNUSED */
 
@@ -520,6 +523,29 @@ static const char kDefinitionNames[] PROGMEM =
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
+    "\x00" /* DIGITQ */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x07" ">NUMBER"
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* NUMBERQ */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
 
     /* End byte */
     "\xff"
@@ -531,10 +557,6 @@ static const char kDefinitionNames[] PROGMEM =
  */
 
 static int enforth_paren_find_word(EnforthVM * const vm, uint8_t * caddr, EnforthUnsigned u, EnforthXT * const xt, int * const isImmediate);
-
-static void enforth_paren_to_number(EnforthVM * const vm, EnforthUnsigned * const ud, uint8_t ** caddr, EnforthUnsigned * const u);
-
-static int enforth_paren_numberq(EnforthVM * vm, uint8_t * caddr, EnforthUnsigned u, EnforthInt * const n);
 
 
 
@@ -653,76 +675,6 @@ static int enforth_paren_find_word(EnforthVM * const vm, uint8_t * caddr, Enfort
 
     /* No match. */
     return 0;
-}
-
-/* >NUMBER [CORE] 6.1.0567 "to-number" ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 )
- *
- * ud2 is the unsigned result of converting the characters within the
- * string specified by c-addr1 u1 into digits, using the number in BASE,
- * and adding each into ud1 after multiplying ud1 by the number in BASE.
- * Conversion continues left-to-right until a character that is not
- * convertible, including any "+" or "-", is encountered or the string
- * is entirely converted.  c-addr2 is the location of the first
- * unconverted character or the first character past the end of the
- * string if the string was entirely converted.  u2 is the number of
- * unconverted characters in the string.  An ambiguous condition exists
- * if ud2 overflows during the conversion. */
-static void enforth_paren_to_number(EnforthVM * const vm, EnforthUnsigned * const ud, uint8_t ** caddr, EnforthUnsigned * const u)
-{
-    while (*u > 0)
-    {
-        char ch = **(char **)caddr;
-        if (ch < '0')
-        {
-            break;
-        }
-
-        EnforthUnsigned digit = ch - '0';
-        if (digit > 9)
-        {
-            digit = tolower(ch) - 'a' + 10;
-        }
-
-        if (digit >= vm->base)
-        {
-            break;
-        }
-
-        *ud = (*ud * vm->base) + digit;
-        (*caddr)++;
-        (*u)--;
-    }
-}
-
-/* NUMBER? [ENFORTH] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
- *
- * Attempt to convert a string at c-addr of length u into digits, using
- * the radix in BASE.  The number and -1 is returned if the conversion
- * was successful, otherwise 0 is returned. */
-static int enforth_paren_numberq(EnforthVM * vm, uint8_t * caddr, EnforthUnsigned u, EnforthInt * const n)
-{
-    /* Store the sign as a value to be multipled against the final
-     * number. */
-    EnforthInt sign = 1;
-    if (*caddr == '-')
-    {
-        sign = -1;
-        caddr++;
-        u--;
-    }
-
-    /* Try to convert the (rest of, if we found a sign) number. */
-    EnforthUnsigned ud = 0;
-    enforth_paren_to_number(vm, &ud, &caddr, &u);
-    if (u == 0)
-    {
-        *n = (EnforthInt)ud * sign;
-        return -1;
-    }
-    else
-    {
-        return 0;
-    }
 }
 
 
@@ -844,14 +796,14 @@ void enforth_go(EnforthVM * const vm)
 
         /* $10 - $17 */
         &&FETCH,
+        &&UGREATERTHAN,
         0, /* UNUSED */
-        &&NUMBERQ,
         &&OR,
 
-        0, /* UNUSED */
+        &&TWOSWAP,
         &&FINDWORD,
         &&QDUP,
-        0, /* UNUSED */
+        &&UMSTAR,
 
         /* $18 - $1F */
         &&STATE,
@@ -859,7 +811,7 @@ void enforth_go(EnforthVM * const vm)
         &&TOIN,
         &&TWODROP,
 
-        0, /* UNUSED */
+        &&MPLUS,
         &&ZBRANCH,
         &&ZERO,
         &&ZEROEQUALS,
@@ -877,7 +829,7 @@ void enforth_go(EnforthVM * const vm)
 
         /* $28 - $2F */
         &&COUNT,
-        &&TONUMBER,
+        0, /* UNUSED */
         &&DEPTH,
         0, /* UNUSED */
 
@@ -1090,6 +1042,29 @@ void enforth_go(EnforthVM * const vm)
         0, /* UNUSED, Offset=404 */
         0, /* UNUSED, Offset=408 */
         0, /* UNUSED, Offset=412 */
+        &&DOCOLONROM, /* Offset=416 (DIGITQ) */
+        0, /* UNUSED, Offset=420 */
+        0, /* UNUSED, Offset=424 */
+        0, /* UNUSED, Offset=428 */
+        0, /* UNUSED, Offset=432 */
+        0, /* UNUSED, Offset=436 */
+        0, /* UNUSED, Offset=440 */
+        0, /* UNUSED, Offset=444 */
+        0, /* UNUSED, Offset=448 */
+        0, /* UNUSED, Offset=452 */
+        0, /* UNUSED, Offset=456 */
+        &&DOCOLONROM, /* Offset=460 (TONUMBER) */
+        0, /* UNUSED, Offset=464 */
+        0, /* UNUSED, Offset=468 */
+        0, /* UNUSED, Offset=472 */
+        0, /* UNUSED, Offset=476 */
+        0, /* UNUSED, Offset=480 */
+        0, /* UNUSED, Offset=484 */
+        0, /* UNUSED, Offset=488 */
+        0, /* UNUSED, Offset=492 */
+        &&DOCOLONROM, /* Offset=496 (NUMBERQ) */
+        0, /* UNUSED, Offset=500 */
+        0, /* UNUSED, Offset=504 */
     };
 
     static const int8_t definitions[] PROGMEM = {
@@ -1496,6 +1471,81 @@ void enforth_go(EnforthVM * const vm)
             CHARLIT, CHARLIT, CCOMMA, CCOMMA, BRANCH, 5,
             CHARLIT, LIT, CCOMMA, COMMA,
         EXIT, 0,
+
+        /* -------------------------------------------------------------
+         * DIGIT? [MFORTH] "digit-question" ( char -- u -1 | 0 )
+         *
+         * Attempts to convert char to a numeric value using the current
+         * BASE.  Pushes the numeric value and -1 to the stack if the
+         * value was converted, otherwise pushes 0 to the stack.
+         * ---
+         * : DIGIT? ( char -- u -1 | 0)
+         *   [CHAR] 0 -           DUP 0< IF DROP 0 EXIT THEN
+         *   DUP 9 > IF DUP 16 < IF DROP 0 EXIT ELSE 7 - THEN THEN
+         *   DUP 1+ BASE @ > IF DROP FALSE ELSE TRUE THEN ;
+         *
+         * Offset=416, Length=41 */
+        CHARLIT, '0', MINUS,
+        DUP, ZEROLESS, ZBRANCH, 4, DROP, ZERO, EXIT,
+        DUP, CHARLIT, 9, GREATERTHAN, ZBRANCH, 13,
+            DUP, CHARLIT, 17, LESSTHAN, ZBRANCH, 4,
+                DROP, ZERO, EXIT,
+                CHARLIT, 7, MINUS,
+        DUP, ONEPLUS, BASE, FETCH, UGREATERTHAN, ZBRANCH, 4,
+            DROP, ZERO, EXIT, /* TODO: Replace with FALSE */
+            ZERO, INVERT, /* TODO: Replace with TRUE */
+        EXIT, 0, 0, 0,
+
+        /* -------------------------------------------------------------
+         * >NUMBER [CORE] 6.1.0567 "to-number" ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 )
+         *
+         * ud2 is the unsigned result of converting the characters
+         * within the string specified by c-addr1 u1 into digits, using
+         * the number in BASE, and adding each into ud1 after
+         * multiplying ud1 by the number in BASE.  Conversion continues
+         * left-to-right until a character that is not convertible,
+         * including any "+" or "-", is encountered or the string is
+         * entirely converted.  c-addr2 is the location of the first
+         * unconverted character or the first character past the end of
+         * the string if the string was entirely converted.  u2 is the
+         * number of unconverted characters in the string.  An ambiguous
+         * condition exists if ud2 overflows during the conversion.
+         *
+         * ---
+         * : UD* ( ud1 u1 -- ud2)   DUP >R UM* DROP  SWAP R> UM* ROT + ;
+         * : >NUMBER ( ud1 c-addr1 u1 -- ud2 c-addr2 u2)
+         *   BEGIN DUP WHILE
+         *      OVER C@ DIGIT?  0= IF DROP EXIT THEN
+         *      >R 2SWAP BASE @ UD* R> M+ 2SWAP
+         *      1 /STRING
+         *   REPEAT ;
+         *
+         * Offset=460, Length=33 */
+        DUP, ZBRANCH, 30,
+            OVER, CFETCH, DIGITQ, ZEROEQUALS, ZBRANCH, 3, DROP, EXIT,
+            TOR, TWOSWAP, BASE, FETCH,
+            /* UDSTAR */
+                DUP, TOR, UMSTAR, DROP, SWAP, RFROM, UMSTAR, ROT, PLUS,
+            RFROM, MPLUS, TWOSWAP,
+            CHARLIT, 1, SLASHSTRING,
+            BRANCH, -31,
+        EXIT, 0, 0, 0,
+
+        /* -------------------------------------------------------------
+         * NUMBER? [ENFORTH] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
+         *
+         * Attempt to convert a string at c-addr of length u into digits,
+         * using the radix in BASE.  The number and -1 is returned if the
+         * conversion was successful, otherwise 0 is returned.
+         * ---
+         * TODO Implement this for real.
+         * : NUMBER? ( c-addr u -- c-addr u 0 | n -1)
+         *   0 0 2SWAP >NUMBER 2DROP DROP -1 ;
+         *
+         * Offset=496, Length=9 */
+        /* TODO Replace ZERO INVERT with TRUE. */
+        ZERO, ZERO, TWOSWAP, TONUMBER, TWODROP, DROP, ZERO, INVERT,
+        EXIT, 0, 0, 0,
     };
 
     /* Initialize RP so that we can use threading to get to QUIT from
@@ -1807,36 +1857,6 @@ DISPATCH_TOKEN:
         }
         continue;
 
-        /* -------------------------------------------------------------
-         * NUMBER? [ENFORTH] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
-         *
-         * Attempt to convert a string at c-addr of length u into
-         * digits, using the radix in BASE.  The number and -1 is
-         * returned if the conversion was successful, otherwise 0 is
-         * returned. */
-        NUMBERQ:
-        {
-            CHECK_STACK(2, 3);
-
-            EnforthUnsigned u = tos.u;
-            uint8_t * caddr = (uint8_t*)restDataStack->ram;
-
-            EnforthInt n;
-            if (enforth_paren_numberq(vm, caddr, u, &n) == -1)
-            {
-                /* Stack still contains c-addr u; rewrite to n -1. */
-                restDataStack->i = n;
-                tos.i = -1;
-            }
-            else
-            {
-                /* Stack still contains c-addr u, so just push 0. */
-                *--restDataStack = tos;
-                tos.i = 0;
-            }
-        }
-        continue;
-
         OR:
         {
             CHECK_STACK(2, 1);
@@ -2037,36 +2057,6 @@ DISPATCH_TOKEN:
             CHECK_STACK(1, 2);
             (--restDataStack)->ram = (uint8_t*)tos.ram + 1;
             tos.u = *(uint8_t*)tos.ram;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-         * >NUMBER [CORE] 6.1.0567 "to-number" ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 )
-         *
-         * ud2 is the unsigned result of converting the characters
-         * within the string specified by c-addr1 u1 into digits, using
-         * the number in BASE, and adding each into ud1 after
-         * multiplying ud1 by the number in BASE.  Conversion continues
-         * left-to-right until a character that is not convertible,
-         * including any "+" or "-", is encountered or the string is
-         * entirely converted.  c-addr2 is the location of the first
-         * unconverted character or the first character past the end of
-         * the string if the string was entirely converted.  u2 is the
-         * number of unconverted characters in the string.  An ambiguous
-         * condition exists if ud2 overflows during the conversion. */
-        TONUMBER:
-        {
-            CHECK_STACK(3, 3);
-
-            EnforthUnsigned u = tos.u;
-            uint8_t * caddr = (uint8_t*)restDataStack[0].ram;
-            EnforthUnsigned ud = restDataStack[-1].u;
-
-            enforth_paren_to_number(vm, &ud, &caddr, &u);
-
-            restDataStack[-1].u = ud;
-            restDataStack[0].ram = caddr;
-            tos.u = u;
         }
         continue;
 
@@ -2443,6 +2433,13 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        UGREATERTHAN:
+        {
+            CHECK_STACK(2, 1);
+            tos.i = restDataStack++->u > tos.u ? -1 : 0;
+        }
+        continue;
+
         AND:
         {
             CHECK_STACK(2, 1);
@@ -2584,6 +2581,68 @@ DISPATCH_TOKEN:
         {
             CHECK_STACK(1, 1);
             tos.i = ~tos.i;
+        }
+        continue;
+
+        TWOSWAP:
+        {
+            CHECK_STACK(4, 4);
+            EnforthCell x4 = tos;
+            EnforthCell x3 = restDataStack[0];
+            EnforthCell x2 = restDataStack[1];
+            EnforthCell x1 = restDataStack[2];
+
+            tos = x2;
+            restDataStack[0] = x1;
+            restDataStack[1] = x4;
+            restDataStack[2] = x3;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+         * UM* [CORE] 6.1.2360 "u-m-star" ( u1 u2 -- ud )
+         *
+         * Multiply u1 by u2, giving the unsigned double-cell product
+         * ud.  All values and arithmetic are unsigned */
+        UMSTAR:
+        {
+            CHECK_STACK(2, 2);
+#ifdef __AVR__
+            uint32_t result = (uint32_t)tos.u * (uint32_t)restDataStack[0].u;
+            restDataStack[0].u = (uint16_t)result;
+            tos.u = (uint16_t)(result >> 16);
+#else
+            uint64_t result = (uint64_t)tos.u * (uint64_t)restDataStack[0].u;
+            restDataStack[0].u = (uint32_t)result;
+            tos.u = (uint32_t)(result >> 32);
+#endif
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+         * M+ [DOUBLE] 8.6.1.1830 "m-plus" ( d1|ud1 n -- d2|ud2 )
+         *
+         * Add n to d1|ud1, giving the sum d2|ud2. */
+        MPLUS:
+        {
+            CHECK_STACK(3, 2);
+#ifdef __AVR__
+            int16_t n = tos.i;
+            int16_t d1_msb = restDataStack++->i;
+            int16_t d1_lsb = restDataStack++->i;
+            int32_t ud1 = ((uint32_t)d1_msb << 16) | d1_lsb;
+            int32_t result = ud1 + n;
+            (--restDataStack)->i = (int16_t)result;
+            tos.i = (int16_t)(result >> 16);
+#else
+            int32_t n = tos.i;
+            int32_t d1_msb = restDataStack++->i;
+            int32_t d1_lsb = restDataStack++->i;
+            int64_t ud1 = ((uint64_t)d1_msb << 32) | d1_lsb;
+            int64_t result = ud1 + n;
+            (--restDataStack)->i = (int32_t)result;
+            tos.i = (int32_t)(result >> 32);
+#endif
         }
         continue;
 
