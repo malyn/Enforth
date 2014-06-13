@@ -82,106 +82,172 @@ enum EnforthDefinitionType
 
 typedef enum EnforthToken
 {
-    /* COLD = 0x00, */
-    LIT = 0x01,
+    /* $00 - $07 */
+        SEMICOLON = 0x00,
     DUP,
+        UDOT = 0x02,
     DROP,
+
+        DOT = 0x04,
     PLUS,
     MINUS,
     ONEPLUS,
+
+    /* $08 - $0F */
     ONEMINUS,
+        CREATE = 0x09,
     SWAP,
-    BRANCH,
     ABORT,
-    CHARLIT,
+
     INVERT,
     LESSTHAN,
     EMIT,
-    PEXECUTE,
     FETCH,
+
+    /* $10 - $17 */
     UGREATERTHAN,
-    unused_was_NUMBERQ, /* UNUSED */
     OR,
     TWOSWAP,
-    FINDWORD,
+        COLON = 0x13,
+
     QDUP,
     UMSTAR,
+        NUMSIGNS = 0x16,
     STATE,
+
+    /* $18 - $1F */
+        SIGN = 0x18,
     STORE,
+        NUMSIGN = 0x1a,
     TOIN,
+
     TWODROP,
     MPLUS,
-    ZBRANCH,
     ZERO,
+        QUIT = 0x1f,
+
+    /* $20 - $27 */
     ZEROEQUALS,
-    unused_was_QUIT, /* UNUSED */
-    TIB,
-    TIBSIZE,
-    unused_was_ACCEPT, /* UNUSED */
-    unused_was_INTERPRET, /* UNUSED */
-    PSQUOTE,
     BL,
     CFETCH,
     COUNT,
-    unused_was_TONUMBER, /* UNUSED */
+
     DEPTH,
-    unused_was_DOT, /* UNUSED */
-    PDOTQUOTE,
+        INTERPRET = 0x25,
     BACKSLASH,
     HEX,
-    unused_was_CREATE, /* UNUSED */
+
+    /* $28 - $2F */
     HERE,
-    LATEST,
     TWODUP,
     COMMA,
     CCOMMA,
+
     TUCK,
     ALIGN,
     MOVE,
     CPLUSSTORE,
+
+    /* $30 - $37 */
     ALLOT,
     NIP,
+        ACCEPT = 0x32,
     WCOMMA,
-    unused_was_COLON, /* UNUSED */
-    HIDE,
+
     RTBRACKET,
     CSTORE,
-    unused_was_SEMICOLON, /* UNUSED */
-    REVEAL,
     LTBRACKET,
     ABS,
+
+    /* $38 - $3F */
     LESSNUMSIGN,
-    unused_was_NUMSIGNS, /* UNUSED */
     ROT,
-    unused_was_SIGN, /* UNUSED */
+        PARSEWORD = 0x3a,
     NUMSIGNGRTR,
-    unused_was_NUMSIGN, /* UNUSED */
+
     ZEROLESS,
     HOLD,
     BASE,
     UDSLASHMOD,
+
+    /* $40 - $47 */
     GREATERTHAN,
     AND,
     NOTEQUALS,
-    unused_was_UDOT, /* UNUSED */
-    INITRP,
-    TICKSOURCE,
-    TICKSOURCELEN,
     OVER,
+
     TWOOVER,
     KEY,
     TOR,
+        TYPE = 0x47,
+
+    /* $48 - $4F */
     RFROM,
     RFETCH,
     EQUALS,
+        SPACE = 0x4b,
+
+        CR = 0x4c,
+        TOCFA = 0x4d,
     SOURCE,
     SLASHSTRING,
+
+    /* $50 - $57 */
+        TOBODY = 0x50,
     PLUSSTORE,
+
+        TOKENQ = 0x57,
+
+    /* $58 - $5F */
+        COMPILECOMMA = 0x59,
+        EXECUTE = 0x5e,
+
+    /* $60 - $67 */
+        LITERAL = 0x63,
+
+    /* $68 - $6F */
+        DIGITQ = 0x68,
+
+    /* $70 - $77 */
+        TONUMBER = 0x73,
+
+    /* $78 - $7F */
+        NUMBERQ = 0x7c,
+
+    /* $80 - $87 */
+    /* $88 - $8F */
+    /* $90 - $97 */
+    /* $98 - $9F */
+    /* $A0 - $A7 */
+    /* $A8 - $AF */
+    /* $B0 - $B7 */
+    /* $B8 - $BF */
+    /* $C0 - $C7 */
+    /* $C8 - $CF */
+
+    /* $D0 - $D7 */
+    CHARLIT = 0xd0,
+    REVEAL,
+    ZBRANCH,
+    LATEST,
+
+    BRANCH,
+    HIDE,
+    INITRP,
+    TIB,
+
+    /* $D8 - $DF */
+    TIBSIZE,
+    PDOTQUOTE,
+    TICKSOURCE,
+    TICKSOURCELEN,
+
+    FINDWORD,
+    LIT,
     TICKDICT,
+    PEXECUTE,
 
-    /* ... */
-
-    /* Tokens 0x61-0x6e are reserved for jump labels to the "CFA"
+    /* Tokens 0xe0-0xee are reserved for jump labels to the "CFA"
      * primitives *after* the point where W (the Word Pointer) has
      * already been set.  This allows words like EXECUTE to jump to a
      * CFA without having to use a switch statement to convert
@@ -190,7 +256,7 @@ typedef enum EnforthToken
      * reserving space in the token list and Address Interpreter jump
      * table, in other words), but we do list them here in order to make
      * it easier to turn raw tokens into enum values in the debugger. */
-    PDOCOLON = 0x60,
+    PDOCOLON = 0xe0,
     PDOIMMEDIATE,
     PDOCONSTANT,
     PDOCREATE,
@@ -208,7 +274,7 @@ typedef enum EnforthToken
 
     /* Just like the above, these tokens are never used in code and this
      * list of enum values is only used to simplify debugging. */
-    DOCOLON = 0x70,
+    DOCOLON = 0xf0,
     DOIMMEDIATE,
     DOCONSTANT,
     DOCREATE,
@@ -226,37 +292,7 @@ typedef enum EnforthToken
 
     /* This is a normal token and is placed at the end in order to make
      * it easier to identify in definitions. */
-    EXIT = 0x7F,
-
-    /* ROM definitions */
-    /* TODO: Ultimately these will be scattered throughout the token
-     * space, but for now we're just putting them here until we have the
-     * build tool that will organize the tokens and generate .h/.c
-     * files. */
-    SEMICOLON = 0x80,
-    UDOT = 0x82,
-    DOT = 0x84,
-    CREATE = 0x89,
-    COLON = 0x93,
-    NUMSIGNS = 0x96,
-    SIGN = 0x98,
-    NUMSIGN = 0x9a,
-    QUIT = 0x9f,
-    INTERPRET = 0xa5,
-    ACCEPT = 0xb2,
-    PARSEWORD = 0xba,
-    TYPE = 0xc7,
-    SPACE = 0xcb,
-    CR = 0xcc,
-    TOCFA = 0xcd,
-    TOBODY = 0xd0,
-    TOKENQ = 0xd7,
-    COMPILECOMMA = 0xd9,
-    EXECUTE = 0xde,
-    LITERAL = 0xe3,
-    DIGITQ = 0xe8,
-    TONUMBER = 0xf3,
-    NUMBERQ = 0xfc,
+    EXIT = 0xff,
 } EnforthToken;
 
 
@@ -265,284 +301,179 @@ typedef enum EnforthToken
  * Enforth definition names.
  */
 
-/* TODO Should move all of the internal words (BRANCH, CHARLIT, etc.) to
- * the end of the enum so that they don't need to waste space in the
- * names list. */
 /* A length with a high bit set indicates that the word is immediate. */
 static const char kDefinitionNames[] PROGMEM =
     /* $00 - $07 */
-    "\x00"
-    "\x00" /* LIT */
+    "\x81" ";"
     "\x03" "DUP"
+    "\x02" "U."
     "\x04" "DROP"
 
+    "\x01" "."
     "\x01" "+"
     "\x01" "-"
     "\x02" "1+"
-    "\x02" "1-"
 
     /* $08 - $0F */
+    "\x02" "1-"
+    "\x06" "CREATE"
     "\x04" "SWAP"
-    "\x00" /* BRANCH */
     "\x05" "ABORT"
-    "\x00" /* CHARLIT */
 
     "\x06" "INVERT"
     "\x01" "<"
     "\x04" "EMIT"
-    "\x00" /* PEXECUTE */
+    "\x01" "@"
 
     /* $10 - $17 */
-    "\x01" "@"
     "\x02" "U>"
-    "\x00" /* UNUSED */
     "\x02" "OR"
-
     "\x05" "2SWAP"
-    "\x00" /* FIND-WORD */
+    "\x01" ":"
+
     "\x04" "?DUP"
     "\x03" "UM*"
+    "\x02" "#S"
+    "\x05" "STATE"
 
     /* $18 - $1F */
-    "\x05" "STATE"
+    "\x04" "SIGN"
     "\x01" "!"
+    "\x01" "#"
     "\x03" ">IN"
-    "\x05" "2DROP"
 
+    "\x05" "2DROP"
     "\x02" "M+"
-    "\x00" /* ZBRANCH */
     "\x01" "0"
-    "\x02" "0="
+    "\x04" "QUIT"
 
     /* $20 - $27 */
-    "\x00" /* UNUSED */
-    "\x00" /* TIB */
-    "\x00" /* TIBSIZE */
-    "\x06" "ACCEPT"
-
-    "\x00" /* UNUSED */
-    "\x00" /* (S") */
+    "\x02" "0="
     "\x02" "BL"
     "\x02" "C@"
-
-    /* $28 - $2F */
     "\x05" "COUNT"
-    "\x00" /* UNUSED */
-    "\x05" "DEPTH"
-    "\x00" /* UNUSED */
 
-    "\x00" /* (.") */
+    "\x05" "DEPTH"
+    "\x00" /* INTERPRET */
     "\x01" "\\"
     "\x03" "HEX"
-    "\x00" /* UNUSED */
 
-    /* $30 - $37 */
+    /* $28 - $2F */
     "\x04" "HERE"
-    "\x00" /* LATEST */
     "\x04" "2DUP"
     "\x01" ","
-
     "\x02" "C,"
+
     "\x04" "TUCK"
     "\x05" "ALIGN"
     "\x04" "MOVE"
-
-    /* $38 - $3F */
     "\x03" "C+!"
+
+    /* $30 - $37 */
     "\x05" "ALLOT"
     "\x03" "NIP"
+    "\x06" "ACCEPT"
     "\x02" "W,"
 
-    "\x00" /* UNUSED */
-    "\x00" /* HIDE */
     "\x01" "]"
     "\x02" "C!"
-
-    /* $40 - $47 */
-    "\x00" /* UNUSED */
-    "\x00" /* REVEAL */
     "\x81" "["
     "\x03" "ABS"
 
+    /* $38 - $3F */
     "\x02" "<#"
-    "\x00" /* UNUSED */
     "\x03" "ROT"
-    "\x04" "SIGN"
-
-    /* $48 - $4F */
+    "\x00" /* PARSE-WORD */
     "\x02" "#>"
-    "\x01" "#"
+
     "\x02" "0<"
     "\x04" "HOLD"
-
     "\x04" "BASE"
     "\x06" "UD/MOD"
+
+    /* $40 - $47 */
     "\x01" ">"
     "\x03" "AND"
-
-    /* $50 - $57 */
     "\x02" "<>"
-    "\x00"
-    "\x00" /* INITRP */
-    "\x00" /* TICKSOURCE */
-
-    "\x00" /* TICKSOURCELEN */
     "\x04" "OVER"
+
     "\x05" "2OVER"
     "\x03" "KEY"
-
-    /* $58 - $5F */
     "\x02" ">R"
+    "\x04" "TYPE"
+
+    /* $48 - $4F */
     "\x02" "R>"
     "\x02" "R@"
     "\x01" "="
-
-    "\x06" "SOURCE"
-    "\x07" "/STRING"
-    "\x02" "+!"
-    "\x00" /* TICKDICT */
-
-    /* $60 - $67 */
-    "\x00" "\x00" "\x00" "\x00"
-    "\x00" "\x00" "\x00" "\x00"
-
-    /* $68 - $6F */
-    "\x00" "\x00" "\x00" "\x00"
-    "\x00" "\x00" "\x00" "\x00"
-
-    /* $70 - $77 */
-    "\x00" "\x00" "\x00" "\x00"
-    "\x00" "\x00" "\x00" "\x00"
-
-    /* $78 - $7F */
-    "\x00" "\x00" "\x00" "\x00"
-    "\x00" "\x00" "\x00" "\x00"
-
-    /* $80 - $87 */
-    "\x81" ";"
-    "\x00" /* UNUSED */
-    "\x02" "U."
-    "\x00" /* UNUSED */
-    "\x01" "."
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x06" "CREATE"
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x01" ":"
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x02" "#S"
-    "\x00" /* UNUSED */
-    "\x04" "SIGN"
-    "\x00" /* UNUSED */
-    "\x01" "#"
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x04" "QUIT"
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* INTERPRET */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x06" "ACCEPT"
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* PARSE-WORD */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x04" "TYPE"
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
     "\x05" "SPACE"
+
     "\x02" "CR"
     "\x00" /* TOCFA */
-    "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
+    "\x06" "SOURCE"
+    "\x07" "/STRING"
+
+    /* $50 - $57 */
     "\x05" ">BODY"
+    "\x02" "+!"
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
-    "\x00" /* UNUSED */
+
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x00" /* TOKENQ */
+
+    /* $58 - $5F */
     "\x00" /* UNUSED */
     "\x08" "COMPILE,"
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
+
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x07" "EXECUTE"
     "\x00" /* UNUSED */
+
+    /* $60 - $67 */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x07" "LITERAL"
+
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
+
+    /* $68 - $6F */
     "\x00" /* DIGITQ */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
+
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
+
+    /* $70 - $77 */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x07" ">NUMBER"
+
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
+
+    /* $78 - $7F */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
+
     "\x00" /* NUMBERQ */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
@@ -550,6 +481,494 @@ static const char kDefinitionNames[] PROGMEM =
     /* End byte */
     "\xff"
 ;
+
+
+
+/* -------------------------------------
+ * Enforth definitions.
+ */
+
+static const int8_t definitions[] PROGMEM = {
+    /* SEMICOLON, Offset=0, Length=6
+     *   : ; ( --)   ['] EXIT COMPILE,  REVEAL  [ ; IMMEDIATE */
+    CHARLIT, EXIT, COMPILECOMMA, REVEAL, LTBRACKET, EXIT, 0, 0,
+
+    /* UDOT, Offset=8, Length=7
+     *   : U. ( u --)  0 <# #S #> TYPE SPACE ; */
+    ZERO, LESSNUMSIGN, NUMSIGNS, NUMSIGNGRTR, TYPE, SPACE, EXIT, 0,
+
+    /* DOT, Offset=16, Length=20
+     * : . ( n -- )
+     *   BASE @ 10 <>  IF U. EXIT THEN
+     *   DUP ABS 0 <# #S ROT SIGN #> TYPE SPACE ; */
+    BASE, FETCH, CHARLIT, 10, NOTEQUALS, ZBRANCH, 3, UDOT, EXIT,
+    DUP, ABS, ZERO, LESSNUMSIGN, NUMSIGNS, ROT, SIGN,
+        NUMSIGNGRTR, TYPE, SPACE,
+    EXIT,
+
+    /* -------------------------------------------------------------
+     * CREATE [CORE] 6.1.1000 ( "<spaces>name" -- )
+     *
+     * Skip leading space delimiters.  Parse name delimited by a
+     * space.  Create a definition for name with the execution
+     * semantics defined below.  If the data-space pointer is not
+     * aligned, reserve enough data space to align it.  The new
+     * data-space pointer defines name's data field.  CREATE does
+     * not allocate data space in name's data field.
+     *
+     *   name Execution:    ( -- a-addr )
+     *       a-addr is the address of name's data field.  The
+     *       execution semantics of name may be extended by using
+     *       DOES>.
+     *
+     * : TERMINATE-NAME ( ca u -- ca u)  2DUP 1- +  $80 SWAP C+! ;
+     * : S, ( ca u --)  TUCK  HERE SWAP MOVE  ALLOT ;
+     * : NAME, ( ca u --)  TERMINATE-NAME S, ;
+     * : >LATEST-OFFSET ( addr -- u)  LATEST @ DUP IF - ELSE NIP THEN ;
+     * : CREATE ( "<spaces>name" -- )
+     *   BL PARSE-WORD DUP 0= IF ABORT THEN ( ca u)
+     *   HERE  DUP >LATEST-OFFSET W,  LATEST ! ( ca u)
+     *   CFADOCREATE C, ( ca u)  NAME,  ALIGN ;
+     *
+     * Offset=36, Length=38 */
+    BL, PARSEWORD, DUP, ZEROEQUALS, ZBRANCH, 2, ABORT,
+    HERE, DUP,
+    /* >LATEST-OFFSET */
+        LATEST, FETCH, DUP, ZBRANCH, 4,
+            MINUS, BRANCH, 2,
+            NIP,
+    WCOMMA, LATEST, STORE,
+    CHARLIT, kDefTypeCREATE, CCOMMA,
+    /* NAME, */
+        /* TERMINATE-NAME */
+            TWODUP, ONEMINUS, PLUS, CHARLIT, 0x80, SWAP, CPLUSSTORE,
+        /* S, */
+            TUCK, HERE, SWAP, MOVE, ALLOT,
+    ALIGN,
+    EXIT, 0, 0,
+
+    /* -------------------------------------------------------------
+     * : [CORE] 6.1.0450 "colon" ( C: "<spaces>name" -- colon-sys )
+     *
+     * Skip leading space delimiters.  Parse name delimited by a
+     * space.  Create a definition for name, called a "colon
+     * definition".  Enter compilation state and start the
+     * current definition, producing colon-sys.  Append the
+     * initiation semantics given below to the current definition.
+     *
+     * The execution semantics of name will be determined by the
+     * words compiled into the body of the definition.  The current
+     * definition shall not be findable in the dictionary until it
+     * is ended (or until the execution of DOES> in some systems).
+     *
+     * Initiation: ( i*x -- i*x ) ( R: -- nest-sys )
+     *   Save implementation-dependent information nest-sys about
+     *   the calling definition.  The stack effects i*x represent
+     *   arguments to name.
+     *
+     * name Execution: ( i*x -- j*x )
+     *       Execute the definition name.  The stack effects i*x and
+     *       j*x represent arguments to and results from name,
+     *       respectively.
+     *
+     * : LFA>CFA ( addr -- addr)  1+ 1+ ;
+     * : : ( "<spaces>name" -- )
+     *   CREATE  HIDE  CFADOCOLON LATEST @ LFA>CFA C!  ] ;
+     *
+     * Offset=76, Length=11 */
+    CREATE, HIDE, CHARLIT, kDefTypeCOLON, LATEST, FETCH,
+    /* LFA>CFA */
+        ONEPLUS, ONEPLUS,
+    CSTORE, RTBRACKET,
+    EXIT, 0,
+
+    /* -------------------------------------------------------------
+     * #S [CORE] 6.1.0050 "number-sign-s" ( ud1 -- ud2 )
+     *
+     * Convert one digit of ud1 according to the rule for #.
+     * Continue conversion until the quotient is zero.  ud2 is zero.
+     * An ambiguous condition exists if #S executes outside of a <#
+     * #> delimited number conversion.
+     *
+     * ---
+     * : #S ( ud1 -- 0 )   BEGIN # 2DUP OR WHILE REPEAT ;
+     *
+     * Offset=88, Length=8 */
+    NUMSIGN, TWODUP, OR, ZBRANCH, 3, BRANCH, -6, EXIT,
+
+    /* -------------------------------------------------------------
+     * SIGN [CORE] 6.1.2210 ( n -- )
+     *
+     * If n is negative, add a minus sign to the beginning of the
+     * pictured numeric output string.  An ambiguous condition
+     * exists if SIGN executes outside of a <# #> delimited number
+     * conversion.
+     *
+     * ---
+     * : SIGN ( n -- )   0< IF [CHAR] - HOLD THEN ;
+     *
+     * Offset=96, Length=7 */
+    ZEROLESS, ZBRANCH, 4, CHARLIT, '-', HOLD, EXIT, 0,
+
+    /* -------------------------------------------------------------
+     * # [CORE] 6.1.0030 "number-sign" ( ud1 -- ud2 )
+     *
+     * Divide ud1 by the number in BASE giving the quotient ud2 and
+     * the remainder n.  (n is the least-significant digit of ud1.)
+     * Convert n to external form and add the resulting character to
+     * the beginning of the pictured numeric output string.  An
+     * ambiguous condition exists if # executes outside of a <# #>
+     * delimited number conversion.
+     *
+     * ---
+     * : >DIGIT ( u -- c ) DUP 9 > 7 AND + 48 + ;
+     * : # ( ud1 -- ud2 )   BASE @ UD/MOD ROT >digit HOLD ;
+     *
+     * Offset=104, Length=17 */
+    BASE, FETCH, UDSLASHMOD, ROT,
+    /* TODIGIT */
+        DUP, CHARLIT, 9, GREATERTHAN, CHARLIT, 7, AND,
+        PLUS, CHARLIT, 48, PLUS,
+    HOLD,
+    EXIT, 0, 0, 0,
+
+    /* -------------------------------------------------------------
+     * QUIT [CORE] 6.1.2050 ( -- ) ( R:  i*x -- )
+     *
+     * Empty the return stack, store zero in SOURCE-ID if it is
+     * present, make the user input device the input source, and
+     * enter interpretation state.  Do not display a message.
+     * Repeat the following:
+     *   - Accept a line from the input source into the input
+     *     buffer, set >IN to zero, and interpret.
+     *   - Display the implementation-defined system prompt if in
+     *     interpretation state, all processing has been completed,
+     *     and no ambiguous condition exists.
+     *
+     * ---
+     * : QUIT  ( --; R: i*x --)
+     *   INITRP  0 STATE !
+     *   BEGIN
+     *       TIB  DUP TIBSIZE ACCEPT  SPACE
+     *       INTERPRET
+     *       CR  STATE @ 0= IF ." ok " THEN
+     *   AGAIN ;
+     *
+     * Offset=124, Length=24 */
+    INITRP, ZERO, STATE, STORE,
+    TIB, DUP, TIBSIZE, ACCEPT, SPACE,
+    INTERPRET,
+    CR, STATE, FETCH, ZEROEQUALS, ZBRANCH, 6,
+    PDOTQUOTE, 3, 'o', 'k', ' ',
+    BRANCH, -18,
+    0,
+
+    /* : INTERPRET ( i*x c-addr u -- j*x )
+     *   'SOURCELEN !  'SOURCE !  0 >IN !
+     *   BEGIN  BL PARSE-WORD  DUP WHILE
+     *       FIND-WORD ( ca u 0=notfound | xt 1=imm | xt -1=interp)
+     *       ?DUP IF ( xt 1=imm | xt -1=interp)
+     *           1+  STATE @ 0=  OR ( xt 2=imm | xt 0=interp)
+     *           IF EXECUTE ELSE COMPILE, THEN
+     *       ELSE
+     *           NUMBER? IF
+     *               STATE @ IF POSTPONE LITERAL THEN
+     *               -- Interpreting; leave number on stack.
+     *           ELSE
+     *               TYPE  SPACE  [CHAR] ? EMIT  CR  ABORT
+     *           THEN
+     *       THEN
+     *   REPEAT ( j*x ca u) 2DROP ;
+     *
+     * Offset=148, Length=50 */
+    TICKSOURCELEN, STORE, TICKSOURCE, STORE,
+    ZERO, TOIN, STORE,
+    BL, PARSEWORD, DUP, ZBRANCH, 37,
+    FINDWORD, QDUP, ZBRANCH, 14,
+    ONEPLUS, STATE, FETCH, ZEROEQUALS, OR, ZBRANCH, 4,
+    EXECUTE, BRANCH, 21,
+    COMPILECOMMA, BRANCH, 18,
+    NUMBERQ, ZBRANCH, 8,
+    STATE, FETCH, ZBRANCH, 11,
+    LITERAL, BRANCH, 8,
+    TYPE, SPACE, CHARLIT, '?', EMIT, CR, ABORT,
+    BRANCH, -40,
+    TWODROP,
+    EXIT, 0, 0,
+
+    /* -------------------------------------------------------------
+     * ACCEPT [CORE] 6.1.0695 ( c-addr +n1 -- +n2 )
+     *
+     * Receive a string of at most +n1 characters.  An ambiguous
+     * condition exists if +n1 is zero or greater than 32,767.
+     * Display graphic characters as they are received.  A program
+     * that depends on the presence or absence of non-graphic
+     * characters in the string has an environmental dependency.
+     * The editing functions, if any, that the system performs in
+     * order to construct the string are implementation-defined.
+     *
+     * Input terminates when an implementation-defined line
+     * terminator is received.  When input terminates, nothing is
+     * appended to the string, and the display is maintained in an
+     * implementation-defined way.
+     *
+     * +n2 is the length of the string stored at c-addr.
+     * ---
+     * TODO Deal with backspace.
+     * : ACCEPT ( c-addr max -- n)
+     *   OVER + OVER ( ca-start ca-end ca-dest)
+     *   BEGIN  KEY  DUP 10 <> WHILE
+     *      DUP 2OVER ( cas cae cad c c cae cad) <> IF
+     *         EMIT OVER C! ( cas cae cad) 1+
+     *      ELSE
+     *         ( cas cae cad c c) 2DROP
+     *      THEN
+     *   REPEAT
+     *   ( ca-start ca-end ca-dest c) DROP NIP SWAP - ;
+     *
+     * Offset=200, Length=29 */
+    OVER, PLUS, OVER,
+    KEY, DUP, CHARLIT, 10, NOTEQUALS, ZBRANCH, 15,
+        DUP, TWOOVER, NOTEQUALS, ZBRANCH, 7,
+            EMIT, OVER, CSTORE, ONEPLUS, BRANCH, 2,
+            TWODROP,
+        BRANCH, -20,
+    DROP, NIP, SWAP, MINUS,
+    EXIT, 0, 0, 0,
+
+    /* -------------------------------------------------------------
+     * PARSE-WORD [MFORTH] "parse-word" ( char "ccc<char>" -- c-addr u )
+     *
+     * Parse ccc delimited by the delimiter char, skipping leading
+     * delimiters.
+     *
+     * c-addr is the address (within the input buffer) and u is the
+     * length of the parsed string.  If the parse area was empty,
+     * the resulting string has a zero length.
+     * ---
+     * : SKIP-DELIM ( c-addr1 u1 c -- c-addr2 u2)
+     *   >R  BEGIN  OVER C@  R@ =  ( ca u f R:c) OVER  AND WHILE
+     *      1 /STRING REPEAT  R> DROP ;
+     * : FIND-DELIM ( c-addr1 u1 c -- c-addr2)
+     *   >R  BEGIN  OVER C@  R@ <>  ( ca u f R:c) OVER  AND WHILE
+     *      1 /STRING REPEAT  R> 2DROP ;
+     * : PARSE-WORD ( c -- c-addr u)
+     *   >R  SOURCE >IN @ /STRING ( ca-parse u-parse R:c)
+     *   R@ SKIP-DELIM ( ca u R:c)  OVER SWAP ( ca-word ca-word u R:c)
+     *   R> FIND-DELIM ( ca-word ca-delim)
+     *   DUP SOURCE DROP ( caw cad cad cas) - >IN ! ( caw cad)
+     *   OVER - ;
+     *
+     * Offset=232, Length=50 */
+    TOR, SOURCE, TOIN, FETCH, SLASHSTRING,
+    RFETCH,
+        /* SKIP-DELIM */
+        TOR,
+        OVER, CFETCH, RFETCH, EQUALS, OVER, AND, ZBRANCH, 6,
+            CHARLIT, 1, SLASHSTRING, BRANCH, -12,
+        RFROM, DROP,
+    OVER, SWAP,
+    RFROM,
+        /* FIND-DELIM */
+        TOR,
+        OVER, CFETCH, RFETCH, NOTEQUALS, OVER, AND, ZBRANCH, 6,
+            CHARLIT, 1, SLASHSTRING, BRANCH, -12,
+        RFROM, TWODROP,
+    DUP, SOURCE, DROP, MINUS, TOIN, STORE,
+    OVER, MINUS,
+    EXIT, 0, 0,
+
+    /* : TYPE ( c-addr u --)
+     *   OVER + SWAP  ( ca-end ca-next)
+     *   BEGIN 2DUP <> WHILE DUP C@ EMIT 1+ REPEAT 2DROP ;
+     *
+     * Offset=284, Length=15 */
+    OVER, PLUS, SWAP,
+    TWODUP, NOTEQUALS, ZBRANCH, 7,
+        DUP, CFETCH, EMIT, ONEPLUS, BRANCH, -9,
+    TWODROP,
+    EXIT, 0,
+
+    /* : SPACE ( --)  BL EMIT ;
+     *
+     * Offset=300, Length=3 */
+    BL, EMIT, EXIT, 0,
+
+    /* : CR ( --)  BL EMIT ;
+     *
+     * Offset=304, Length=4 */
+    CHARLIT, 10, EMIT, EXIT,
+
+    /* : +LFA ( addr1 -- addr2)  1+ 1+ ;
+     * : >CFA ( xt -- addr)  $7FFF AND  'DICT +  +LFA ;
+     *
+     * Offset=308, Length=9/11 */
+#ifdef __AVR__
+    LIT, 0xff, 0x7f,
+#else
+    LIT, 0xff, 0x7f, 0x00, 0x00,
+#endif
+    AND, TICKDICT, PLUS,
+    /* PLUSLFA */
+        ONEPLUS, ONEPLUS,
+#ifdef __AVR__
+    EXIT, 0, 0, 0,
+#else
+    EXIT, 0,
+#endif
+
+    /* : FFI? ( xt -- f)  >CFA C@ kDefTypeFFI0 1- > ;
+     * : >BODY ( xt -- a-addr)
+     *   DUP >CFA 1+  SWAP FFI? IF EXIT THEN
+     *   BEGIN DUP C@ $80 AND 0= WHILE 1+ REPEAT 1+ ;
+     *
+     * Offset=320, Length=25 */
+    DUP, TOCFA, ONEPLUS, SWAP,
+    /* FFI? */
+        TOCFA, CFETCH, CHARLIT, kDefTypeFFI0-1, GREATERTHAN,
+    ZBRANCH, 2, EXIT,
+    DUP, CFETCH, CHARLIT, 0x80, AND, ZEROEQUALS, ZBRANCH, 4,
+        ONEPLUS, BRANCH, -10,
+    ONEPLUS,
+    EXIT, 0, 0, 0,
+
+    /* : TOKEN? ( xt -- f)  $8000 AND 0= ;
+     *
+     * Offset=348, Length=6/8 (8) */
+#ifdef __AVR__
+    LIT, 0x00, 0x80,
+#else
+    LIT, 0x00, 0x80, 0x00, 0x00,
+#endif
+    AND, ZEROEQUALS,
+#ifdef __AVR__
+    EXIT, 0, 0,
+#else
+    EXIT,
+#endif
+
+    /* : CFA>TOKEN ( def-type -- token)  $F0 OR ;
+     * : COMPILE, ( xt --)
+     *   DUP TOKEN? IF C, EXIT THEN
+     *   DUP >CFA C@ CFA>[TOKEN] C,  >BODY 'DICT - W, ;
+     *
+     * Offset=356, Length=18 */
+    DUP, TOKENQ, ZBRANCH, 3,
+        CCOMMA, EXIT,
+    DUP, TOCFA, CFETCH,
+    /* CFA>[TOKEN] */
+        CHARLIT, 0xF0, OR,
+    CCOMMA, TOBODY, TICKDICT, MINUS, WCOMMA,
+    EXIT, 0, 0,
+
+    /* -------------------------------------------------------------
+     * EXECUTE [CORE] 6.1.1370 ( i*x xt -- j*x )
+     *
+     * Remove xt from the stack and perform the semantics identified
+     * by it.  Other stack effects are due to the word EXECUTEd.
+     * ---
+     * : (EXECUTE) ( i*x token w -- j*x) ... ;
+     * : EXECUTE ( i*x xt -- j*x)
+     *   DUP TOKEN? IF 0
+     *   ELSE DUP >CFA C@ CFA>TOKEN  SWAP >BODY THEN
+     *   (EXECUTE) ;
+     *
+     * Offset=376, Length=17 */
+    DUP, TOKENQ, ZBRANCH, 4,
+        ZERO, BRANCH, 9,
+    DUP, TOCFA, CFETCH,
+    /* CFA>TOKEN */
+        CHARLIT, 0xE0, OR,
+    SWAP, TOBODY,
+    PEXECUTE,
+    EXIT, 0, 0, 0,
+
+    /* : LITERAL ( x --)
+     *   DUP $FF INVERT AND 0= IF CHARLIT C, C,
+     *   ELSE LIT C, , THEN ;
+     *
+     * Offset=396, Length=19 */
+    DUP, CHARLIT, 0xff, INVERT, AND, ZEROEQUALS, ZBRANCH, 7,
+        CHARLIT, CHARLIT, CCOMMA, CCOMMA, BRANCH, 5,
+        CHARLIT, LIT, CCOMMA, COMMA,
+    EXIT, 0,
+
+    /* -------------------------------------------------------------
+     * DIGIT? [MFORTH] "digit-question" ( char -- u -1 | 0 )
+     *
+     * Attempts to convert char to a numeric value using the current
+     * BASE.  Pushes the numeric value and -1 to the stack if the
+     * value was converted, otherwise pushes 0 to the stack.
+     * ---
+     * : DIGIT? ( char -- u -1 | 0)
+     *   [CHAR] 0 -           DUP 0< IF DROP 0 EXIT THEN
+     *   DUP 9 > IF DUP 16 < IF DROP 0 EXIT ELSE 7 - THEN THEN
+     *   DUP 1+ BASE @ > IF DROP FALSE ELSE TRUE THEN ;
+     *
+     * Offset=416, Length=41 */
+    CHARLIT, '0', MINUS,
+    DUP, ZEROLESS, ZBRANCH, 4, DROP, ZERO, EXIT,
+    DUP, CHARLIT, 9, GREATERTHAN, ZBRANCH, 13,
+        DUP, CHARLIT, 17, LESSTHAN, ZBRANCH, 4,
+            DROP, ZERO, EXIT,
+            CHARLIT, 7, MINUS,
+    DUP, ONEPLUS, BASE, FETCH, UGREATERTHAN, ZBRANCH, 4,
+        DROP, ZERO, EXIT, /* TODO: Replace with FALSE */
+        ZERO, INVERT, /* TODO: Replace with TRUE */
+    EXIT, 0, 0, 0,
+
+    /* -------------------------------------------------------------
+     * >NUMBER [CORE] 6.1.0567 "to-number" ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 )
+     *
+     * ud2 is the unsigned result of converting the characters
+     * within the string specified by c-addr1 u1 into digits, using
+     * the number in BASE, and adding each into ud1 after
+     * multiplying ud1 by the number in BASE.  Conversion continues
+     * left-to-right until a character that is not convertible,
+     * including any "+" or "-", is encountered or the string is
+     * entirely converted.  c-addr2 is the location of the first
+     * unconverted character or the first character past the end of
+     * the string if the string was entirely converted.  u2 is the
+     * number of unconverted characters in the string.  An ambiguous
+     * condition exists if ud2 overflows during the conversion.
+     *
+     * ---
+     * : UD* ( ud1 u1 -- ud2)   DUP >R UM* DROP  SWAP R> UM* ROT + ;
+     * : >NUMBER ( ud1 c-addr1 u1 -- ud2 c-addr2 u2)
+     *   BEGIN DUP WHILE
+     *      OVER C@ DIGIT?  0= IF DROP EXIT THEN
+     *      >R 2SWAP BASE @ UD* R> M+ 2SWAP
+     *      1 /STRING
+     *   REPEAT ;
+     *
+     * Offset=460, Length=33 */
+    DUP, ZBRANCH, 30,
+        OVER, CFETCH, DIGITQ, ZEROEQUALS, ZBRANCH, 3, DROP, EXIT,
+        TOR, TWOSWAP, BASE, FETCH,
+        /* UDSTAR */
+            DUP, TOR, UMSTAR, DROP, SWAP, RFROM, UMSTAR, ROT, PLUS,
+        RFROM, MPLUS, TWOSWAP,
+        CHARLIT, 1, SLASHSTRING,
+        BRANCH, -31,
+    EXIT, 0, 0, 0,
+
+    /* -------------------------------------------------------------
+     * NUMBER? [ENFORTH] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
+     *
+     * Attempt to convert a string at c-addr of length u into digits,
+     * using the radix in BASE.  The number and -1 is returned if the
+     * conversion was successful, otherwise 0 is returned.
+     * ---
+     * TODO Implement this for real.
+     * : NUMBER? ( c-addr u -- c-addr u 0 | n -1)
+     *   0 0 2SWAP >NUMBER 2DROP DROP -1 ;
+     *
+     * Offset=496, Length=9 */
+    /* TODO Replace ZERO INVERT with TRUE. */
+    ZERO, ZERO, TWOSWAP, TONUMBER, TWODROP, DROP, ZERO, INVERT,
+    EXIT, 0, 0, 0,
+};
+
 
 
 /* -------------------------------------
@@ -773,160 +1192,235 @@ void enforth_go(EnforthVM * const vm)
 
     static const void * const primitive_table[256] PROGMEM = {
         /* $00 - $07 */
-        0,
-        &&LIT,
+            &&DOCOLONROM, /* SEMICOLON */
         &&DUP,
+            &&DOCOLONROM, /* UDOT */
         &&DROP,
 
+            &&DOCOLONROM, /* DOT */
         &&PLUS,
         &&MINUS,
         &&ONEPLUS,
-        &&ONEMINUS,
 
         /* $08 - $0F */
+        &&ONEMINUS,
+            &&DOCOLONROM, /* CREATE */
         &&SWAP,
-        &&BRANCH,
         &&ABORT,
-        &&CHARLIT,
 
         &&INVERT,
         &&LESSTHAN,
         &&EMIT,
-        &&PEXECUTE,
+        &&FETCH,
 
         /* $10 - $17 */
-        &&FETCH,
         &&UGREATERTHAN,
-        0, /* UNUSED */
         &&OR,
-
         &&TWOSWAP,
-        &&FINDWORD,
+            &&DOCOLONROM, /* COLON */
+
         &&QDUP,
         &&UMSTAR,
+            &&DOCOLONROM, /* NUMSIGNS */
+        &&STATE,
 
         /* $18 - $1F */
-        &&STATE,
+            &&DOCOLONROM, /* SIGN */
         &&STORE,
+            &&DOCOLONROM, /* NUMSIGN */
         &&TOIN,
-        &&TWODROP,
 
+        &&TWODROP,
         &&MPLUS,
-        &&ZBRANCH,
         &&ZERO,
-        &&ZEROEQUALS,
+            &&DOCOLONROM, /* QUIT */
 
         /* $20 - $27 */
-        0, /* UNUSED */
-        &&TIB,
-        &&TIBSIZE,
-        0, /* UNUSED */
-
-        0, /* UNUSED */
-        &&PSQUOTE,
+        &&ZEROEQUALS,
         &&BL,
         &&CFETCH,
-
-        /* $28 - $2F */
         &&COUNT,
-        0, /* UNUSED */
-        &&DEPTH,
-        0, /* UNUSED */
 
-        &&PDOTQUOTE,
+        &&DEPTH,
+            &&DOCOLONROM, /* INTERPRET */
         &&BACKSLASH,
         &&HEX,
-        0, /* UNUSED */
 
-        /* $30 - $37 */
+        /* $28 - $2F */
         &&HERE,
-        &&LATEST,
         &&TWODUP,
         &&COMMA,
-
         &&CCOMMA,
+
         &&TUCK,
         &&ALIGN,
         &&MOVE,
-
-        /* $38 - $3F */
         &&CPLUSSTORE,
+
+        /* $30 - $37 */
         &&ALLOT,
         &&NIP,
+            &&DOCOLONROM, /* ACCEPT */
         &&WCOMMA,
 
-        0, /* UNUSED */
-        &&HIDE,
         &&RTBRACKET,
         &&CSTORE,
-
-        /* $40 - $47 */
-        0, /* UNUSED */
-        &&REVEAL,
         &&LTBRACKET,
         &&ABS,
 
+        /* $38 - $3F */
         &&LESSNUMSIGN,
-        0, /* UNUSED */
         &&ROT,
-        0, /* UNUSED */
-
-        /* $48 - $4F */
+            &&DOCOLONROM, /* PARSEWORD */
         &&NUMSIGNGRTR,
-        0, /* UNUSED */
+
         &&ZEROLESS,
         &&HOLD,
-
         &&BASE,
         &&UDSLASHMOD,
+
+        /* $40 - $47 */
         &&GREATERTHAN,
         &&AND,
-
-        /* $50 - $57 */
         &&NOTEQUALS,
-        0, /* UNUSED */
-        &&INITRP,
-        &&TICKSOURCE,
-
-        &&TICKSOURCELEN,
         &&OVER,
+
         &&TWOOVER,
         &&KEY,
-
-        /* $58 - $5F */
         &&TOR,
+            &&DOCOLONROM, /* TYPE */
+
+        /* $48 - $4F */
         &&RFROM,
         &&RFETCH,
         &&EQUALS,
+            &&DOCOLONROM, /* SPACE */
 
+            &&DOCOLONROM, /* CR */
+            &&DOCOLONROM, /* TOCFA */
         &&SOURCE,
         &&SLASHSTRING,
-        &&PLUSSTORE,
-        &&TICKDICT,
 
-        /* $60 - $67 */
-        &&PDOCOLON,
+        /* $50 - $57 */
+            &&DOCOLONROM, /* TOBODY */
+        &&PLUSSTORE,
+        0, 0,
+
         0, 0, 0,
+            &&DOCOLONROM, /* TOKENQ */
+
+        /* $58 - $5F */
+        0,
+            &&DOCOLONROM, /* COMPILECOMMA */
+        0, 0,
 
         0, 0,
-        &&PDOFFI0,
-        &&PDOFFI1,
+            &&DOCOLONROM, /* EXECUTE */
+        0,
+
+        /* $60 - $67 */
+        0, 0, 0,
+            &&DOCOLONROM, /* LITERAL */
+
+        0, 0, 0, 0,
 
         /* $68 - $6F */
-        &&PDOFFI2,
+            &&DOCOLONROM, /* DIGITQ */
         0, 0, 0,
 
         0, 0, 0, 0,
 
         /* $70 - $77 */
-        &&DOCOLON,
+        0, 0, 0,
+            &&DOCOLONROM, /* TONUMBER */
+
+        0, 0, 0, 0,
+
+        /* $78 - $7F */
+        0, 0, 0, 0,
+
+            &&DOCOLONROM, /* NUMBERQ */
         0, 0, 0,
 
-        0, 0,
+        /* $80 - $87 */
+        0,0,0,0, 0,0,0,0,
+        /* $88 - $8F */
+        0,0,0,0, 0,0,0,0,
+        /* $90 - $97 */
+        0,0,0,0, 0,0,0,0,
+        /* $98 - $9F */
+        0,0,0,0, 0,0,0,0,
+        /* $A0 - $A7 */
+        0,0,0,0, 0,0,0,0,
+        /* $A8 - $AF */
+        0,0,0,0, 0,0,0,0,
+        /* $B0 - $B7 */
+        0,0,0,0, 0,0,0,0,
+        /* $B8 - $BF */
+        0,0,0,0, 0,0,0,0,
+        /* $C0 - $C7 */
+        0,0,0,0, 0,0,0,0,
+
+        /* $C8 - $CF */
+        0, 0, 0, 0,
+
+        0, 0, 0,
+        &&PSQUOTE,
+
+        /* $D0 - $D7 */
+        &&CHARLIT,
+        &&REVEAL,
+        &&ZBRANCH,
+        &&LATEST,
+
+        &&BRANCH,
+        &&HIDE,
+        &&INITRP,
+        &&TIB,
+
+        /* $D8 - $DF */
+        &&TIBSIZE,
+        &&PDOTQUOTE,
+        &&TICKSOURCE,
+        &&TICKSOURCELEN,
+
+        &&FINDWORD,
+        &&LIT,
+        &&TICKDICT,
+        &&PEXECUTE,
+
+        /* $E0 - $EF */
+        &&PDOCOLON,
+        0, /* &&PDOIMMEDIATE, */
+        0, /* &&PDOCONSTANT, */
+        0, /* &&PDOCREATE, */
+
+        0, /* &&PDODOES, */
+        0, /* &&PDOVARIABLE, */
+        &&PDOFFI0,
+        &&PDOFFI1,
+
+        &&PDOFFI2,
+        0, /* &&PDOFFI3, */
+        0, /* &&PDOFFI4, */
+        0, /* &&PDOFFI5, */
+
+        0, /* &&PDOFFI6, */
+        0, /* &&PDOFFI7, */
+        0, /* &&PDOFFI8, */
+        0,
+
+        /* $F0 - $FF */
+        &&DOCOLON,
+        0, /* &&DOIMMEDIATE, */
+        0, /* &&DOCONSTANT, */
+        0, /* &&DOCREATE, */
+
+        0, /* &&DODOES, */
+        0, /* &&DOVARIABLE, */
         &&DOFFI0,
         &&DOFFI1,
 
-        /* $78 - $7F */
         &&DOFFI2,
         &&DOFFI3,
         &&DOFFI4,
@@ -936,616 +1430,6 @@ void enforth_go(EnforthVM * const vm)
         &&DOFFI7,
         &&DOFFI8,
         &&EXIT,
-
-        /* $80 - $87 */
-        &&DOCOLONROM, /* Offset=0 (SEMICOLON) */
-        0, /* UNUSED, Offset=4 */
-        &&DOCOLONROM, /* Offset=8 (UDOT) */
-        0, /* UNUSED, Offset=12 */
-        &&DOCOLONROM, /* Offset=16 (DOT) */
-        0, /* UNUSED, Offset=20 */
-        0, /* UNUSED, Offset=24 */
-        0, /* UNUSED, Offset=28 */
-        0, /* UNUSED, Offset=32 */
-        &&DOCOLONROM, /* Offset=36 (CREATE) */
-        0, /* UNUSED, Offset=40 */
-        0, /* UNUSED, Offset=44 */
-        0, /* UNUSED, Offset=48 */
-        0, /* UNUSED, Offset=52 */
-        0, /* UNUSED, Offset=56 */
-        0, /* UNUSED, Offset=60 */
-        0, /* UNUSED, Offset=64 */
-        0, /* UNUSED, Offset=68 */
-        0, /* UNUSED, Offset=72 */
-        &&DOCOLONROM, /* Offset=76 (COLON) */
-        0, /* UNUSED, Offset=80 */
-        0, /* UNUSED, Offset=84 */
-        &&DOCOLONROM, /* Offset=88 (NUMSIGNS) */
-        0, /* UNUSED, Offset=92 */
-        &&DOCOLONROM, /* Offset=96 (SIGN) */
-        0, /* UNUSED, Offset=100 */
-        &&DOCOLONROM, /* Offset=104 (NUMSIGN) */
-        0, /* UNUSED, Offset=108 */
-        0, /* UNUSED, Offset=112 */
-        0, /* UNUSED, Offset=116 */
-        0, /* UNUSED, Offset=120 */
-        &&DOCOLONROM, /* Offset=124 (QUIT) */
-        0, /* UNUSED, Offset=128 */
-        0, /* UNUSED, Offset=132 */
-        0, /* UNUSED, Offset=136 */
-        0, /* UNUSED, Offset=140 */
-        0, /* UNUSED, Offset=144 */
-        &&DOCOLONROM, /* Offset=148 (INTERPRET) */
-        0, /* UNUSED, Offset=152 */
-        0, /* UNUSED, Offset=156 */
-        0, /* UNUSED, Offset=160 */
-        0, /* UNUSED, Offset=164 */
-        0, /* UNUSED, Offset=168 */
-        0, /* UNUSED, Offset=172 */
-        0, /* UNUSED, Offset=176 */
-        0, /* UNUSED, Offset=180 */
-        0, /* UNUSED, Offset=184 */
-        0, /* UNUSED, Offset=188 */
-        0, /* UNUSED, Offset=192 */
-        0, /* UNUSED, Offset=196 */
-        &&DOCOLONROM, /* Offset=200 (ACCEPT) */
-        0, /* UNUSED, Offset=204 */
-        0, /* UNUSED, Offset=208 */
-        0, /* UNUSED, Offset=212 */
-        0, /* UNUSED, Offset=216 */
-        0, /* UNUSED, Offset=220 */
-        0, /* UNUSED, Offset=224 */
-        0, /* UNUSED, Offset=228 */
-        &&DOCOLONROM, /* Offset=232 (PARSE-WORD) */
-        0, /* UNUSED, Offset=236 */
-        0, /* UNUSED, Offset=240 */
-        0, /* UNUSED, Offset=244 */
-        0, /* UNUSED, Offset=248 */
-        0, /* UNUSED, Offset=252 */
-        0, /* UNUSED, Offset=256 */
-        0, /* UNUSED, Offset=260 */
-        0, /* UNUSED, Offset=264 */
-        0, /* UNUSED, Offset=268 */
-        0, /* UNUSED, Offset=272 */
-        0, /* UNUSED, Offset=276 */
-        0, /* UNUSED, Offset=280 */
-        &&DOCOLONROM, /* Offset=284 (TYPE) */
-        0, /* UNUSED, Offset=288 */
-        0, /* UNUSED, Offset=292 */
-        0, /* UNUSED, Offset=296 */
-        &&DOCOLONROM, /* Offset=300 (SPACE) */
-        &&DOCOLONROM, /* Offset=304 (CR) */
-        &&DOCOLONROM, /* Offset=308 (TOCFA) */
-        0, /* UNUSED, Offset=312 */
-        0, /* UNUSED, Offset=316 */
-        &&DOCOLONROM, /* Offset=320 (TOBODY) */
-        0, /* UNUSED, Offset=324 */
-        0, /* UNUSED, Offset=328 */
-        0, /* UNUSED, Offset=332 */
-        0, /* UNUSED, Offset=336 */
-        0, /* UNUSED, Offset=340 */
-        0, /* UNUSED, Offset=344 */
-        &&DOCOLONROM, /* Offset=348 (TOKENQ) */
-        0, /* UNUSED, Offset=352 */
-        &&DOCOLONROM, /* Offset=356 (COMPILE,) */
-        0, /* UNUSED, Offset=360 */
-        0, /* UNUSED, Offset=364 */
-        0, /* UNUSED, Offset=368 */
-        0, /* UNUSED, Offset=372 */
-        &&DOCOLONROM, /* Offset=376 (EXECUTE) */
-        0, /* UNUSED, Offset=380 */
-        0, /* UNUSED, Offset=384 */
-        0, /* UNUSED, Offset=388 */
-        0, /* UNUSED, Offset=392 */
-        &&DOCOLONROM, /* Offset=396 (LITERAL) */
-        0, /* UNUSED, Offset=400 */
-        0, /* UNUSED, Offset=404 */
-        0, /* UNUSED, Offset=408 */
-        0, /* UNUSED, Offset=412 */
-        &&DOCOLONROM, /* Offset=416 (DIGITQ) */
-        0, /* UNUSED, Offset=420 */
-        0, /* UNUSED, Offset=424 */
-        0, /* UNUSED, Offset=428 */
-        0, /* UNUSED, Offset=432 */
-        0, /* UNUSED, Offset=436 */
-        0, /* UNUSED, Offset=440 */
-        0, /* UNUSED, Offset=444 */
-        0, /* UNUSED, Offset=448 */
-        0, /* UNUSED, Offset=452 */
-        0, /* UNUSED, Offset=456 */
-        &&DOCOLONROM, /* Offset=460 (TONUMBER) */
-        0, /* UNUSED, Offset=464 */
-        0, /* UNUSED, Offset=468 */
-        0, /* UNUSED, Offset=472 */
-        0, /* UNUSED, Offset=476 */
-        0, /* UNUSED, Offset=480 */
-        0, /* UNUSED, Offset=484 */
-        0, /* UNUSED, Offset=488 */
-        0, /* UNUSED, Offset=492 */
-        &&DOCOLONROM, /* Offset=496 (NUMBERQ) */
-        0, /* UNUSED, Offset=500 */
-        0, /* UNUSED, Offset=504 */
-    };
-
-    static const int8_t definitions[] PROGMEM = {
-        /* SEMICOLON, Offset=0, Length=6
-         *   : ; ( --)   ['] EXIT COMPILE,  REVEAL  [ ; IMMEDIATE */
-        CHARLIT, EXIT, COMPILECOMMA, REVEAL, LTBRACKET, EXIT, 0, 0,
-
-        /* UDOT, Offset=8, Length=7
-         *   : U. ( u --)  0 <# #S #> TYPE SPACE ; */
-        ZERO, LESSNUMSIGN, NUMSIGNS, NUMSIGNGRTR, TYPE, SPACE, EXIT, 0,
-
-        /* DOT, Offset=16, Length=20
-         * : . ( n -- )
-         *   BASE @ 10 <>  IF U. EXIT THEN
-         *   DUP ABS 0 <# #S ROT SIGN #> TYPE SPACE ; */
-        BASE, FETCH, CHARLIT, 10, NOTEQUALS, ZBRANCH, 3, UDOT, EXIT,
-        DUP, ABS, ZERO, LESSNUMSIGN, NUMSIGNS, ROT, SIGN,
-            NUMSIGNGRTR, TYPE, SPACE,
-        EXIT,
-
-        /* -------------------------------------------------------------
-         * CREATE [CORE] 6.1.1000 ( "<spaces>name" -- )
-         *
-         * Skip leading space delimiters.  Parse name delimited by a
-         * space.  Create a definition for name with the execution
-         * semantics defined below.  If the data-space pointer is not
-         * aligned, reserve enough data space to align it.  The new
-         * data-space pointer defines name's data field.  CREATE does
-         * not allocate data space in name's data field.
-         *
-         *   name Execution:    ( -- a-addr )
-         *       a-addr is the address of name's data field.  The
-         *       execution semantics of name may be extended by using
-         *       DOES>.
-         *
-         * : TERMINATE-NAME ( ca u -- ca u)  2DUP 1- +  $80 SWAP C+! ;
-         * : S, ( ca u --)  TUCK  HERE SWAP MOVE  ALLOT ;
-         * : NAME, ( ca u --)  TERMINATE-NAME S, ;
-         * : >LATEST-OFFSET ( addr -- u)  LATEST @ DUP IF - ELSE NIP THEN ;
-         * : CREATE ( "<spaces>name" -- )
-         *   BL PARSE-WORD DUP 0= IF ABORT THEN ( ca u)
-         *   HERE  DUP >LATEST-OFFSET W,  LATEST ! ( ca u)
-         *   CFADOCREATE C, ( ca u)  NAME,  ALIGN ;
-         *
-         * Offset=36, Length=38 */
-        BL, PARSEWORD, DUP, ZEROEQUALS, ZBRANCH, 2, ABORT,
-        HERE, DUP,
-        /* >LATEST-OFFSET */
-            LATEST, FETCH, DUP, ZBRANCH, 4,
-                MINUS, BRANCH, 2,
-                NIP,
-        WCOMMA, LATEST, STORE,
-        CHARLIT, kDefTypeCREATE, CCOMMA,
-        /* NAME, */
-            /* TERMINATE-NAME */
-                TWODUP, ONEMINUS, PLUS, CHARLIT, 0x80, SWAP, CPLUSSTORE,
-            /* S, */
-                TUCK, HERE, SWAP, MOVE, ALLOT,
-        ALIGN,
-        EXIT, 0, 0,
-
-        /* -------------------------------------------------------------
-         * : [CORE] 6.1.0450 "colon" ( C: "<spaces>name" -- colon-sys )
-         *
-         * Skip leading space delimiters.  Parse name delimited by a
-         * space.  Create a definition for name, called a "colon
-         * definition".  Enter compilation state and start the
-         * current definition, producing colon-sys.  Append the
-         * initiation semantics given below to the current definition.
-         *
-         * The execution semantics of name will be determined by the
-         * words compiled into the body of the definition.  The current
-         * definition shall not be findable in the dictionary until it
-         * is ended (or until the execution of DOES> in some systems).
-         *
-         * Initiation: ( i*x -- i*x ) ( R: -- nest-sys )
-         *   Save implementation-dependent information nest-sys about
-         *   the calling definition.  The stack effects i*x represent
-         *   arguments to name.
-         *
-         * name Execution: ( i*x -- j*x )
-         *       Execute the definition name.  The stack effects i*x and
-         *       j*x represent arguments to and results from name,
-         *       respectively.
-         *
-         * : LFA>CFA ( addr -- addr)  1+ 1+ ;
-         * : : ( "<spaces>name" -- )
-         *   CREATE  HIDE  CFADOCOLON LATEST @ LFA>CFA C!  ] ;
-         *
-         * Offset=76, Length=11 */
-        CREATE, HIDE, CHARLIT, kDefTypeCOLON, LATEST, FETCH,
-        /* LFA>CFA */
-            ONEPLUS, ONEPLUS,
-        CSTORE, RTBRACKET,
-        EXIT, 0,
-
-        /* -------------------------------------------------------------
-         * #S [CORE] 6.1.0050 "number-sign-s" ( ud1 -- ud2 )
-         *
-         * Convert one digit of ud1 according to the rule for #.
-         * Continue conversion until the quotient is zero.  ud2 is zero.
-         * An ambiguous condition exists if #S executes outside of a <#
-         * #> delimited number conversion.
-         *
-         * ---
-         * : #S ( ud1 -- 0 )   BEGIN # 2DUP OR WHILE REPEAT ;
-         *
-         * Offset=88, Length=8 */
-        NUMSIGN, TWODUP, OR, ZBRANCH, 3, BRANCH, -6, EXIT,
-
-        /* -------------------------------------------------------------
-         * SIGN [CORE] 6.1.2210 ( n -- )
-         *
-         * If n is negative, add a minus sign to the beginning of the
-         * pictured numeric output string.  An ambiguous condition
-         * exists if SIGN executes outside of a <# #> delimited number
-         * conversion.
-         *
-         * ---
-         * : SIGN ( n -- )   0< IF [CHAR] - HOLD THEN ;
-         *
-         * Offset=96, Length=7 */
-        ZEROLESS, ZBRANCH, 4, CHARLIT, '-', HOLD, EXIT, 0,
-
-        /* -------------------------------------------------------------
-         * # [CORE] 6.1.0030 "number-sign" ( ud1 -- ud2 )
-         *
-         * Divide ud1 by the number in BASE giving the quotient ud2 and
-         * the remainder n.  (n is the least-significant digit of ud1.)
-         * Convert n to external form and add the resulting character to
-         * the beginning of the pictured numeric output string.  An
-         * ambiguous condition exists if # executes outside of a <# #>
-         * delimited number conversion.
-         *
-         * ---
-         * : >DIGIT ( u -- c ) DUP 9 > 7 AND + 48 + ;
-         * : # ( ud1 -- ud2 )   BASE @ UD/MOD ROT >digit HOLD ;
-         *
-         * Offset=104, Length=17 */
-        BASE, FETCH, UDSLASHMOD, ROT,
-        /* TODIGIT */
-            DUP, CHARLIT, 9, GREATERTHAN, CHARLIT, 7, AND,
-            PLUS, CHARLIT, 48, PLUS,
-        HOLD,
-        EXIT, 0, 0, 0,
-
-        /* -------------------------------------------------------------
-         * QUIT [CORE] 6.1.2050 ( -- ) ( R:  i*x -- )
-         *
-         * Empty the return stack, store zero in SOURCE-ID if it is
-         * present, make the user input device the input source, and
-         * enter interpretation state.  Do not display a message.
-         * Repeat the following:
-         *   - Accept a line from the input source into the input
-         *     buffer, set >IN to zero, and interpret.
-         *   - Display the implementation-defined system prompt if in
-         *     interpretation state, all processing has been completed,
-         *     and no ambiguous condition exists.
-         *
-         * ---
-         * : QUIT  ( --; R: i*x --)
-         *   INITRP  0 STATE !
-         *   BEGIN
-         *       TIB  DUP TIBSIZE ACCEPT  SPACE
-         *       INTERPRET
-         *       CR  STATE @ 0= IF ." ok " THEN
-         *   AGAIN ;
-         *
-         * Offset=124, Length=24 */
-        INITRP, ZERO, STATE, STORE,
-        TIB, DUP, TIBSIZE, ACCEPT, SPACE,
-        INTERPRET,
-        CR, STATE, FETCH, ZEROEQUALS, ZBRANCH, 6,
-        PDOTQUOTE, 3, 'o', 'k', ' ',
-        BRANCH, -18,
-        0,
-
-        /* : INTERPRET ( i*x c-addr u -- j*x )
-         *   'SOURCELEN !  'SOURCE !  0 >IN !
-         *   BEGIN  BL PARSE-WORD  DUP WHILE
-         *       FIND-WORD ( ca u 0=notfound | xt 1=imm | xt -1=interp)
-         *       ?DUP IF ( xt 1=imm | xt -1=interp)
-         *           1+  STATE @ 0=  OR ( xt 2=imm | xt 0=interp)
-         *           IF EXECUTE ELSE COMPILE, THEN
-         *       ELSE
-         *           NUMBER? IF
-         *               STATE @ IF POSTPONE LITERAL THEN
-         *               -- Interpreting; leave number on stack.
-         *           ELSE
-         *               TYPE  SPACE  [CHAR] ? EMIT  CR  ABORT
-         *           THEN
-         *       THEN
-         *   REPEAT ( j*x ca u) 2DROP ;
-         *
-         * Offset=148, Length=50 */
-        TICKSOURCELEN, STORE, TICKSOURCE, STORE,
-        ZERO, TOIN, STORE,
-        BL, PARSEWORD, DUP, ZBRANCH, 37,
-        FINDWORD, QDUP, ZBRANCH, 14,
-        ONEPLUS, STATE, FETCH, ZEROEQUALS, OR, ZBRANCH, 4,
-        EXECUTE, BRANCH, 21,
-        COMPILECOMMA, BRANCH, 18,
-        NUMBERQ, ZBRANCH, 8,
-        STATE, FETCH, ZBRANCH, 11,
-        LITERAL, BRANCH, 8,
-        TYPE, SPACE, CHARLIT, '?', EMIT, CR, ABORT,
-        BRANCH, -40,
-        TWODROP,
-        EXIT, 0, 0,
-
-        /* -------------------------------------------------------------
-         * ACCEPT [CORE] 6.1.0695 ( c-addr +n1 -- +n2 )
-         *
-         * Receive a string of at most +n1 characters.  An ambiguous
-         * condition exists if +n1 is zero or greater than 32,767.
-         * Display graphic characters as they are received.  A program
-         * that depends on the presence or absence of non-graphic
-         * characters in the string has an environmental dependency.
-         * The editing functions, if any, that the system performs in
-         * order to construct the string are implementation-defined.
-         *
-         * Input terminates when an implementation-defined line
-         * terminator is received.  When input terminates, nothing is
-         * appended to the string, and the display is maintained in an
-         * implementation-defined way.
-         *
-         * +n2 is the length of the string stored at c-addr.
-         * ---
-         * TODO Deal with backspace.
-         * : ACCEPT ( c-addr max -- n)
-         *   OVER + OVER ( ca-start ca-end ca-dest)
-         *   BEGIN  KEY  DUP 10 <> WHILE
-         *      DUP 2OVER ( cas cae cad c c cae cad) <> IF
-         *         EMIT OVER C! ( cas cae cad) 1+
-         *      ELSE
-         *         ( cas cae cad c c) 2DROP
-         *      THEN
-         *   REPEAT
-         *   ( ca-start ca-end ca-dest c) DROP NIP SWAP - ;
-         *
-         * Offset=200, Length=29 */
-        OVER, PLUS, OVER,
-        KEY, DUP, CHARLIT, 10, NOTEQUALS, ZBRANCH, 15,
-            DUP, TWOOVER, NOTEQUALS, ZBRANCH, 7,
-                EMIT, OVER, CSTORE, ONEPLUS, BRANCH, 2,
-                TWODROP,
-            BRANCH, -20,
-        DROP, NIP, SWAP, MINUS,
-        EXIT, 0, 0, 0,
-
-        /* -------------------------------------------------------------
-         * PARSE-WORD [MFORTH] "parse-word" ( char "ccc<char>" -- c-addr u )
-         *
-         * Parse ccc delimited by the delimiter char, skipping leading
-         * delimiters.
-         *
-         * c-addr is the address (within the input buffer) and u is the
-         * length of the parsed string.  If the parse area was empty,
-         * the resulting string has a zero length.
-         * ---
-         * : SKIP-DELIM ( c-addr1 u1 c -- c-addr2 u2)
-         *   >R  BEGIN  OVER C@  R@ =  ( ca u f R:c) OVER  AND WHILE
-         *      1 /STRING REPEAT  R> DROP ;
-         * : FIND-DELIM ( c-addr1 u1 c -- c-addr2)
-         *   >R  BEGIN  OVER C@  R@ <>  ( ca u f R:c) OVER  AND WHILE
-         *      1 /STRING REPEAT  R> 2DROP ;
-         * : PARSE-WORD ( c -- c-addr u)
-         *   >R  SOURCE >IN @ /STRING ( ca-parse u-parse R:c)
-         *   R@ SKIP-DELIM ( ca u R:c)  OVER SWAP ( ca-word ca-word u R:c)
-         *   R> FIND-DELIM ( ca-word ca-delim)
-         *   DUP SOURCE DROP ( caw cad cad cas) - >IN ! ( caw cad)
-         *   OVER - ;
-         *
-         * Offset=232, Length=50 */
-        TOR, SOURCE, TOIN, FETCH, SLASHSTRING,
-        RFETCH,
-            /* SKIP-DELIM */
-            TOR,
-            OVER, CFETCH, RFETCH, EQUALS, OVER, AND, ZBRANCH, 6,
-                CHARLIT, 1, SLASHSTRING, BRANCH, -12,
-            RFROM, DROP,
-        OVER, SWAP,
-        RFROM,
-            /* FIND-DELIM */
-            TOR,
-            OVER, CFETCH, RFETCH, NOTEQUALS, OVER, AND, ZBRANCH, 6,
-                CHARLIT, 1, SLASHSTRING, BRANCH, -12,
-            RFROM, TWODROP,
-        DUP, SOURCE, DROP, MINUS, TOIN, STORE,
-        OVER, MINUS,
-        EXIT, 0, 0,
-
-        /* : TYPE ( c-addr u --)
-         *   OVER + SWAP  ( ca-end ca-next)
-         *   BEGIN 2DUP <> WHILE DUP C@ EMIT 1+ REPEAT 2DROP ;
-         *
-         * Offset=284, Length=15 */
-        OVER, PLUS, SWAP,
-        TWODUP, NOTEQUALS, ZBRANCH, 7,
-            DUP, CFETCH, EMIT, ONEPLUS, BRANCH, -9,
-        TWODROP,
-        EXIT, 0,
-
-        /* : SPACE ( --)  BL EMIT ;
-         *
-         * Offset=300, Length=3 */
-        BL, EMIT, EXIT, 0,
-
-        /* : CR ( --)  BL EMIT ;
-         *
-         * Offset=304, Length=4 */
-        CHARLIT, 10, EMIT, EXIT,
-
-        /* : +LFA ( addr1 -- addr2)  1+ 1+ ;
-         * : >CFA ( xt -- addr)  $7FFF AND  'DICT +  +LFA ;
-         *
-         * Offset=308, Length=9/11 */
-#ifdef __AVR__
-        LIT, 0xff, 0x7f,
-#else
-        LIT, 0xff, 0x7f, 0x00, 0x00,
-#endif
-        AND, TICKDICT, PLUS,
-        /* PLUSLFA */
-            ONEPLUS, ONEPLUS,
-#ifdef __AVR__
-        EXIT, 0, 0, 0,
-#else
-        EXIT, 0,
-#endif
-
-        /* : FFI? ( xt -- f)  >CFA C@ kDefTypeFFI0 1- > ;
-         * : >BODY ( xt -- a-addr)
-         *   DUP >CFA 1+  SWAP FFI? IF EXIT THEN
-         *   BEGIN DUP C@ $80 AND 0= WHILE 1+ REPEAT 1+ ;
-         *
-         * Offset=320, Length=25 */
-        DUP, TOCFA, ONEPLUS, SWAP,
-        /* FFI? */
-            TOCFA, CFETCH, CHARLIT, kDefTypeFFI0-1, GREATERTHAN,
-        ZBRANCH, 2, EXIT,
-        DUP, CFETCH, CHARLIT, 0x80, AND, ZEROEQUALS, ZBRANCH, 4,
-            ONEPLUS, BRANCH, -10,
-        ONEPLUS,
-        EXIT, 0, 0, 0,
-
-        /* : TOKEN? ( xt -- f)  $8000 AND 0= ;
-         *
-         * Offset=348, Length=6/8 (8) */
-#ifdef __AVR__
-        LIT, 0x00, 0x80,
-#else
-        LIT, 0x00, 0x80, 0x00, 0x00,
-#endif
-        AND, ZEROEQUALS,
-#ifdef __AVR__
-        EXIT, 0, 0,
-#else
-        EXIT,
-#endif
-
-        /* : CFA>TOKEN ( def-type -- token)  $70 OR ;
-         * : COMPILE, ( xt --)
-         *   DUP TOKEN? IF C, EXIT THEN
-         *   DUP >CFA C@ CFA>[TOKEN] C,  >BODY 'DICT - W, ;
-         *
-         * Offset=356, Length=18 */
-        DUP, TOKENQ, ZBRANCH, 3,
-            CCOMMA, EXIT,
-        DUP, TOCFA, CFETCH,
-        /* CFA>[TOKEN] */
-            CHARLIT, 0x70, OR,
-        CCOMMA, TOBODY, TICKDICT, MINUS, WCOMMA,
-        EXIT, 0, 0,
-
-        /* -------------------------------------------------------------
-         * EXECUTE [CORE] 6.1.1370 ( i*x xt -- j*x )
-         *
-         * Remove xt from the stack and perform the semantics identified
-         * by it.  Other stack effects are due to the word EXECUTEd.
-         * ---
-         * : (EXECUTE) ( i*x token w -- j*x) ... ;
-         * : EXECUTE ( i*x xt -- j*x)
-         *   DUP TOKEN? IF 0
-         *   ELSE DUP >CFA C@ CFA>TOKEN  SWAP >BODY THEN
-         *   (EXECUTE) ;
-         *
-         * Offset=376, Length=17 */
-        DUP, TOKENQ, ZBRANCH, 4,
-            ZERO, BRANCH, 9,
-        DUP, TOCFA, CFETCH,
-        /* CFA>TOKEN */
-            CHARLIT, 0x60, OR,
-        SWAP, TOBODY,
-        PEXECUTE,
-        EXIT, 0, 0, 0,
-
-        /* : LITERAL ( x --)
-         *   DUP $FF INVERT AND 0= IF CHARLIT C, C,
-         *   ELSE LIT C, , THEN ;
-         *
-         * Offset=396, Length=19 */
-        DUP, CHARLIT, 0xff, INVERT, AND, ZEROEQUALS, ZBRANCH, 7,
-            CHARLIT, CHARLIT, CCOMMA, CCOMMA, BRANCH, 5,
-            CHARLIT, LIT, CCOMMA, COMMA,
-        EXIT, 0,
-
-        /* -------------------------------------------------------------
-         * DIGIT? [MFORTH] "digit-question" ( char -- u -1 | 0 )
-         *
-         * Attempts to convert char to a numeric value using the current
-         * BASE.  Pushes the numeric value and -1 to the stack if the
-         * value was converted, otherwise pushes 0 to the stack.
-         * ---
-         * : DIGIT? ( char -- u -1 | 0)
-         *   [CHAR] 0 -           DUP 0< IF DROP 0 EXIT THEN
-         *   DUP 9 > IF DUP 16 < IF DROP 0 EXIT ELSE 7 - THEN THEN
-         *   DUP 1+ BASE @ > IF DROP FALSE ELSE TRUE THEN ;
-         *
-         * Offset=416, Length=41 */
-        CHARLIT, '0', MINUS,
-        DUP, ZEROLESS, ZBRANCH, 4, DROP, ZERO, EXIT,
-        DUP, CHARLIT, 9, GREATERTHAN, ZBRANCH, 13,
-            DUP, CHARLIT, 17, LESSTHAN, ZBRANCH, 4,
-                DROP, ZERO, EXIT,
-                CHARLIT, 7, MINUS,
-        DUP, ONEPLUS, BASE, FETCH, UGREATERTHAN, ZBRANCH, 4,
-            DROP, ZERO, EXIT, /* TODO: Replace with FALSE */
-            ZERO, INVERT, /* TODO: Replace with TRUE */
-        EXIT, 0, 0, 0,
-
-        /* -------------------------------------------------------------
-         * >NUMBER [CORE] 6.1.0567 "to-number" ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 )
-         *
-         * ud2 is the unsigned result of converting the characters
-         * within the string specified by c-addr1 u1 into digits, using
-         * the number in BASE, and adding each into ud1 after
-         * multiplying ud1 by the number in BASE.  Conversion continues
-         * left-to-right until a character that is not convertible,
-         * including any "+" or "-", is encountered or the string is
-         * entirely converted.  c-addr2 is the location of the first
-         * unconverted character or the first character past the end of
-         * the string if the string was entirely converted.  u2 is the
-         * number of unconverted characters in the string.  An ambiguous
-         * condition exists if ud2 overflows during the conversion.
-         *
-         * ---
-         * : UD* ( ud1 u1 -- ud2)   DUP >R UM* DROP  SWAP R> UM* ROT + ;
-         * : >NUMBER ( ud1 c-addr1 u1 -- ud2 c-addr2 u2)
-         *   BEGIN DUP WHILE
-         *      OVER C@ DIGIT?  0= IF DROP EXIT THEN
-         *      >R 2SWAP BASE @ UD* R> M+ 2SWAP
-         *      1 /STRING
-         *   REPEAT ;
-         *
-         * Offset=460, Length=33 */
-        DUP, ZBRANCH, 30,
-            OVER, CFETCH, DIGITQ, ZEROEQUALS, ZBRANCH, 3, DROP, EXIT,
-            TOR, TWOSWAP, BASE, FETCH,
-            /* UDSTAR */
-                DUP, TOR, UMSTAR, DROP, SWAP, RFROM, UMSTAR, ROT, PLUS,
-            RFROM, MPLUS, TWOSWAP,
-            CHARLIT, 1, SLASHSTRING,
-            BRANCH, -31,
-        EXIT, 0, 0, 0,
-
-        /* -------------------------------------------------------------
-         * NUMBER? [ENFORTH] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
-         *
-         * Attempt to convert a string at c-addr of length u into digits,
-         * using the radix in BASE.  The number and -1 is returned if the
-         * conversion was successful, otherwise 0 is returned.
-         * ---
-         * TODO Implement this for real.
-         * : NUMBER? ( c-addr u -- c-addr u 0 | n -1)
-         *   0 0 2SWAP >NUMBER 2DROP DROP -1 ;
-         *
-         * Offset=496, Length=9 */
-        /* TODO Replace ZERO INVERT with TRUE. */
-        ZERO, ZERO, TWOSWAP, TONUMBER, TWODROP, DROP, ZERO, INVERT,
-        EXIT, 0, 0, 0,
     };
 
     /* Initialize RP so that we can use threading to get to QUIT from
@@ -2693,7 +2577,7 @@ DISPATCH_TOKEN:
 
             /* Calculate the offset of the definition and set the IP to
              * the absolute address. */
-            int definitionOffset = (token & ~0x80) << 2;
+            int definitionOffset = token << 2;
             ip = (uint8_t*)definitions + definitionOffset;
 #ifdef __AVR__
             inProgramSpace = -1;
