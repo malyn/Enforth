@@ -225,6 +225,9 @@ typedef enum EnforthToken
     /* $C0 - $C7 */
     /* $C8 - $CF */
 
+    WLIT = 0xce,
+    PSQUOTE,
+
     /* $D0 - $D7 */
     CHARLIT = 0xd0,
     REVEAL,
@@ -802,20 +805,12 @@ static const int8_t definitions[] PROGMEM = {
     /* : +LFA ( addr1 -- addr2)  1+ 1+ ;
      * : >CFA ( xt -- addr)  $7FFF AND  'DICT +  +LFA ;
      *
-     * Offset=308, Length=9/11 */
-#ifdef __AVR__
-    LIT, 0xff, 0x7f,
-#else
-    LIT, 0xff, 0x7f, 0x00, 0x00,
-#endif
+     * Offset=308, Length=9 */
+    WLIT, 0xff, 0x7f,
     AND, TICKDICT, PLUS,
     /* PLUSLFA */
         ONEPLUS, ONEPLUS,
-#ifdef __AVR__
     EXIT, 0, 0, 0,
-#else
-    EXIT, 0,
-#endif
 
     /* : FFI? ( xt -- f)  >CFA C@ kDefTypeFFI0 1- > ;
      * : >BODY ( xt -- a-addr)
@@ -834,18 +829,10 @@ static const int8_t definitions[] PROGMEM = {
 
     /* : TOKEN? ( xt -- f)  $8000 AND 0= ;
      *
-     * Offset=348, Length=6/8 (8) */
-#ifdef __AVR__
-    LIT, 0x00, 0x80,
-#else
-    LIT, 0x00, 0x80, 0x00, 0x00,
-#endif
+     * Offset=348, Length=6/8 */
+    WLIT, 0x00, 0x80,
     AND, ZEROEQUALS,
-#ifdef __AVR__
     EXIT, 0, 0,
-#else
-    EXIT,
-#endif
 
     /* : CFA>TOKEN ( def-type -- token)  $F0 OR ;
      * : COMPILE, ( xt --)
@@ -1364,7 +1351,8 @@ void enforth_go(EnforthVM * const vm)
         /* $C8 - $CF */
         0, 0, 0, 0,
 
-        0, 0, 0,
+        0, 0,
+        &&WLIT,
         &&PSQUOTE,
 
         /* $D0 - $D7 */
@@ -2527,6 +2515,25 @@ DISPATCH_TOKEN:
             (--restDataStack)->i = (int32_t)result;
             tos.i = (int32_t)(result >> 32);
 #endif
+        }
+        continue;
+
+        WLIT:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                tos.i = pgm_read_word(ip);
+            }
+            else
+#endif
+            {
+                tos.i = (EnforthInt)*(uint16_t*)ip;
+            }
+
+            ip += 2;
         }
         continue;
 
