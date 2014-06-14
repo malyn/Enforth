@@ -142,6 +142,8 @@ static const int kEnforthFFIProcPtrSize = sizeof(void*);
  * Enforth Virtual Machine type.
  */
 
+/* TODO Many things in here need to be EnforthCell, just to be explicit
+ * about the fact that we are going to access them via VMADDRLIT. */
 typedef struct
 {
     /* VM constants */
@@ -164,9 +166,10 @@ typedef struct
     /* Text Interpreter vars */
     EnforthInt state;
 
+    /* TODO Put TIBSIZE in a constant. */
     uint8_t tib[80];
-    EnforthCell source;
     EnforthCell source_len;
+    EnforthCell source;
     EnforthInt to_in;
 
     uint8_t * prev_leave;

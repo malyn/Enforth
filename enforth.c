@@ -36,6 +36,7 @@
  */
 
 /* ANSI C includes. */
+#include <stddef.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
@@ -113,13 +114,13 @@ typedef enum EnforthToken
     QDUP,
     UMSTAR,
         NUMSIGNS = 0x16,
-    STATE,
+unused_was_STATE,
 
     /* $18 - $1F */
         SIGN = 0x18,
     STORE,
         NUMSIGN = 0x1a,
-    TOIN,
+unused_was_TOIN,
 
     TWODROP,
     MPLUS,
@@ -138,7 +139,7 @@ typedef enum EnforthToken
     HEX,
 
     /* $28 - $2F */
-    HERE,
+unused_was_HERE,
     TWODUP,
     COMMA,
     CCOMMA,
@@ -167,7 +168,7 @@ typedef enum EnforthToken
 
     ZEROLESS,
     HOLD,
-    BASE,
+unused_was_BASE,
     UDSLASHMOD,
 
     /* $40 - $47 */
@@ -189,12 +190,13 @@ typedef enum EnforthToken
 
         CR = 0x4c,
         TOCFA = 0x4d,
-    SOURCE,
+    TWOSTORE,
     SLASHSTRING,
 
     /* $50 - $57 */
         TOBODY = 0x50,
     PLUSSTORE,
+    TWOFETCH,
 
         TOKENQ = 0x57,
 
@@ -213,8 +215,18 @@ typedef enum EnforthToken
 
     /* $78 - $7F */
         NUMBERQ = 0x7c,
+        SOURCE = 0x7f,
 
     /* $80 - $87 */
+        BASE = 0x80,
+        HERE = 0x81,
+        LATEST = 0x82,
+        TIB = 0x83,
+
+        TIBSIZE = 0x84,
+        TOIN = 0x85,
+        STATE = 0x86,
+
     /* $88 - $8F */
     /* $90 - $97 */
     /* $98 - $9F */
@@ -223,8 +235,9 @@ typedef enum EnforthToken
     /* $B0 - $B7 */
     /* $B8 - $BF */
     /* $C0 - $C7 */
-    /* $C8 - $CF */
 
+    /* $C8 - $CF */
+    /* ... */
     WLIT = 0xce,
     PSQUOTE,
 
@@ -232,22 +245,22 @@ typedef enum EnforthToken
     CHARLIT = 0xd0,
     REVEAL,
     ZBRANCH,
-    LATEST,
+unused_was_LATEST,
 
     BRANCH,
     HIDE,
     INITRP,
-    TIB,
+unused_was_TIB,
 
     /* $D8 - $DF */
-    TIBSIZE,
+unused_was_TIBSIZE,
     PDOTQUOTE,
-    TICKSOURCE,
-    TICKSOURCELEN,
+unused_was_TICKSOURCE,
+unused_was_TICKSOURCELEN,
 
     FINDWORD,
     LIT,
-    TICKDICT,
+    VMADDRLIT,
     PEXECUTE,
 
     /* Tokens 0xe0-0xee are reserved for jump labels to the "CFA"
@@ -337,13 +350,13 @@ static const char kDefinitionNames[] PROGMEM =
     "\x04" "?DUP"
     "\x03" "UM*"
     "\x02" "#S"
-    "\x05" "STATE"
+"\x00" /* UNUSED */
 
     /* $18 - $1F */
     "\x04" "SIGN"
     "\x01" "!"
     "\x01" "#"
-    "\x03" ">IN"
+"\x00" /* UNUSED */
 
     "\x05" "2DROP"
     "\x02" "M+"
@@ -362,7 +375,7 @@ static const char kDefinitionNames[] PROGMEM =
     "\x03" "HEX"
 
     /* $28 - $2F */
-    "\x04" "HERE"
+"\x00" /* UNUSED was HERE */
     "\x04" "2DUP"
     "\x01" ","
     "\x02" "C,"
@@ -391,7 +404,7 @@ static const char kDefinitionNames[] PROGMEM =
 
     "\x02" "0<"
     "\x04" "HOLD"
-    "\x04" "BASE"
+"\x00" /* UNUSED was BASE */
     "\x06" "UD/MOD"
 
     /* $40 - $47 */
@@ -413,13 +426,13 @@ static const char kDefinitionNames[] PROGMEM =
 
     "\x02" "CR"
     "\x00" /* TOCFA */
-    "\x06" "SOURCE"
+    "\x02" "2!"
     "\x07" "/STRING"
 
     /* $50 - $57 */
     "\x05" ">BODY"
     "\x02" "+!"
-    "\x00" /* UNUSED */
+    "\x02" "2@"
     "\x00" /* UNUSED */
 
     "\x00" /* UNUSED */
@@ -480,6 +493,14 @@ static const char kDefinitionNames[] PROGMEM =
     "\x00" /* NUMBERQ */
     "\x00" /* UNUSED */
     "\x00" /* UNUSED */
+    "\x06" "SOURCE"
+    "\x04" "BASE"
+    "\x04" "HERE"
+    "\x00" /* LATEST */
+    "\x00" /* TIB */
+    "\x00" /* TIBSIZE */
+    "\x03" ">IN"
+    "\x05" "STATE"
 
     /* End byte */
     "\xff"
@@ -667,7 +688,7 @@ static const int8_t definitions[] PROGMEM = {
     0,
 
     /* : INTERPRET ( i*x c-addr u -- j*x )
-     *   'SOURCELEN !  'SOURCE !  0 >IN !
+     *   'SOURCELEN 2!  0 >IN !
      *   BEGIN  BL PARSE-WORD  DUP WHILE
      *       FIND-WORD ( ca u 0=notfound | xt 1=imm | xt -1=interp)
      *       ?DUP IF ( xt 1=imm | xt -1=interp)
@@ -683,8 +704,8 @@ static const int8_t definitions[] PROGMEM = {
      *       THEN
      *   REPEAT ( j*x ca u) 2DROP ;
      *
-     * Offset=148, Length=50 */
-    TICKSOURCELEN, STORE, TICKSOURCE, STORE,
+     * Offset=148, Length=49 */
+    VMADDRLIT, offsetof(EnforthVM, source_len), TWOSTORE,
     ZERO, TOIN, STORE,
     BL, PARSEWORD, DUP, ZBRANCH, 37,
     FINDWORD, QDUP, ZBRANCH, 14,
@@ -697,7 +718,7 @@ static const int8_t definitions[] PROGMEM = {
     TYPE, SPACE, CHARLIT, '?', EMIT, CR, ABORT,
     BRANCH, -40,
     TWODROP,
-    EXIT, 0, 0,
+    EXIT, 0, 0, 0,
 
     /* -------------------------------------------------------------
      * ACCEPT [CORE] 6.1.0695 ( c-addr +n1 -- +n2 )
@@ -805,12 +826,15 @@ static const int8_t definitions[] PROGMEM = {
     /* : +LFA ( addr1 -- addr2)  1+ 1+ ;
      * : >CFA ( xt -- addr)  $7FFF AND  'DICT +  +LFA ;
      *
-     * Offset=308, Length=9 */
+     * Offset=308, Length=11 */
     WLIT, 0xff, 0x7f,
-    AND, TICKDICT, PLUS,
+    AND,
+    /* TICKDICT */
+        VMADDRLIT, offsetof(EnforthVM, dictionary), FETCH,
+    PLUS,
     /* PLUSLFA */
         ONEPLUS, ONEPLUS,
-    EXIT, 0, 0, 0,
+    EXIT, 0,
 
     /* : FFI? ( xt -- f)  >CFA C@ kDefTypeFFI0 1- > ;
      * : >BODY ( xt -- a-addr)
@@ -839,14 +863,17 @@ static const int8_t definitions[] PROGMEM = {
      *   DUP TOKEN? IF C, EXIT THEN
      *   DUP >CFA C@ CFA>[TOKEN] C,  >BODY 'DICT - W, ;
      *
-     * Offset=356, Length=18 */
+     * Offset=356, Length=20 */
     DUP, TOKENQ, ZBRANCH, 3,
         CCOMMA, EXIT,
     DUP, TOCFA, CFETCH,
     /* CFA>[TOKEN] */
         CHARLIT, 0xF0, OR,
-    CCOMMA, TOBODY, TICKDICT, MINUS, WCOMMA,
-    EXIT, 0, 0,
+    CCOMMA, TOBODY,
+    /* TICKDICT */
+        VMADDRLIT, offsetof(EnforthVM, dictionary), FETCH,
+    MINUS, WCOMMA,
+    EXIT,
 
     /* -------------------------------------------------------------
      * EXECUTE [CORE] 6.1.1370 ( i*x xt -- j*x )
@@ -954,6 +981,56 @@ static const int8_t definitions[] PROGMEM = {
     /* TODO Replace ZERO INVERT with TRUE. */
     ZERO, ZERO, TWOSWAP, TONUMBER, TWODROP, DROP, ZERO, INVERT,
     EXIT, 0, 0, 0,
+
+    /* : SOURCE ( -- c-addr u)
+     *   'SOURCELEN 2@ ;
+     *
+     * Offset=508, Length=4 */
+    VMADDRLIT, offsetof(EnforthVM, source_len), TWOFETCH,
+    EXIT,
+
+    /* : BASE ( -- a-addr)  'BASE ;
+     *
+     * Offset=512, Length=3 */
+    VMADDRLIT, offsetof(EnforthVM, base),
+    EXIT, 0,
+
+    /* : HERE ( -- addr)  'DP @ ;
+     *
+     * Offset=516, Length=4 */
+    VMADDRLIT, offsetof(EnforthVM, dp), FETCH,
+    EXIT,
+
+    /* : LATEST ( -- a-addr)  'LATEST ;
+     *
+     * Offset=520, Length=3 */
+    VMADDRLIT, offsetof(EnforthVM, latest),
+    EXIT, 0,
+
+    /* : TIB ( -- c-addr)  'TIB ;
+     *
+     * Offset=524, Length=3 */
+    VMADDRLIT, offsetof(EnforthVM, tib),
+    EXIT, 0,
+
+    /* : TIBSIZE ( -- u)  ... ;
+     *
+     * Offset=528, Length=2 */
+    /* TODO Put TIBSIZE in a constant. */
+    CHARLIT, 80,
+    EXIT, 0,
+
+    /* : >IN ( -- c-addr)  '>IN ;
+     *
+     * Offset=532, Length=3 */
+    VMADDRLIT, offsetof(EnforthVM, to_in),
+    EXIT, 0,
+
+    /* : STATE ( -- a-addr)  'STATE ;
+     *
+     * Offset=536, Length=3 */
+    VMADDRLIT, offsetof(EnforthVM, state),
+    EXIT, 0,
 };
 
 
@@ -1209,13 +1286,13 @@ void enforth_go(EnforthVM * const vm)
         &&QDUP,
         &&UMSTAR,
             &&DOCOLONROM, /* NUMSIGNS */
-        &&STATE,
+    0, /* UNUSED */
 
         /* $18 - $1F */
             &&DOCOLONROM, /* SIGN */
         &&STORE,
             &&DOCOLONROM, /* NUMSIGN */
-        &&TOIN,
+    0, /* UNUSED */
 
         &&TWODROP,
         &&MPLUS,
@@ -1234,7 +1311,7 @@ void enforth_go(EnforthVM * const vm)
         &&HEX,
 
         /* $28 - $2F */
-        &&HERE,
+    0, /* UNUSED */
         &&TWODUP,
         &&COMMA,
         &&CCOMMA,
@@ -1263,7 +1340,7 @@ void enforth_go(EnforthVM * const vm)
 
         &&ZEROLESS,
         &&HOLD,
-        &&BASE,
+    0, /* UNUSED */
         &&UDSLASHMOD,
 
         /* $40 - $47 */
@@ -1285,13 +1362,14 @@ void enforth_go(EnforthVM * const vm)
 
             &&DOCOLONROM, /* CR */
             &&DOCOLONROM, /* TOCFA */
-        &&SOURCE,
+        &&TWOSTORE,
         &&SLASHSTRING,
 
         /* $50 - $57 */
             &&DOCOLONROM, /* TOBODY */
         &&PLUSSTORE,
-        0, 0,
+        &&TWOFETCH,
+        0,
 
         0, 0, 0,
             &&DOCOLONROM, /* TOKENQ */
@@ -1327,10 +1405,20 @@ void enforth_go(EnforthVM * const vm)
         0, 0, 0, 0,
 
             &&DOCOLONROM, /* NUMBERQ */
-        0, 0, 0,
+        0, 0,
+            &&DOCOLONROM, /* SOURCE */
 
         /* $80 - $87 */
-        0,0,0,0, 0,0,0,0,
+            &&DOCOLONROM, /* BASE */
+            &&DOCOLONROM, /* HERE */
+            &&DOCOLONROM, /* LATEST */
+            &&DOCOLONROM, /* TIB */
+
+            &&DOCOLONROM, /* TIBSIZE */
+            &&DOCOLONROM, /* >IN */
+            &&DOCOLONROM, /* STATE */
+        0,
+
         /* $88 - $8F */
         0,0,0,0, 0,0,0,0,
         /* $90 - $97 */
@@ -1359,22 +1447,22 @@ void enforth_go(EnforthVM * const vm)
         &&CHARLIT,
         &&REVEAL,
         &&ZBRANCH,
-        &&LATEST,
+    0, /* UNUSED */
 
         &&BRANCH,
         &&HIDE,
         &&INITRP,
-        &&TIB,
+    0, /* UNUSED */
 
         /* $D8 - $DF */
-        &&TIBSIZE,
+    0, /* UNUSED */
         &&PDOTQUOTE,
-        &&TICKSOURCE,
-        &&TICKSOURCELEN,
+    0, /* UNUSED */
+    0, /* UNUSED */
 
         &&FINDWORD,
         &&LIT,
-        &&TICKDICT,
+        &&VMADDRLIT,
         &&PEXECUTE,
 
         /* $E0 - $EF */
@@ -1782,14 +1870,6 @@ DISPATCH_TOKEN:
         }
         continue;
 
-        STATE:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            tos.ram = &vm->state;
-        }
-        continue;
-
         /* -------------------------------------------------------------
          * ! [CORE] 6.1.0010 "store" ( x a-addr -- )
          *
@@ -1799,20 +1879,6 @@ DISPATCH_TOKEN:
             CHECK_STACK(2, 0);
             *(EnforthCell*)tos.ram = *restDataStack++;
             tos = *restDataStack++;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-         * >IN [CORE] 6.1.0560 "to-in" ( -- a-addr )
-         *
-         * a-addr is the address of a cell containing the offset in
-         * characters from the start of the input buffer to the start of
-         * the parse area. */
-        TOIN:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            tos.ram = &vm->to_in;
         }
         continue;
 
@@ -1865,22 +1931,6 @@ DISPATCH_TOKEN:
         {
             CHECK_STACK(1, 1);
             tos.i = tos.i == 0 ? -1 : 0;
-        }
-        continue;
-
-        TIB:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            tos.ram = &vm->tib;
-        }
-        continue;
-
-        TIBSIZE:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            tos.u = sizeof(vm->tib);
         }
         continue;
 
@@ -2028,22 +2078,6 @@ DISPATCH_TOKEN:
         HEX:
         {
             vm->base = 16;
-        }
-        continue;
-
-        HERE:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            tos.ram = vm->dp;
-        }
-        continue;
-
-        LATEST:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            tos.ram = &vm->latest;
         }
         continue;
 
@@ -2253,19 +2287,6 @@ DISPATCH_TOKEN:
         continue;
 
         /* -------------------------------------------------------------
-         * BASE [CORE] 6.1.0750 ( -- a-addr )
-         *
-         * a-addr is the address of a cell containing the current
-         * number-conversion radix {{2...36}}. */
-        BASE:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            tos.ram = &vm->base;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
          * UD/MOD [ENFORTH] "u-d-slash-mod" ( ud1 u1 -- n ud2 )
          *
          * Divide ud1 by u1 giving the quotient ud2 and the remainder n. */
@@ -2333,22 +2354,6 @@ DISPATCH_TOKEN:
         }
         continue;
 
-        TICKSOURCE:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            tos.ram = &vm->source;
-        }
-        continue;
-
-        TICKSOURCELEN:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            tos.ram = &vm->source_len;
-        }
-        continue;
-
         OVER:
         {
             CHECK_STACK(2, 3);
@@ -2408,15 +2413,6 @@ DISPATCH_TOKEN:
         }
         continue;
 
-        SOURCE:
-        {
-            CHECK_STACK(0, 2);
-            *--restDataStack = tos;
-            *--restDataStack = vm->source;
-            tos = vm->source_len;
-        }
-        continue;
-
         SLASHSTRING:
         {
             CHECK_STACK(3, 2);
@@ -2434,11 +2430,23 @@ DISPATCH_TOKEN:
         }
         continue;
 
-        TICKDICT:
+        VMADDRLIT:
         {
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
-            tos.ram = vm->dictionary;
+
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                tos.ram = (uint8_t*)vm + (uint8_t)pgm_read_byte(ip);
+            }
+            else
+#endif
+            {
+                tos.ram = (uint8_t*)vm + (uint8_t)*ip;
+            }
+
+            ip++;
         }
         continue;
 
@@ -2534,6 +2542,24 @@ DISPATCH_TOKEN:
             }
 
             ip += 2;
+        }
+        continue;
+
+        TWOFETCH:
+        {
+            CHECK_STACK(1, 2);
+            *--restDataStack = *(EnforthCell*)(tos.ram + kEnforthCellSize);
+            tos = *(EnforthCell*)tos.ram;
+        }
+        continue;
+
+        TWOSTORE:
+        {
+            CHECK_STACK(3, 0);
+            EnforthCell * addr = (EnforthCell*)tos.ram;
+            *addr++ = *restDataStack++;
+            *addr = *restDataStack++;
+            tos = *restDataStack++;
         }
         continue;
 
