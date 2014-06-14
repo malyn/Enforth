@@ -47,6 +47,8 @@
 #else
 #define PROGMEM
 #define pgm_read_byte(p) (*(uint8_t*)(p))
+/* TODO pgm_read_word always returns uint16_t, so we should make that
+ * change here as well. */
 #define pgm_read_word(p) (*(int *)(p))
 #define memcpy_P memcpy
 #define strlen_P strlen
@@ -1054,7 +1056,7 @@ static int enforth_paren_find_word(EnforthVM * const vm, uint8_t * caddr, Enfort
 
     /* Search the dictionary.*/
     uint8_t * curWord;
-    for (curWord = vm->latest;
+    for (curWord = vm->latest.ram;
          curWord != NULL;
          curWord = *(uint16_t *)curWord == 0 ? NULL : curWord - *(uint16_t *)curWord)
     {
@@ -1120,7 +1122,7 @@ static int enforth_paren_find_word(EnforthVM * const vm, uint8_t * caddr, Enfort
         /* Is this a match?  If so, we're done. */
         if (nameMatch != 0)
         {
-            *xt = 0x8000 | (uint16_t)(curWord - vm->dictionary);
+            *xt = 0x8000 | (uint16_t)(curWord - vm->dictionary.ram);
             *isImmediate = *(curWord + 2) == kDefTypeIMMEDIATE ? 1 : -1;
             return -1;
         }
@@ -1178,11 +1180,11 @@ void enforth_init(
     vm->key = key;
     vm->emit = emit;
 
-    vm->dictionary = dictionary;
+    vm->dictionary.ram = dictionary;
     vm->dictionary_size = dictionary_size;
 
     vm->dp = vm->dictionary;
-    vm->latest = NULL;
+    vm->latest.ram = NULL;
 
     vm->hld = NULL;
 
@@ -1193,27 +1195,27 @@ void enforth_add_definition(EnforthVM * const vm, const uint8_t * const def, int
 {
     /* Get the address of the start of this definition and the address
      * of the start of the last definition. */
-    const uint8_t * const prevLFA = vm->latest;
-    uint8_t * newLFA = vm->dp;
+    const uint8_t * const prevLFA = vm->latest.ram;
+    uint8_t * newLFA = vm->dp.ram;
 
     /* Add the LFA link. */
-    if (vm->latest != NULL)
+    if (vm->latest.ram != NULL)
     {
-        *vm->dp++ = ((newLFA - prevLFA)     ) & 0xff; /* LFAlo */
-        *vm->dp++ = ((newLFA - prevLFA) >> 8) & 0xff; /* LFAhi */
+        *vm->dp.ram++ = ((newLFA - prevLFA)     ) & 0xff; /* LFAlo */
+        *vm->dp.ram++ = ((newLFA - prevLFA) >> 8) & 0xff; /* LFAhi */
     }
     else
     {
-        *vm->dp++ = 0x00;
-        *vm->dp++ = 0x00;
+        *vm->dp.ram++ = 0x00;
+        *vm->dp.ram++ = 0x00;
     }
 
     /* Copy the definition itself. */
-    memcpy(vm->dp, def, defSize);
-    vm->dp += defSize;
+    memcpy(vm->dp.ram, def, defSize);
+    vm->dp.ram += defSize;
 
     /* Update latest. */
-    vm->latest = newLFA;
+    vm->latest.ram = newLFA;
 }
 
 void enforth_go(EnforthVM * const vm)
@@ -1542,7 +1544,7 @@ DISPATCH_TOKEN:
             /* The IP is pointing at the dictionary-relative offset of
              * the PFA of the FFI trampoline.  Convert that to a pointer
              * and store it in W. */
-            w = (uint8_t*)(vm->dictionary + *(uint16_t*)ip);
+            w = (uint8_t*)(vm->dictionary.ram + *(uint16_t*)ip);
             ip += 2;
 
         PDOFFI0:
@@ -1565,7 +1567,7 @@ DISPATCH_TOKEN:
             /* The IP is pointing at the dictionary-relative offset of
              * the PFA of the FFI trampoline.  Convert that to a pointer
              * and store it in W. */
-            w = (uint8_t*)(vm->dictionary + *(uint16_t*)ip);
+            w = (uint8_t*)(vm->dictionary.ram + *(uint16_t*)ip);
             ip += 2;
 
         PDOFFI1:
@@ -1587,7 +1589,7 @@ DISPATCH_TOKEN:
             /* The IP is pointing at the dictionary-relative offset of
              * the PFA of the FFI trampoline.  Convert that to a pointer
              * and store it in W. */
-            w = (uint8_t*)(vm->dictionary + *(uint16_t*)ip);
+            w = (uint8_t*)(vm->dictionary.ram + *(uint16_t*)ip);
             ip += 2;
 
         PDOFFI2:
@@ -2093,8 +2095,8 @@ DISPATCH_TOKEN:
         COMMA:
         {
             CHECK_STACK(1, 0);
-            *((EnforthCell*)vm->dp) = tos;
-            vm->dp += kEnforthCellSize;
+            *((EnforthCell*)vm->dp.ram) = tos;
+            vm->dp.ram += kEnforthCellSize;
             tos = *restDataStack++;
         }
         continue;
@@ -2102,7 +2104,7 @@ DISPATCH_TOKEN:
         CCOMMA:
         {
             CHECK_STACK(1, 0);
-            *vm->dp++ = tos.u & 0xff;
+            *vm->dp.ram++ = tos.u & 0xff;
             tos = *restDataStack++;
         }
         continue;
@@ -2146,7 +2148,7 @@ DISPATCH_TOKEN:
         ALLOT:
         {
             CHECK_STACK(1, 0);
-            vm->dp += tos.u;
+            vm->dp.ram += tos.u;
             tos = *restDataStack++;
         }
         continue;
@@ -2161,8 +2163,8 @@ DISPATCH_TOKEN:
         WCOMMA:
         {
             CHECK_STACK(1, 0);
-            *((uint16_t*)vm->dp) = (uint16_t)(tos.u & 0xffff);
-            vm->dp += 2;
+            *((uint16_t*)vm->dp.ram) = (uint16_t)(tos.u & 0xffff);
+            vm->dp.ram += 2;
             tos = *restDataStack++;
         }
         continue;
@@ -2174,7 +2176,7 @@ DISPATCH_TOKEN:
          * dictionary. */
         HIDE:
         {
-            *(vm->latest + 2) |= 0x80;
+            *(vm->latest.ram + 2) |= 0x80;
         }
         continue;
 
@@ -2204,7 +2206,7 @@ DISPATCH_TOKEN:
 
         REVEAL:
         {
-            *(vm->latest + 2) &= 0x7f;
+            *(vm->latest.ram + 2) &= 0x7f;
         }
         continue;
 
@@ -2223,7 +2225,7 @@ DISPATCH_TOKEN:
 
         LESSNUMSIGN:
         {
-            vm->hld = vm->dp + (kEnforthCellSize*8*3);
+            vm->hld = vm->dp.ram + (kEnforthCellSize*8*3);
         }
         continue;
 
@@ -2257,7 +2259,7 @@ DISPATCH_TOKEN:
         NUMSIGNGRTR:
         {
             restDataStack->ram = vm->hld;
-            tos.u = (vm->dp + (kEnforthCellSize*8*3)) - vm->hld;
+            tos.u = (vm->dp.ram + (kEnforthCellSize*8*3)) - vm->hld;
         }
         continue;
 
@@ -2568,7 +2570,7 @@ DISPATCH_TOKEN:
             /* IP currently points to the relative offset of the PFA of
              * the target word.  Read that offset and advance IP to the
              * token after the offset. */
-            w = vm->dictionary + *(uint16_t*)ip;
+            w = vm->dictionary.ram + *(uint16_t*)ip;
             ip += 2;
 
         PDOCOLON:

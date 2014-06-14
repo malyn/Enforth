@@ -83,7 +83,7 @@ typedef union
      * referenced by a cell-sized pointer.  The name of this field is
      * designed to make it clear that cells can only reference addresses
      * in RAM. */
-    void * ram;
+    uint8_t * ram;
 } EnforthCell;
 
 static const int kEnforthCellSize = sizeof(EnforthCell);
@@ -142,8 +142,6 @@ static const int kEnforthFFIProcPtrSize = sizeof(void*);
  * Enforth Virtual Machine type.
  */
 
-/* TODO Many things in here need to be EnforthCell, just to be explicit
- * about the fact that we are going to access them via VMADDRLIT. */
 typedef struct
 {
     /* VM constants */
@@ -153,12 +151,12 @@ typedef struct
     char (*key)(void);
     void (*emit)(char);
 
-    uint8_t * dictionary;
+    EnforthCell dictionary;
     int dictionary_size;
 
     /* Dictionary vars */
-    uint8_t * dp;
-    uint8_t * latest; /* NULL means empty dictionary */
+    EnforthCell dp;
+    EnforthCell latest; /* NULL means empty dictionary */
 
     /* Transient (dictionary-based) vars */
     uint8_t * hld;
