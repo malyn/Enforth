@@ -47,8 +47,6 @@
 #else
 #define PROGMEM
 #define pgm_read_byte(p) (*(uint8_t*)(p))
-/* TODO pgm_read_word always returns uint16_t, so we should make that
- * change here as well. */
 #define pgm_read_word(p) (*(int *)(p))
 #define memcpy_P memcpy
 #define strlen_P strlen
@@ -1627,6 +1625,21 @@ DISPATCH_TOKEN:
             CHECK_STACK(8, 1);
         continue;
 
+        WLIT:
+#ifdef __AVR__
+        /* Fall through, since literals are already 16-bits on the AVR. */
+#else
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            /* No need for pgm_read_word here since this code is never
+             * compiled on the AVR. */
+            tos.i = (EnforthInt)*(uint16_t*)ip;
+            ip += 2;
+        }
+        continue;
+#endif
+
         LIT:
         {
             CHECK_STACK(0, 1);
@@ -2092,6 +2105,19 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        WCOMMA:
+#ifdef __AVR__
+        /* Fall through, since cells are already 16-bits on the AVR. */
+#else
+        {
+            CHECK_STACK(1, 0);
+            *((uint16_t*)vm->dp.ram) = (uint16_t)(tos.u & 0xffff);
+            vm->dp.ram += 2;
+            tos = *restDataStack++;
+        }
+        continue;
+#endif
+
         COMMA:
         {
             CHECK_STACK(1, 0);
@@ -2157,15 +2183,6 @@ DISPATCH_TOKEN:
         {
             CHECK_STACK(2, 1);
             restDataStack++;
-        }
-        continue;
-
-        WCOMMA:
-        {
-            CHECK_STACK(1, 0);
-            *((uint16_t*)vm->dp.ram) = (uint16_t)(tos.u & 0xffff);
-            vm->dp.ram += 2;
-            tos = *restDataStack++;
         }
         continue;
 
@@ -2525,25 +2542,6 @@ DISPATCH_TOKEN:
             (--restDataStack)->i = (int32_t)result;
             tos.i = (int32_t)(result >> 32);
 #endif
-        }
-        continue;
-
-        WLIT:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-#ifdef __AVR__
-            if (inProgramSpace)
-            {
-                tos.i = pgm_read_word(ip);
-            }
-            else
-#endif
-            {
-                tos.i = (EnforthInt)*(uint16_t*)ip;
-            }
-
-            ip += 2;
         }
         continue;
 
