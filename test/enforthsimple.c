@@ -45,6 +45,18 @@
 
 
 /* -------------------------------------
+ * Enforth tokens (for hand-compiled definitions)
+ */
+
+enum
+{
+#include "enforth_tokens.h"
+    EXIT = 0xff,
+};
+
+
+
+/* -------------------------------------
  * Sample FFI definitions.
  */
 
@@ -129,18 +141,18 @@ int main(int argc, char **argv)
         'N',
         'U',
         0x80 | 'M',
-        0xd0,   /* CHARLIT */
+        CHARLIT,
         27,
-        0xff }; /* EXIT */
+        EXIT };
     enforth_add_definition(&enforthVM, favnumDef, sizeof(favnumDef));
 
     const uint8_t twoxDef[] = {
         0x00, /* DOCOLON */
         '2',
         0x80 | 'X',
-        0x01,   /* DUP */
-        0x05,   /* + */
-        0xff }; /* EXIT */
+        DUP,
+        PLUS,
+        EXIT };
     enforth_add_definition(&enforthVM, twoxDef, sizeof(twoxDef));
 
     const uint8_t randDef[] = {

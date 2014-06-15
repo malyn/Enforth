@@ -1,0 +1,203 @@
+{:branch {:flags #{:headerless}}
+
+ :charlit {:flags #{:headerless}}
+
+ :cplusstore {:name "C+!"}
+
+ ;; DIGIT? [MFORTH] "digit-question" ( char -- u -1 | 0 )
+ ;;
+ ;; Attempts to convert char to a numeric value using the current BASE.
+ ;; Pushes the numeric value and -1 to the stack if the value was
+ ;; converted, otherwise pushes 0 to the stack.
+ :digitq
+ {:name "DIGIT?"
+  :args [[:c] [[:u -1] [0]]]
+  :flags #{:headerless}
+  :source ": DIGIT? ( char -- u -1 | 0)
+             [CHAR] 0 -
+             DUP 0< IF DROP 0 EXIT THEN
+             DUP 9 > IF DUP 16 < IF DROP FALSE EXIT ELSE 7 - THEN THEN
+             DUP 1+ BASE @ > IF DROP FALSE ELSE TRUE THEN ;"
+  :pfa [:charlit "'0'" :minus
+        :dup :zeroless :zbranch 4 :drop :zero :exit
+        :dup :charlit 9 :greaterthan :zbranch 13
+          :dup :charlit 17 :lessthan :zbranch 4
+            :drop :false :exit
+            :charlit 7 :minus
+        :dup :oneplus :base :fetch :ugreaterthan :zbranch 4
+          :drop :false :exit
+          :true
+        :exit]}
+
+ :findword {:name "FIND-WORD" :flags #{:headerless}}
+
+ ;; HIDE [ENFORTH] ( -- )
+ ;;
+ ;; Prevent the most recent definition from being found in the
+ ;; dictionary.
+ :hide
+ {:args [[] []]
+  :flags #{:headerless}
+  :source ": HIDE ( --)  LATEST @  +LFA  DUP C@ $80 OR  SWAP C! ;"
+  :pfa [:latest :fetch
+        ; pluslfa
+          :oneplus :oneplus
+        :dup :cfetch :charlit 0x80 :or :swap :cstore
+        :exit]}
+
+ :initrp {:flags #{:headerless}}
+
+ :interpret
+ {:args [[:caddr :u] []]
+  :flags #{:headerless}
+  :source ": INTERPRET ( i*x c-addr u -- j*x )
+             'SOURCELEN 2!  0 >IN !
+             BEGIN  BL PARSE-WORD  DUP WHILE
+               FIND-WORD ( ca u 0=notfound | xt 1=imm | xt -1=interp)
+               ?DUP IF ( xt 1=imm | xt -1=interp)
+                 1+  STATE @ 0=  OR ( xt 2=imm | xt 0=interp)
+                 IF EXECUTE ELSE COMPILE, THEN
+               ELSE
+                 NUMBER? IF
+                   STATE @ IF POSTPONE LITERAL THEN
+                   -- Interpreting; leave number on stack.
+                 ELSE
+                   TYPE  SPACE  [CHAR] ? EMIT  CR  ABORT
+                 THEN
+               THEN
+             REPEAT ( j*x ca u) 2DROP ;"
+  :pfa [:vmaddrlit "offsetof(EnforthVM, source_len)" :twostore
+        :zero :toin :store
+          :bl :parseword :dup :zbranch 37
+            :findword :qdup :zbranch 14
+              :oneplus :state :fetch :zeroequals :or :zbranch 4
+              :execute :branch 21
+              :compilecomma :branch 18
+            :numberq :zbranch 8
+              :state :fetch :zbranch 11
+                :literal :branch 8
+              :type :space :charlit "'?'" :emit :cr :abort
+            :branch -40
+        :twodrop
+        :exit]}
+
+ :latest
+ {:args [[] [:aaadr]]
+  :pfa [:vmaddrlit "offsetof(EnforthVM, latest)" :exit]}
+
+ :lit
+ {:name "(LIT)"
+  :args [[] [:x]]
+  :flags #{:headerless}}
+
+ ;; NUMBER? [ENFORTH] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
+ ;;
+ ;; Attempt to convert a string at c-addr of length u into digits, using
+ ;; the radix in BASE.  The number and -1 is returned if the conversion
+ ;; was successful, otherwise 0 is returned.
+ ;;
+ ;; TODO Implement this for real.
+ :numberq
+ {:name "NUMBER?"
+  :args [[:caddr :u] [[:caddr :u 0] [:n -1]]]
+  :flags #{:headerless}
+  :source ": NUMBER? ( c-addr u -- c-addr u 0 | n -1)
+             0 0 2SWAP >NUMBER 2DROP DROP TRUE ;"
+  :pfa [:zero :zero :twoswap :tonumber :twodrop :drop :true :exit]}
+
+ ;; PARSE-WORD [MFORTH] "parse-word" ( char "ccc<char>" -- c-addr u )
+ ;;
+ ;; Parse ccc delimited by the delimiter char, skipping leading
+ ;; delimiters.
+ ;;
+ ;; c-addr is the address (within the input buffer) and u is the length
+ ;; of the parsed string.  If the parse area was empty, the resulting
+ ;; string has a zero length.
+ :parseword
+ {:args [[:caddr :u1 :c] [:caddr2 :u2]]
+  :flags #{:headerless}
+  :source ": SKIP-DELIM ( c-addr1 u1 c -- c-addr2 u2)
+             >R  BEGIN  OVER C@  R@ =  ( ca u f R:c) OVER  AND WHILE
+                1 /STRING REPEAT  R> DROP ;
+           : FIND-DELIM ( c-addr1 u1 c -- c-addr2)
+             >R  BEGIN  OVER C@  R@ <>  ( ca u f R:c) OVER  AND WHILE
+                1 /STRING REPEAT  R> 2DROP ;
+           : PARSE-WORD ( c -- c-addr u)
+             >R  SOURCE >IN @ /STRING ( ca-parse u-parse R:c)
+             R@ SKIP-DELIM ( ca u R:c)  OVER SWAP ( ca-word ca-word u R:c)
+             R> FIND-DELIM ( ca-word ca-delim)
+             DUP SOURCE DROP ( caw cad cad cas) - >IN ! ( caw cad)
+             OVER - ;"
+  :pfa [:tor :source :toin :fetch :slashstring
+        :rfetch
+          ; SKIP-DELIM
+          :tor
+          :over :cfetch :rfetch :equals :over :and :zbranch 6
+            :charlit 1 :slashstring :branch -12
+          :rfrom :drop
+        :over :swap
+        :rfrom
+          ; FIND-DELIM
+          :tor
+            :over :cfetch :rfetch :notequals :over :and :zbranch 6
+            :charlit 1 :slashstring :branch -12
+          :rfrom :twodrop
+        :dup :source :drop :minus :toin :store
+        :over :minus
+        :exit]}
+
+ :pexecute {:name "(EXECUTE)" :flags #{:headerless}}
+
+ :pdotquote {:name "(.\")" :flags #{:headerless}}
+
+ :psquote {:name "(s\")" :flags #{:headerless}}
+
+ :reveal
+ {:args [[] []]
+  :flags #{:headerless}
+  :source ": REVEAL ( --)  LATEST @  +LFA  DUP C@ $7F AND  SWAP C! ;"
+  :pfa [:latest :fetch
+        ; pluslfa
+          :oneplus :oneplus
+        :dup :cfetch :charlit 0x7f :and :swap :cstore
+        :exit]}
+
+ :tib
+ {:args [[] [:caadr]]
+  :flags #{:headerless}
+  :pfa [:vmaddrlit "offsetof(EnforthVM, tib)" :exit]}
+
+ ;; TODO Put TIBSIZE in a constant.
+ :tibsize
+ {:args [[] [:u]]
+  :flags #{:headerless}
+  :pfa [:charlit 80 :exit]}
+
+ :tocfa
+ {:name ">CFA"
+  :args [[:xt] [:addr]]
+  :flags #{:headerless}
+  :source ": >CFA ( xt -- addr)  $7FFF AND  'DICT +  +LFA ;"
+  :pfa [:wlit 0xff 0x7f :and
+        :vmaddrlit "offsetof(EnforthVM, dictionary)" :fetch ; 'DICT
+        :plus
+        :oneplus :oneplus ; +LFA
+        :exit]}
+
+ :tokenq
+ {:name "TOKEN?"
+  :flags #{:headerless}
+  :source ": TOKEN? ( xt -- f)  $8000 AND 0= ;"
+  :pfa [:wlit 0x00 0x80 :and :zeroequals :exit]}
+
+ :udslashmod {:flags #{:headerless}}
+
+ :vmaddrlit {:flags #{:headerless}}
+
+ :wcomma {:name "W," :flags #{:headerless}}
+
+ :wlit {:flags #{:headerless}}
+
+ :zbranch {:name "0BRANCH" :flags #{:headerless}}
+
+ :zero {:name "0"}}

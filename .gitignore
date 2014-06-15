@@ -1,5 +1,8 @@
 /Debug
 /Release
+DefGen/.lein-repl-history
+DefGen/.nrepl-port
+DefGen/target
 test/enforth
 test/enforthsimple
 *.atsuo

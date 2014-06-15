@@ -74,7 +74,7 @@ void setup()
     'N',
     'U',
     0x80 | 'M',
-    0xd0,   // CHARLIT
+    0x5d,   // CHARLIT
     27,
     0xff }; // EXIT
   enforth_add_definition(&enforthVM, favnumDef, sizeof(favnumDef));
@@ -83,8 +83,8 @@ void setup()
     0x00, // DOCOLON
     '2',
     0x80 | 'X',
-    0x01,   // DUP
-    0x05,   // +
+    0x34,   // DUP
+    0x03,   // +
     0xff }; // EXIT
   enforth_add_definition(&enforthVM, twoxDef, sizeof(twoxDef));
 

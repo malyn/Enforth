@@ -1,5 +1,7 @@
+* Make the `.edn` files a series of maps (one per definition) instead of one big map.  This will make it easier/possible to auto-format the maps without Vim getting confused by strings that contain special characters.
 * Move pictured numeric output words (and HEX) into Forth definitions?
 * See about moving some/all of the paren\* methods into Forth definitions.  Maybe convert some of the existing code primitives into Forth definitions as well (when they aren't perf-sensitive).
+* Add `EVALUATE` and `enforth_evaluate` and use that instead of `enforth_add_definition` (which we'll then remove).
 * Make ROM definition IPs on the return stack relative to the start of the ROM definition block.  We can do this now that all of the ROM definitions are finally in this one block.
 * Support backspace in `ACCEPT`.
 * Add `USE:` for creating FFI trampolines.
@@ -11,11 +13,7 @@
   * We should also check the return stack.
 * Consider using the pgmspace typedefs (prog\_int8\_t, etc.) if that would make it easier to catch situations where we forgot to use the pgm\_\* accessors.
 * Consider creating EnforthDuino.cpp/.h wrappers to make it easier to interact with Enforth in the Arduino environment.
-* Consider auto-generating tokens so that we can avoid some of the duplication/hand-editing.
-  * The first pass should pack the ROM definitions as tightly as possible, which consumes tokens throughout the 8-bit token space.
-    * Maybe we should multiply the token by a prime (3?) instead of 4 so that we can pack these in more/perfectly tightly?  Something along the lines of a Golomb Ruler?  Multiplication on the AVR takes two cycles, just like two left shifts (for x4), so we might as well multiply if it gets us better packing.
-  * Then we'll fill in all of the public definitions starting from the beginning of token-space.
-  * All of the non-public definitions should go at the end so that they do not waste space in the primitives lookup table (which is currently what is happening due to the hand-generated table that we are using).
+* Add comments to all of the `.edn` files.
 * Do something about absolute RAM addresses on the stack, in variables, etc.  These prevent the VM from being saved to/from storage (such as EEPROM).
   * We can't relativize everything on save, because we don't always know what we are looking at -- how do we know that a dictionary variable contains a RAM address?  We could probably relativize all addresses in the VM though and then `@`, `!`, etc. would do the adjustment as necessary (and could offer bounds-checking).  All of these addresses are VM-relative and that VM base address will probably end up being stored in a constant register pair.  Access to memory-mapped CPU resources gets messy (this is mostly an ARM problem), although we could offer special fetch and store operations for those.  Similarly, FFI interop involving addresses is now a problem because we need to convert those back and forth.
   * Note that the VM itself has quite a few absolute addresses (DP, HERE, SOURCE, etc.) and we'll need to deal with those on load/save.  Most of these have to do with the text interpreter though and we could easily just say that persistence resets the state of the text interpreter and can only be performed when *not* in compilation mode.  That would leave a very small number of pointers in the VM and those could just be serialized as part of persisting the dictionary.
@@ -38,3 +36,5 @@
   * I wonder if we can find a way to predefine a set of trampolines in Flash instead of in RAM?  *i.e.,* we reserve the last 32 tokens for precompiled trampolines and then provide a simplified way to build up that flash array.  This table-based method would actually work since it would just be a list of other addresses (which conveniently we already have thanks to the `FFIDEF_*` vars that are being used for the linked list).  This would give users a way to modify their enforth compile to predefine externals in a way that consumes no RAM.  You still need to define the FFIs, but you don't need to reference them at runtime.
   * This feels like a good balance between ROM and RAM: you can access any FFI at runtime if you are willing to consume memory on that (which is probably fine during development) and then you switch to a ROM-based FFI primitive once you know you'll be using an FFI a lot.  This breaks your flash, of course, but your source is unchanged (and we could make the `EXTERNAL:` word just do nothing in the case where you are trying to reference a ROM-based FFI primitive).
   * This makes the ATtiny85 possible again, because we'll just define the primitives that we care about as ROM primitives.
+* Consider different multipliers for the ROM definitions.
+  * Maybe we should multiply the token by a prime (3?) instead of 4 so that we can pack these in more/perfectly tightly?  Something along the lines of a Golomb Ruler?  Multiplication on the AVR takes two cycles, just like two left shifts (for x4), so we might as well multiply if it gets us better packing.

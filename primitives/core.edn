@@ -1,0 +1,491 @@
+{:abort {}
+
+ :abs {}
+
+ ;; ACCEPT [CORE] 6.1.0695 ( c-addr +n1 -- +n2 )
+ ;;
+ ;; Receive a string of at most +n1 characters.  An ambiguous condition
+ ;; exists if +n1 is zero or greater than 32,767.  Display graphic
+ ;; characters as they are received.  A program that depends on the
+ ;; presence or absence of non-graphic characters in the string has an
+ ;; environmental dependency.  The editing functions, if any, that the
+ ;; system performs in order to construct the string are
+ ;; implementation-defined.
+ ;;
+ ;; Input terminates when an implementation-defined line terminator is
+ ;; received.  When input terminates, nothing is appended to the string,
+ ;; and the display is maintained in an implementation-defined way.
+ ;;
+ ;; +n2 is the length of the string stored at c-addr.
+ ;;
+ ;; TODO Deal with backspace.
+ :accept
+ {:args [[:c-addr :n1] [:n2]]
+  :source ": ACCEPT ( c-addr max -- n)
+             OVER + OVER ( ca-start ca-end ca-dest)
+             BEGIN  KEY  DUP 10 <> WHILE
+               DUP 2OVER ( cas cae cad c c cae cad) <> IF
+                 EMIT OVER C! ( cas cae cad) 1+
+               ELSE
+                 ( cas cae cad c c) 2DROP
+               THEN
+             REPEAT
+             ( ca-start ca-end ca-dest c) DROP NIP SWAP - ;"
+  :pfa [:over :plus :over
+        :key :dup :charlit 10 :notequals :zbranch 15
+          :dup :twoover :notequals :zbranch 7
+            :emit :over :cstore :oneplus :branch 2
+            :twodrop
+          :branch -20
+        :drop :nip :swap :minus
+        :exit]}
+
+ :align {}
+
+ :allot {}
+
+ :and {}
+
+ :backslash {:name "\\"}
+
+ :base
+ {:args [[] [:aaddr]]
+  :pfa [:vmaddrlit "offsetof(EnforthVM, base)" :exit]}
+
+ :bl
+ {:args [[] [:c]]
+  :source ": BL ( --)  $20 ;"
+  :pfa [:charlit "' '" :exit]}
+
+ :ccomma {:name "C,"}
+
+ :cfetch {:name "C@"}
+
+ ;; : [CORE] 6.1.0450 "colon" ( C: "<spaces>name" -- colon-sys )
+ ;;
+ ;; Skip leading space delimiters.  Parse name delimited by a space.
+ ;; Create a definition for name, called a "colon definition".  Enter
+ ;; compilation state and start the current definition, producing
+ ;; colon-sys.  Append the initiation semantics given below to the
+ ;; current definition.
+ ;;
+ ;; The execution semantics of name will be determined by the words
+ ;; compiled into the body of the definition.  The current definition
+ ;; shall not be findable in the dictionary until it is ended (or until
+ ;; the execution of DOES> in some systems).
+ ;;
+ ;; Initiation: ( i*x -- i*x ) ( R: -- nest-sys )
+ ;;   Save implementation-dependent information nest-sys about the
+ ;;   calling definition.  The stack effects i*x represent arguments to
+ ;;   name.
+ ;;
+ ;; name Execution: ( i*x -- j*x )
+ ;;   Execute the definition name.  The stack effects i*x and j*x
+ ;;   represent arguments to and results from name, respectively.
+ :colon
+ {:name ":"
+  :args [[] []]
+  :source ": LFA>CFA ( addr -- addr)  1+ 1+ ;
+           : : ( \"<spaces>name\" -- )
+             CREATE  HIDE  CFADOCOLON LATEST @ LFA>CFA C! ;"
+  :pfa [:create :hide :charlit "kDefTypeCOLON" :latest :fetch
+        ; LFA>CFA
+          :oneplus :oneplus
+        :cstore :rtbracket
+        :exit]}
+
+ :comma {:name ","}
+
+ :compilecomma
+ {:name "COMPILE,"
+  :args [[:xt] []]
+  :source ": CFA>TOKEN ( def-type -- token)  $F0 OR ;
+           : COMPILE, ( xt --)
+             DUP TOKEN? IF C, EXIT THEN
+             DUP >CFA C@ CFA>[TOKEN] C,  >BODY 'DICT - W, ;"
+  :pfa [:dup :tokenq :zbranch 3
+          :ccomma :exit
+        :dup :tocfa :cfetch
+        ; CFA>[TOKEN]
+          :charlit 0xf0 :or
+        :ccomma :tobody
+        ; TICKDICT
+          :vmaddrlit "offsetof(EnforthVM, dictionary)" :fetch
+        :minus :wcomma
+        :exit]}
+
+ :count {}
+
+ :cstore {:name "C!"}
+
+ :cr
+ {:args [[] []]
+  :source ": CR ( --)  $0A EMIT ;"
+  :pfa [:charlit 0x0a :emit :exit]}
+
+ :create
+ {:args [[] []]
+  :source ": TERMINATE-NAME ( ca u -- ca u)  2DUP 1- +  $80 SWAP C+! ;
+           : S, ( ca u --)  TUCK  HERE SWAP MOVE  ALLOT ;
+           : NAME, ( ca u --)  TERMINATE-NAME S, ;
+           : >LATEST-OFFSET ( addr -- u)  LATEST @ DUP IF - ELSE NIP THEN ;
+           : CREATE ( \"<spaces>name\" -- )
+             BL PARSE-WORD DUP 0= IF ABORT THEN ( ca u)
+             HERE  DUP >LATEST-OFFSET W,  LATEST ! ( ca u)
+             CFADOCREATE C, ( ca u)  NAME,  ALIGN ;"
+  :pfa [:bl :parseword :dup :zeroequals :zbranch 2 :abort
+        :here :dup
+        ; >LATEST-OFFSET
+          :latest :fetch :dup :zbranch 4
+            :minus :branch 2
+            :nip
+        :wcomma :latest :store
+        :charlit "kDefTypeCREATE" :ccomma
+        ; NAME
+          ; TERMINATE-NAME
+            :twodup :oneminus :plus :charlit 0x80 :swap :cplusstore
+          ; S,
+            :tuck :here :swap :move :allot
+        :align
+        :exit]}
+
+ :depth {}
+
+ :dot
+ {:name "."
+  :args [[:n] []]
+  :source "BASE @ 10 <>  IF U. EXIT THEN
+          DUP ABS 0 <# #S ROT SIGN #> TYPE SPACE ;"
+  :pfa [:base :fetch :charlit 10 :notequals :zbranch 3 :udot :exit
+        :dup :abs :zero :lessnumsign :numsigns :rot :sign,
+        :numsigngrtr :type :space
+        :exit]}
+
+ :dup
+ {:args [[:x] [:x :x]]}
+
+ :drop
+ {:args [[:x1 :x2] [:x1]]}
+
+ :emit {}
+
+ :equals {:name "="}
+
+ :false {}
+
+ :fetch {:name "@"}
+
+ ;; EXECUTE [CORE] 6.1.1370 ( i*x xt -- j*x )
+ ;;
+ ;; Remove xt from the stack and perform the semantics identified by it.
+ ;; Other stack effects are due to the word EXECUTEd.
+ :execute
+ {:args [[:xt] []]
+  :source ": (EXECUTE) ( i*x token w -- j*x) ... ;
+           : EXECUTE ( i*x xt -- j*x)
+             DUP TOKEN? IF 0
+             ELSE DUP >CFA C@ CFA>TOKEN  SWAP >BODY THEN
+             (EXECUTE) ;"
+  :pfa [:dup :tokenq :zbranch 4
+          :zero :branch 9
+        :dup :tocfa :cfetch
+        ; CFA>TOKEN
+          :charlit 0xe0 :or
+        :swap :tobody
+        :pexecute
+        :exit]}
+
+ :greaterthan {:name ">"}
+
+ :here
+ {:args [[] [:addr]]
+  :pfa [:vmaddrlit "offsetof(EnforthVM, dp)" :fetch :exit]}
+
+ :hex {}
+
+ :hold {}
+
+ :invert {}
+
+ :key {}
+
+ :lessnumsign {:name "<#"}
+
+ :lessthan {:name "<"}
+
+ :literal
+ {:args [[:x] []]
+  :source ": LITERAL ( x --)
+             DUP $FF INVERT AND 0= IF CHARLIT C, C,
+             ELSE LIT C, , THEN ;"
+  :pfa [:dup :charlit 0xff :invert :and :zeroequals :zbranch 7
+          :charlit :charlit :ccomma :ccomma :branch 5
+          :charlit :lit :ccomma :comma
+        :exit]}
+
+ :ltbracket
+ {:name "["
+  :args [[] []]
+  :source ": [ ( --)  FALSE STATE ! ;"
+  :pfa [:false :state :store :exit]}
+
+ :minus {:name "-"}
+
+ :move {}
+
+ :mplus {:name "M+"}
+
+ :nip {}
+
+ :notequals {:name "<>"}
+
+ ;; # [CORE] 6.1.0030 "number-sign" ( ud1 -- ud2 )
+ ;;
+ ;; Divide ud1 by the number in BASE giving the quotient ud2 and the
+ ;; remainder n.  (n is the least-significant digit of ud1.) Convert n
+ ;; to external form and add the resulting character to the beginning
+ ;; of the pictured numeric output string.  An ambiguous condition
+ ;; exists if # executes outside of a <# #> delimited number
+ ;; conversion.
+ ;;
+ ;; ---
+ ;;
+ :numsign
+ {:name "#"
+  :source ": >DIGIT ( u -- c ) DUP 9 > 7 AND + 48 + ;
+           : # ( ud1 -- ud2 )   BASE @ UD/MOD ROT >digit HOLD ;"
+  :pfa [:base :fetch :udslashmod :rot
+        ; TODIGIT
+          :dup :charlit 9 :greaterthan :charlit 7 :and
+          :plus :charlit 48 :plus
+        :hold
+        :exit]}
+
+ :numsigngrtr {:name "#>"}
+
+ ;; #S [CORE] 6.1.0050 "number-sign-s" ( ud1 -- ud2 )
+ ;;
+ ;; Convert one digit of ud1 according to the rule for #.  Continue
+ ;; conversion until the quotient is zero.  ud2 is zero.  An ambiguous
+ ;; condition exists if #S executes outside of a <# #> delimited number
+ ;; conversion.
+ :numsigns
+ {:name "#S"
+  :args [[:ud1] [:ud2]]
+  :source ": #S ( ud1 -- 0 )   BEGIN # 2DUP OR WHILE REPEAT ;"
+  :pfa [:numsign :twodup :or :zbranch 3 :branch -6 :exit]}
+
+ :oneplus {:name "1+"}
+
+ :oneminus {:name "1-"}
+
+ :or {}
+
+ :over {}
+
+ :plus {:name "+"}
+
+ :plusstore {:name "+!"}
+
+ :qdup {:name "?DUP"}
+
+ ;; QUIT [CORE] 6.1.2050 ( -- ) ( R:  i*x -- )
+ ;;
+ ;; Empty the return stack, store zero in SOURCE-ID if it is
+ ;; present, make the user input device the input source, and
+ ;; enter interpretation state.  Do not display a message.
+ ;; Repeat the following:
+ ;;   - Accept a line from the input source into the input
+ ;;     buffer, set >IN to zero, and interpret.
+ ;;   - Display the implementation-defined system prompt if in
+ ;;     interpretation state, all processing has been completed,
+ ;;     and no ambiguous condition exists.
+ ;;
+ ;; ---
+ ;;
+ ;; Offset=124, Length=24 */
+ :quit
+ {
+  :args [[] []]
+  :source ": QUIT    --; R: i*x --)
+             INITRP  0 STATE !
+             BEGIN
+                 TIB  DUP TIBSIZE ACCEPT  SPACE
+                 INTERPRET
+                 CR  STATE @ 0= IF .\" ok \" THEN
+             AGAIN ;"
+  :pfa [:initrp :zero :state :store
+          :tib :dup :tibsize :accept :space
+          :interpret
+          :cr :state :fetch :zeroequals :zbranch 6
+          :pdotquote 3 "'o'" "'k'" "' '"
+          :branch -18]}
+
+ :rfetch {:name "R@"}
+
+ :rfrom {:name "R>"}
+
+ :rtbracket
+ {:name "]"
+  :flags #{:immediate}
+  :args [[] []]
+  :source ": ] ( --)  TRUE STATE ! ; IMMEDIATE"
+  :pfa [:true :state :store :exit]}
+
+ :rot {}
+
+ ;; ; [CORE] 6.1.0460 semicolon
+ ;;
+ ;; Interpretation:
+ ;;   Interpretation semantics for this word are undefined.
+ ;;
+ ;; Compilation: ( C: colon-sys -- )
+ ;;   Append the run-time semantics below to the current definition.
+ ;;   End the current definition, allow it to be found in the dictionary
+ ;;   and enter interpretation state, consuming colon-sys.  If the
+ ;;   data-space pointer is not aligned, reserve enough data space to
+ ;;   align it.
+ ;;
+ ;; Run-time: ( -- ) ( R: nest-sys -- )
+ ;;   Return to the calling definition specified by nest-sys.
+ :semicolon
+ {:name ";"
+  :args [[] []]
+  :flags #{:immediate}
+  :source ": ; ( --)   ['] EXIT COMPILE,  REVEAL  [ ; IMMEDIATE"
+  :pfa [:charlit :exit :compilecomma :reveal :ltbracket :exit]}
+
+ ;; SIGN [CORE] 6.1.2210 ( n -- )
+ ;;
+ ;; If n is negative, add a minus sign to the beginning of the pictured
+ ;; numeric output string.  An ambiguous condition exists if SIGN
+ ;; executes outside of a <# #> delimited number conversion.
+ ;;
+ ;; ---
+ ;; : SIGN ( n -- )   0< IF [CHAR] - HOLD THEN ;
+ ;; ZEROLESS, ZBRANCH, 4, CHARLIT, '-', HOLD, EXIT, 0,
+ :sign
+ {:args [[:n] []]
+  :source ": SIGN ( n -- )   0< IF [CHAR] - HOLD THEN ;"
+  :pfa [:zeroless :zbranch 4 :charlit "'-'" :hold :exit]}
+
+ :slashstring {:name "/STRING"}
+
+ :source
+ {:args [[] [:caddr :u]]
+  :pfa [:vmaddrlit "offsetof(EnforthVM, source_len)" :twofetch :exit]}
+
+ :space
+ {:args [[] []]
+  :source ": SPACE ( --)  BL EMIT ;"
+  :pfa [:bl :emit :exit]}
+
+ :state
+ {:args [[] [:aaddr]]
+  :pfa [:vmaddrlit "offsetof(EnforthVM, state)" :exit]}
+
+ :store {:name "!"}
+
+ :swap {}
+
+ :tobody
+ {:name ">BODY"
+  :args [[:xt] [:f]]
+  :source ": FFI? ( xt -- f)  >CFA C@ kDefTypeFFI0 1- > ;
+           : >BODY ( xt -- a-addr)
+             DUP >CFA 1+  SWAP FFI? IF EXIT THEN
+             BEGIN DUP C@ $80 AND 0= WHILE 1+ REPEAT 1+ ;"
+  :pfa [:dup :tocfa :oneplus :swap
+        ; FFI?
+          :tocfa :cfetch :charlit "kDefTypeFFI0-1" :greaterthan
+        :zbranch 2 :exit
+        :dup :cfetch :charlit 0x80 :and :zeroequals :zbranch 4
+          :oneplus :branch -10
+        :oneplus
+        :exit]}
+
+ :toin
+ {:name ">IN"
+  :args [[] [:aaddr]]
+  :pfa [:vmaddrlit "offsetof(EnforthVM, to_in)" :exit]}
+
+ ;; >NUMBER [CORE] 6.1.0567 "to-number" ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 )
+ ;;
+ ;; ud2 is the unsigned result of converting the characters
+ ;; within the string specified by c-addr1 u1 into digits, using
+ ;; the number in BASE, and adding each into ud1 after
+ ;; multiplying ud1 by the number in BASE.  Conversion continues
+ ;; left-to-right until a character that is not convertible,
+ ;; including any "+" or "-", is encountered or the string is
+ ;; entirely converted.  c-addr2 is the location of the first
+ ;; unconverted character or the first character past the end of
+ ;; the string if the string was entirely converted.  u2 is the
+ ;; number of unconverted characters in the string.  An ambiguous
+ ;; condition exists if ud2 overflows during the conversion.
+ :tonumber
+ {:name ">NUMBER"
+  :args [[:ud1 :u1] [:u2]]
+  :source ": UD* ( ud1 u1 -- ud2)   DUP >R UM* DROP  SWAP R> UM* ROT + ;
+           : >NUMBER ( ud1 c-addr1 u1 -- ud2 c-addr2 u2)
+             BEGIN DUP WHILE
+                OVER C@ DIGIT?  0= IF DROP EXIT THEN
+                >R 2SWAP BASE @ UD* R> M+ 2SWAP
+                1 /STRING
+             REPEAT ;"
+  :pfa [:dup :zbranch 30
+          :over :cfetch :digitq :zeroequals :zbranch 3 :drop :exit
+          :tor :twoswap :base :fetch
+          ; UD*
+            :dup :tor :umstar :drop :swap :rfrom :umstar :rot :plus
+          :rfrom :mplus :twoswap
+          :charlit 1 :slashstring
+          :branch -31
+        :exit]}
+
+ :tor {:name ">R"}
+
+ :true {}
+
+ :tuck {}
+
+ :twodrop {:name "2DROP"}
+
+ :twodup {:name "2DUP"}
+
+ :twofetch {:name "2@"}
+
+ :twostore {:name "2!"}
+
+ :twoswap {:name "2SWAP"}
+
+ :twoover {:name "2OVER"}
+
+ :type
+  {:args [[:caddr :u] []]
+   :source ": TYPE ( c-addr u --)
+              OVER + SWAP  ( ca-end ca-next)
+              BEGIN 2DUP <> WHILE DUP C@ EMIT 1+ REPEAT 2DROP ;"
+   :pfa [:over :plus :swap
+         :twodup :notequals :zbranch 7
+           :dup :cfetch :emit :oneplus :branch -9
+         :twodrop
+         :exit]}
+
+ ;; U. [CORE] 6.1.2320 u-dot ( u -- )
+ ;;
+ ;; Display u in free field format.
+ :udot
+ {:name "U."
+  :args [[:u] []]
+  :source ": U. ( u --)  0 <# #S #> TYPE SPACE ;"
+  :pfa [:zero :lessnumsign :numsigns :numsigngrtr :type :space :exit]}
+
+ :ugreaterthan {:name "U>"}
+
+ :umstar {:name "UM*"}
+
+ :zeroequals {:name "0="}
+
+ :zeroless {:name "0<"}
+
+}
