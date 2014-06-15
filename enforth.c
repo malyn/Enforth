@@ -114,13 +114,13 @@ typedef enum EnforthToken
     QDUP,
     UMSTAR,
         NUMSIGNS = 0x16,
-unused_was_STATE,
+    TRUE,
 
     /* $18 - $1F */
         SIGN = 0x18,
     STORE,
         NUMSIGN = 0x1a,
-unused_was_TOIN,
+    FALSE,
 
     TWODROP,
     MPLUS,
@@ -129,7 +129,7 @@ unused_was_TOIN,
 
     /* $20 - $27 */
     ZEROEQUALS,
-    BL,
+unused_was_BL,
     CFETCH,
     COUNT,
 
@@ -155,9 +155,9 @@ unused_was_HERE,
         ACCEPT = 0x32,
     WCOMMA,
 
-    RTBRACKET,
+unused_was_RTBRACKET,
     CSTORE,
-    LTBRACKET,
+unused_was_LTBRACKET,
     ABS,
 
     /* $38 - $3F */
@@ -226,8 +226,14 @@ unused_was_BASE,
         TIBSIZE = 0x84,
         TOIN = 0x85,
         STATE = 0x86,
+        BL = 0x87,
 
     /* $88 - $8F */
+        HIDE = 0x88,
+        REVEAL = 0x8b,
+        RTBRACKET = 0x8e,
+        LTBRACKET = 0x8f,
+
     /* $90 - $97 */
     /* $98 - $9F */
     /* $A0 - $A7 */
@@ -243,12 +249,12 @@ unused_was_BASE,
 
     /* $D0 - $D7 */
     CHARLIT = 0xd0,
-    REVEAL,
+unused_was_REVEAL,
     ZBRANCH,
 unused_was_LATEST,
 
     BRANCH,
-    HIDE,
+unuased_was_HIDE,
     INITRP,
 unused_was_TIB,
 
@@ -350,13 +356,13 @@ static const char kDefinitionNames[] PROGMEM =
     "\x04" "?DUP"
     "\x03" "UM*"
     "\x02" "#S"
-"\x00" /* UNUSED */
+    "\x04" "TRUE"
 
     /* $18 - $1F */
     "\x04" "SIGN"
     "\x01" "!"
     "\x01" "#"
-"\x00" /* UNUSED */
+    "\x05" "FALSE"
 
     "\x05" "2DROP"
     "\x02" "M+"
@@ -365,7 +371,7 @@ static const char kDefinitionNames[] PROGMEM =
 
     /* $20 - $27 */
     "\x02" "0="
-    "\x02" "BL"
+"\x00" /* UNUSED */
     "\x02" "C@"
     "\x05" "COUNT"
 
@@ -391,9 +397,9 @@ static const char kDefinitionNames[] PROGMEM =
     "\x06" "ACCEPT"
     "\x02" "W,"
 
-    "\x01" "]"
+"\x00" /* UNUSED was ] */
     "\x02" "C!"
-    "\x81" "["
+"\x00" /* UNUSED was [ */
     "\x03" "ABS"
 
     /* $38 - $3F */
@@ -501,6 +507,15 @@ static const char kDefinitionNames[] PROGMEM =
     "\x00" /* TIBSIZE */
     "\x03" ">IN"
     "\x05" "STATE"
+    "\x02" "BL"
+    "\x00" /* HIDE */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x00" /* REVEAL */
+    "\x00" /* UNUSED */
+    "\x00" /* UNUSED */
+    "\x01" "]"
+    "\x81" "["
 
     /* End byte */
     "\xff"
@@ -916,20 +931,21 @@ static const int8_t definitions[] PROGMEM = {
      * ---
      * : DIGIT? ( char -- u -1 | 0)
      *   [CHAR] 0 -           DUP 0< IF DROP 0 EXIT THEN
-     *   DUP 9 > IF DUP 16 < IF DROP 0 EXIT ELSE 7 - THEN THEN
+     *   DUP 9 > IF DUP 16 < IF DROP FALSE EXIT ELSE 7 - THEN THEN
      *   DUP 1+ BASE @ > IF DROP FALSE ELSE TRUE THEN ;
      *
-     * Offset=416, Length=41 */
+     * Offset=416, Length=40 (44) */
     CHARLIT, '0', MINUS,
     DUP, ZEROLESS, ZBRANCH, 4, DROP, ZERO, EXIT,
     DUP, CHARLIT, 9, GREATERTHAN, ZBRANCH, 13,
         DUP, CHARLIT, 17, LESSTHAN, ZBRANCH, 4,
-            DROP, ZERO, EXIT,
+            DROP, FALSE, EXIT,
             CHARLIT, 7, MINUS,
     DUP, ONEPLUS, BASE, FETCH, UGREATERTHAN, ZBRANCH, 4,
-        DROP, ZERO, EXIT, /* TODO: Replace with FALSE */
-        ZERO, INVERT, /* TODO: Replace with TRUE */
-    EXIT, 0, 0, 0,
+        DROP, FALSE, EXIT,
+        TRUE,
+    EXIT,
+    0, 0, 0, 0, /* TODO Remove these now-unneccesary padding bytes */
 
     /* -------------------------------------------------------------
      * >NUMBER [CORE] 6.1.0567 "to-number" ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 )
@@ -975,12 +991,12 @@ static const int8_t definitions[] PROGMEM = {
      * ---
      * TODO Implement this for real.
      * : NUMBER? ( c-addr u -- c-addr u 0 | n -1)
-     *   0 0 2SWAP >NUMBER 2DROP DROP -1 ;
+     *   0 0 2SWAP >NUMBER 2DROP DROP TRUE ;
      *
-     * Offset=496, Length=9 */
-    /* TODO Replace ZERO INVERT with TRUE. */
-    ZERO, ZERO, TWOSWAP, TONUMBER, TWODROP, DROP, ZERO, INVERT,
-    EXIT, 0, 0, 0,
+     * Offset=496, Length=8 (12) */
+    ZERO, ZERO, TWOSWAP, TONUMBER, TWODROP, DROP, TRUE,
+    EXIT,
+    0, 0, 0, 0, /* TODO Remove these now-unneccesary padding bytes */
 
     /* : SOURCE ( -- c-addr u)
      *   'SOURCELEN 2@ ;
@@ -1031,6 +1047,59 @@ static const int8_t definitions[] PROGMEM = {
      * Offset=536, Length=3 */
     VMADDRLIT, offsetof(EnforthVM, state),
     EXIT, 0,
+
+    /* : BL ( -- c)  $20 ;
+     *
+     * Offset=540, Length=3 */
+    CHARLIT, ' ',
+    EXIT, 0,
+
+    /* -------------------------------------------------------------
+     * HIDE [ENFORTH] ( -- )
+     *
+     * Prevent the most recent definition from being found in the
+     * dictionary.
+     * ---
+     * : HIDE ( --)  LATEST @  +LFA  DUP C@ $80 OR  SWAP C! ;
+     *
+     * Offset=544, Length=12 */
+    LATEST, FETCH,
+        /* PLUSLFA */
+            ONEPLUS, ONEPLUS,
+    DUP, CFETCH, CHARLIT, 0x80, OR, SWAP, CSTORE,
+    EXIT,
+
+    /* -------------------------------------------------------------
+     * REVEAL [ENFORTH] ( -- )
+     * ---
+     * : REVEAL ( --)  LATEST @  +LFA  DUP C@ $7F AND  SWAP C! ;
+     *
+     * Offset=556, Length=12 */
+    LATEST, FETCH,
+        /* PLUSLFA */
+            ONEPLUS, ONEPLUS,
+    DUP, CFETCH, CHARLIT, 0x7f, AND, SWAP, CSTORE,
+    EXIT,
+
+    /* -------------------------------------------------------------
+     * ] [CORE] 6.1.2540 "right-bracket" ( -- )
+     *
+     * Enter compilation state.
+     * ---
+     * : ] ( --)  TRUE STATE ! ; IMMEDIATE
+     *
+     * Offset=568, Length=4 */
+    TRUE, STATE, STORE,
+    EXIT,
+
+    /* -------------------------------------------------------------
+     *
+     * ---
+     * : [ ( --)  FALSE STATE ! ;
+     *
+     * Offset=572, Length=4 */
+    FALSE, STATE, STORE,
+    EXIT,
 };
 
 
@@ -1286,13 +1355,13 @@ void enforth_go(EnforthVM * const vm)
         &&QDUP,
         &&UMSTAR,
             &&DOCOLONROM, /* NUMSIGNS */
-    0, /* UNUSED */
+        &&TRUE,
 
         /* $18 - $1F */
             &&DOCOLONROM, /* SIGN */
         &&STORE,
             &&DOCOLONROM, /* NUMSIGN */
-    0, /* UNUSED */
+        &&FALSE,
 
         &&TWODROP,
         &&MPLUS,
@@ -1301,7 +1370,7 @@ void enforth_go(EnforthVM * const vm)
 
         /* $20 - $27 */
         &&ZEROEQUALS,
-        &&BL,
+    0, /* UNUSED */
         &&CFETCH,
         &&COUNT,
 
@@ -1327,9 +1396,9 @@ void enforth_go(EnforthVM * const vm)
             &&DOCOLONROM, /* ACCEPT */
         &&WCOMMA,
 
-        &&RTBRACKET,
+    0, /* UNUSED */
         &&CSTORE,
-        &&LTBRACKET,
+    0, /* UNUSED */
         &&ABS,
 
         /* $38 - $3F */
@@ -1417,10 +1486,17 @@ void enforth_go(EnforthVM * const vm)
             &&DOCOLONROM, /* TIBSIZE */
             &&DOCOLONROM, /* >IN */
             &&DOCOLONROM, /* STATE */
-        0,
+            &&DOCOLONROM, /* BL */
 
         /* $88 - $8F */
-        0,0,0,0, 0,0,0,0,
+            &&DOCOLONROM, /* HIDE */
+        0, 0,
+            &&DOCOLONROM, /* REVEAL */
+
+        0, 0,
+            &&DOCOLONROM, /* RTBRACKET */
+            &&DOCOLONROM, /* LTBRACKET */
+
         /* $90 - $97 */
         0,0,0,0, 0,0,0,0,
         /* $98 - $9F */
@@ -1445,12 +1521,12 @@ void enforth_go(EnforthVM * const vm)
 
         /* $D0 - $D7 */
         &&CHARLIT,
-        &&REVEAL,
+    0, /* UNUSED */
         &&ZBRANCH,
     0, /* UNUSED */
 
         &&BRANCH,
-        &&HIDE,
+    0, /* UNUSED */
         &&INITRP,
     0, /* UNUSED */
 
@@ -1934,6 +2010,15 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        TRUE:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos.i = -1;
+        }
+        continue;
+
+        FALSE:
         ZERO:
         {
             CHECK_STACK(0, 1);
@@ -1971,14 +2056,6 @@ DISPATCH_TOKEN:
 
             /* Advance IP over the string. */
             ip = ip + tos.i;
-        }
-        continue;
-
-        BL:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            tos.u = ' ';
         }
         continue;
 
@@ -2187,27 +2264,6 @@ DISPATCH_TOKEN:
         continue;
 
         /* -------------------------------------------------------------
-         * HIDE [ENFORTH] ( -- )
-         *
-         * Prevent the most recent definition from being found in the
-         * dictionary. */
-        HIDE:
-        {
-            *(vm->latest.ram + 2) |= 0x80;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-         * ] [CORE] 6.1.2540 "right-bracket" ( -- )
-         *
-         * Enter compilation state. */
-        RTBRACKET:
-        {
-            vm->state = -1;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
          * C! [CORE] 6.1.0850 "c-store" ( char c-addr -- )
          *
          * Store char at c-addr.  When character size is smaller than
@@ -2218,18 +2274,6 @@ DISPATCH_TOKEN:
             CHECK_STACK(2, 0);
             *(uint8_t*)tos.ram = restDataStack++->u;
             tos = *restDataStack++;
-        }
-        continue;
-
-        REVEAL:
-        {
-            *(vm->latest.ram + 2) &= 0x7f;
-        }
-        continue;
-
-        LTBRACKET:
-        {
-            vm->state = 0;
         }
         continue;
 

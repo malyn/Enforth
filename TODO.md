@@ -1,4 +1,4 @@
-* Move `[`, `]`, HIDE, REVEAL, etc. into Forth definitions?
+* Move pictured numeric output words (and HEX) into Forth definitions?
 * See about moving some/all of the paren\* methods into Forth definitions.  Maybe convert some of the existing code primitives into Forth definitions as well (when they aren't perf-sensitive).
 * Make ROM definition IPs on the return stack relative to the start of the ROM definition block.  We can do this now that all of the ROM definitions are finally in this one block.
 * Support backspace in `ACCEPT`.
