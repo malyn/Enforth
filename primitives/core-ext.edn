@@ -1,0 +1,4 @@
+{:token :hex
+ :args [[] []]
+ :source ": HEX ( --)  16 BASE ! ;"
+ :pfa [:charlit 16 :base :store :exit]}

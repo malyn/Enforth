@@ -1000,16 +1000,6 @@ DISPATCH_TOKEN:
         }
         continue;
 
-        /* -------------------------------------------------------------
-         * HEX [CORE EXT] 6.2.1660 ( -- )
-         *
-         * Set contents of BASE to sixteen. */
-        HEX:
-        {
-            vm->base = 16;
-        }
-        continue;
-
         TWODUP:
         {
             CHECK_STACK(2, 4);
@@ -1121,12 +1111,6 @@ DISPATCH_TOKEN:
         }
         continue;
 
-        LESSNUMSIGN:
-        {
-            vm->hld = vm->dp.ram + (kEnforthCellSize*8*3);
-        }
-        continue;
-
         /* -------------------------------------------------------------
          * ROT [CORE] 6.1.2160 "rote" ( x1 x2 x3 -- x2 x3 x1 )
          *
@@ -1144,24 +1128,6 @@ DISPATCH_TOKEN:
         continue;
 
         /* -------------------------------------------------------------
-         * #> [CORE] 6.1.0040 "number-sign-greater" ( xd -- c-addr u )
-         *
-         * Drop xd.  Make the pictured numeric output string available
-         * as a character string.  c-addr and u specify the resulting
-         * character string.  A program may replace characters within
-         * the string.
-         *
-         * ---
-         * : #> ( xd -- c-addr u ) DROP DROP  HLD @  HERE HLDEND +  OVER - ;
-         */
-        NUMSIGNGRTR:
-        {
-            restDataStack->ram = vm->hld;
-            tos.u = (vm->dp.ram + (kEnforthCellSize*8*3)) - vm->hld;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
          * 0< [CORE] 6.1.0250 "zero-less" ( b -- flag )
          *
          * flag is true if and only if n is less than zero. */
@@ -1169,20 +1135,6 @@ DISPATCH_TOKEN:
         {
             CHECK_STACK(1, 0);
             tos.i = tos.i < 0 ? -1 : 0;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-         * HOLD [CORE] 6.1.1670 ( char -- )
-         *
-         * Add char to the beginning of the pictured numeric output
-         * string.  An ambiguous condition exists if HOLD executes
-         * outside of a <# #> delimited number conversion. */
-        HOLD:
-        {
-            CHECK_STACK(1, 0);
-            *--vm->hld = tos.u;
-            tos = *restDataStack++;
         }
         continue;
 

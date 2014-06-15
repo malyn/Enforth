@@ -199,15 +199,31 @@
  :args [[] [:addr]]
  :pfa [:vmaddrlit "offsetof(EnforthVM, dp)" :fetch :exit]}
 
-{:token :hex}
-
-{:token :hold}
+;; HOLD [CORE] 6.1.1670 ( char -- )
+;;
+;; Add char to the beginning of the pictured numeric output string.  An
+;; ambiguous condition exists if HOLD executes outside of a <# #>
+;; delimited number conversion.
+{:token :hold
+ :args [[:c] []]
+ :source ": HOLD ( c -- )   HLD @ 1- DUP HLD ! C! ;"
+ :pfa [:hld :fetch :oneminus :dup :hld :store :cstore :exit]}
 
 {:token :invert}
 
 {:token :key}
 
-{:token :lessnumsign :name "<#"}
+;; <# [CORE] 6.1.0490 "less-number-sign" ( -- )
+;;
+;; Initialize the pictured numeric output conversion process.
+;
+; ---
+; : <# ( -- )   HERE HLDEND + HLD ! ;
+{:token :lessnumsign
+ :name "<#"
+ :args [[] []]
+ :source ": <# ( -- )   HERE HLDEND + HLD ! ;"
+ :pfa [:here :hldend :plus :hld :store :exit]}
 
 {:token :lessthan :name "<"}
 
@@ -245,9 +261,6 @@
 ;; of the pictured numeric output string.  An ambiguous condition
 ;; exists if # executes outside of a <# #> delimited number
 ;; conversion.
-;;
-;; ---
-;;
 {:token :numsign
  :name "#"
  :source ": >DIGIT ( u -- c ) DUP 9 > 7 AND + 48 + ;
@@ -259,7 +272,16 @@
        :hold
        :exit]}
 
-{:token :numsigngrtr :name "#>"}
+;; #> [CORE] 6.1.0040 "number-sign-greater" ( xd -- c-addr u )
+;;
+;; Drop xd.  Make the pictured numeric output string available as a
+;; character string.  c-addr and u specify the resulting character
+;; string.  A program may replace characters within the string.
+{:token :numsigngrtr
+ :name "#>"
+ :args [[:xd] [:caddr :u]]
+ :source "#> ( xd -- c-addr u ) DROP DROP  HLD @  HERE HLDEND +  OVER - ;"
+ :pfa [:drop :drop :hld :fetch :here :hldend :plus :over :minus :exit]}
 
 ;; #S [CORE] 6.1.0050 "number-sign-s" ( ud1 -- ud2 )
 ;;

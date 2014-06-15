@@ -86,7 +86,7 @@ typedef union
     uint8_t * ram;
 } EnforthCell;
 
-static const int kEnforthCellSize = sizeof(EnforthCell);
+#define kEnforthCellSize (sizeof(EnforthCell))
 
 
 

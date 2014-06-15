@@ -45,6 +45,17 @@
        :dup :cfetch :charlit 0x80 :or :swap :cstore
        :exit]}
 
+{:token :hld
+ :args [[] [:aaddr]]
+ :flags #{:headerless}
+ :pfa [:vmaddrlit "offsetof(EnforthVM, hld)" :exit]}
+
+{:token :hldend
+ :args [[] [:c]]
+ :flags #{:headerless}
+ :source ": HLDEND ( -- u)  [ 1 CELLS 8 * 3 * ] ;"
+ :pfa [:charlit "kEnforthCellSize * 8 * 3" :exit]}
+
 {:token :initrp :flags #{:headerless}}
 
 {:token :interpret
