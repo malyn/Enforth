@@ -1,4 +1,3 @@
-* Make the `.edn` files a series of maps (one per definition) instead of one big map.  This will make it easier/possible to auto-format the maps without Vim getting confused by strings that contain special characters.
 * Move pictured numeric output words (and HEX) into Forth definitions?
 * See about moving some/all of the paren\* methods into Forth definitions.  Maybe convert some of the existing code primitives into Forth definitions as well (when they aren't perf-sensitive).
 * Add `EVALUATE` and `enforth_evaluate` and use that instead of `enforth_add_definition` (which we'll then remove).

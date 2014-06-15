@@ -22,12 +22,12 @@
   (s/replace orig "\\" "\\\\"))
 
 (defn parse-def
-  [[id {[args-in args-out] :args
-        :keys [name flags source pfa]
-        :or {flags #{}}}]]
-  {:id id
-   :token-name (id-to-token id)
-   :name (or name (id-to-name id))
+  [{[args-in args-out] :args
+    :keys [token name flags source pfa]
+    :or {flags #{}}}]
+  {:id token
+   :token-name (id-to-token token)
+   :name (or name (id-to-name token))
    :args-in args-in
    :args-out args-out
    :source source
@@ -39,12 +39,13 @@
    :immediate? (flags :immediate)})
 
 (defn load-def
-  "Returns all of the definitions in the given file."
+  "Returns a vector of all of the definitions in the given file."
   [path]
   (with-open [rdr (java.io.PushbackReader. (clojure.java.io/reader path))]
-    (->> rdr
-         edn/read
-         (map parse-def))))
+    (loop [defs []]
+      (if-let [next-def (edn/read {:eof nil} rdr)]
+        (recur (conj defs (parse-def next-def)))
+        defs))))
 
 (defn compare-primitives
   [this that]
