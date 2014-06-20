@@ -871,6 +871,13 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        ZERONOTEQUALS:
+        {
+            CHECK_STACK(1, 1);
+            tos.i = tos.i != 0 ? -1 : 0;
+        }
+        continue;
+
         /* -------------------------------------------------------------
          * (s") [ENFORTH] "paren-s-quote-paren" ( -- c-addr u )
          *

@@ -10,25 +10,26 @@
 "\x01" "0"
 "\x01" "."
 "\x02" "0<"
+"\x03" "0<>"
 "\x02" "0="
 "\x02" "1+"
-"\x02" "1-"
 "\x01" ":"
+"\x02" "1-"
 "\x02" "2!"
-"\x02" "2@"
 "\x81" ";"
-"\x05" "2DROP"
+"\x02" "2@"
 "\x02" "<#"
-"\x04" "2DUP"
+"\x05" "2DROP"
 "\x05" ">BODY"
+"\x04" "2DUP"
 "\x05" "2OVER"
 "\x05" "2SWAP"
 "\x01" "<"
 "\x02" "<>"
 "\x01" "="
-"\x01" ">"
 "\x03" ">IN"
 "\x07" ">NUMBER"
+"\x01" ">"
 "\x02" ">R"
 "\x04" "?DUP"
 "\x01" "@"
@@ -36,24 +37,24 @@
 "\x03" "ABS"
 "\x05" "ALIGN"
 "\x05" "ALLOT"
-"\x03" "AND"
 "\x06" "ACCEPT"
+"\x03" "AND"
 "\x02" "C!"
 "\x03" "C+!"
 "\x02" "C,"
 "\x02" "C@"
 "\x05" "COUNT"
 "\x05" "DEPTH"
-"\x04" "DROP"
 "\x04" "BASE"
 "\x02" "BL"
 "\x08" "COMPILE,"
+"\x04" "DROP"
 "\x03" "DUP"
 "\x04" "EMIT"
 "\x05" "FALSE"
-"\x06" "INVERT"
 "\x02" "CR"
 "\x06" "CREATE"
+"\x06" "INVERT"
 "\x03" "KEY"
 "\x02" "M+"
 "\x04" "MOVE"
@@ -62,40 +63,39 @@
 "\x04" "OVER"
 "\x02" "R>"
 "\x02" "R@"
-"\x03" "ROT"
 "\x07" "EXECUTE"
+"\x03" "ROT"
 "\x04" "SWAP"
 "\x04" "TRUE"
 "\x04" "TUCK"
-"\x02" "U>"
 "\x04" "HERE"
 "\x03" "HEX"
-"\x03" "UM*"
+"\x02" "U>"
 "\x04" "HOLD"
-"\x01" "\\"
+"\x03" "UM*"
 "\x06" "LATEST"
 "\x07" "LITERAL"
+"\x01" "\\"
 "\x00" /* PDOTQUOTE */
 "\x00" /* PEXECUTE */
 "\x00" /* LIT */
-"\x00" /* PSQUOTE */
 "\x04" "QUIT"
+"\x00" /* PSQUOTE */
 "\x00" /* ZBRANCH */
 "\x00" /* BRANCH */
 "\x00" /* CHARLIT */
 "\x00" /* FINDWORD */
-"\x00" /* INITRP */
 "\x04" "SIGN"
-"\x00" /* UDSLASHMOD */
+"\x00" /* INITRP */
 "\x06" "SOURCE"
 "\x05" "SPACE"
 "\x05" "STATE"
 "\x04" "TYPE"
+"\x00" /* UDSLASHMOD */
 "\x00" /* VMADDRLIT */
 "\x00" /* WCOMMA */
-"\x00" /* WLIT */
 "\x02" "U."
-"\x00"
+"\x00" /* WLIT */
 "\x01" "["
 "\x81" "]"
 "\x00" /* TOCFA */

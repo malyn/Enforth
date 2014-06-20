@@ -2,3 +2,7 @@
  :args [[] []]
  :source ": HEX ( --)  16 BASE ! ;"
  :pfa [:charlit 16 :base :store :exit]}
+
+{:token :zeronotequals
+ :name "0<>"
+ :args [[:x] [:f]]}
