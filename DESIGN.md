@@ -114,31 +114,39 @@ Note that getting the name of an FFI definition is much slower, because we have 
 
 Flag layout:
 
-* 1 bit for the smudge field.
-* 3 unused bits.
-* 4-bits for the type of definition (`DOCOLON`, `DOIMM`, `DOVAR`, `DOFFI0`, `DOFFI1`, etc.).  Note that we make immediate a variant of `DOCOLON` since we have some unused enum values here anyway.  This value is a calculated index into the jump table and effectively forms the CFA for the word.
+* 5 bits for the length of the name (`:NONAME` words have a zero-length name).  `DOFFI` trampolines still have their name length here (copied over from the FFI definition) in order to simplify string comparisons and because FFI definitions use NUL-terminated strings instead of length-prefixed strings.  Storing the length makes it possible to put `c-addr u` on the stack even with these definitions (although `c-addr` will be in code space...).
+* 3 bits for the type of definition (`DOCOLON`, `DOIMMEDIATE`, `DOVARIABLE`, `DOFFI`, etc.).  Note that "immediate" and "smudged" are both variants of `DOCOLON` since we have some unused enum values here anyway and we don't want to waste flag bits.  This value is a calculated index into the jump table and effectively forms the CFA for the word.  `EXECUTE` and `COMPILE,` turn `DOFFI` definition types are into tokens by reading the number of args from the FFI definition.
 
 Definition types:
 
-0. `DOCOLON`
-1. `DOIMMEDIATE`
-2. `DOCONSTANT`
-3. `DOCREATE`
-4. `DODOES`
-5. `DOVARIABLE`
-6. `DOFFI0`
-7. `DOFFI1`
-8. `DOFFI2`
-9. `DOFFI3`
-10. `DOFFI4`
-11. `DOFFI5`
-12. `DOFFI6`
-13. `DOFFI7`
-14. `DOFFI8`
+0. `DOFFI`
+1. `DOCOLONHIDDEN`
+2. `DOCOLON`
+3. `DOCOLONIMMEDIATE`
+4. `DOCONSTANT`
+5. `DOCREATE`
+6. `DODOES`
+7. `DOVARIABLE`
 
-User-defined words then have their NFA string, which is terminated by a character with the high bit set.
+User-defined words then have their NFA string, which is a series of 8-bit characters whose length is specified by the upper 5 bits of the flag field.
 
 Instead of a string-based NFA, FFI trampolines have a 16/24/32-bit reference to the FFI linked list entry in program space.
+
+Names:
+
+* **LFA**: Link Field Address (16 bits)
+* **Flags**: Flags (8 bits)
+* **NFA**: Name Field Address (*n* 8-bit characters)
+* **PFA**: Parameter Field Address
+
+Words:
+
+* `>TOKEN`: Given an XT, return the token used to execute the definition for that XT.  Note that the PFA will also be needed by `(EXECUTE)` as part of executing the definition.  This can be obtained with `>BODY`.  Note that XTs may refer to tokens (instead of definitions) and so this word returns its input in that situation.  XTs that point to FFI definitions will force `>TOKEN` to introspect the FFI definition order to pick the appropriate `DOFFI*` primitive.
+* `>[TOKEN]`: Given an XT, return the compilation token for that definition (which may be different than the execution token).  Note that XTs may refer to tokens (instead of definitions) and so this word returns its input in that situation.  XTs that point to FFI definitions will force `>TOKEN` to introspect the FFI definition order to pick the appropriate `DOFFI*` primitive.
+* `>LFA`: Given an XT, return the LFA (which is an address in RAM).
+* `>BODY`: Given an XT, return the PFA (which is an address in RAM).  Note that XTs may refer to tokens (instead of definitions) and tokens do not have a PFA; in that case zero will be returned (which is then ignored by `(EXECUTE)` anyway).
+* `>DEF-TYPE`: Given an XT, return the type of definition.
+* `NFA-LENGTH`: Given an XT, return the length of the NFA.
 
 ## Kernel
 

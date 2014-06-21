@@ -1,7 +1,8 @@
-* Make NFAs the same (cfa&length+chars) everywhere -- in dictionary definitions and in the names table.
-  * This will make it easier to compare names, because a name is always just a counted string (with the higher bits masked off).  No need to mask off the high bit of each character either, because we no longer use that bit to terminate the NFA.
-  * The real value here is that it simplifies the Forth-based dictionary searches, which no longer have to deal with different types of strings.  Note that the names table is in ROM and will ultimately need a different word though (C@C "c-fetch from code space") or something).
+* Use the new NFA, unified structure (cfa&length+chars) to implement `FIND-WORD` (as `FIND`) in Forth.
+  * A name is always a counted string now (with the higher bits masked off).  No need to mask off the high bit of each character either, because we no longer use that bit to terminate the NFA.
+  * Dictionary searches no longer have to deal with different types of strings.  Note that the names table is in ROM and will ultimately need a different word though (C@C "c-fetch from code space") or something).
 * See about moving some/all of the paren\* methods into Forth definitions.  Maybe convert some of the existing code primitives into Forth definitions as well (when they aren't perf-sensitive).
+* Finish implementing `NUMBER?` so that unknown words are detected.
 * Add `EVALUATE` and `enforth_evaluate` and use that instead of `enforth_add_definition` (which we'll then remove).
 * Make ROM definition IPs on the return stack relative to the start of the ROM definition block.  We can do this now that all of the ROM definitions are finally in this one block.
 * Support backspace in `ACCEPT`.

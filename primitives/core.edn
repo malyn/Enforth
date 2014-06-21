@@ -85,13 +85,10 @@
 {:token :colon
  :name ":"
  :args [[] []]
- :source ": LFA>CFA ( addr -- addr)  1+ 1+ ;
-          : : ( \"<spaces>name\" -- )
-            CREATE  HIDE  CFADOCOLON LATEST @ LFA>CFA C! ;"
- :pfa [:create :hide :charlit "kDefTypeCOLON" :latest :fetch
-       ; LFA>CFA
-         :oneplus :oneplus
-       :cstore :rtbracket
+ :source ": : ( \"<spaces>name\" -- )
+            CREATE  kDefTypeCOLONHIDDEN CHANGE-LATEST-DEF-TYPE  ] ;"
+ :pfa [:create :charlit "kDefTypeCOLONHIDDEN" :changelatestdeftype
+       :rtbracket
        :exit]}
 
 {:token :comma :name ","}
@@ -99,19 +96,12 @@
 {:token :compilecomma
  :name "COMPILE,"
  :args [[:xt] []]
- :source ": CFA>TOKEN ( def-type -- token)  $F0 OR ;
-          : COMPILE, ( xt --)
-            DUP TOKEN? IF C, EXIT THEN
-            DUP >CFA C@ CFA>[TOKEN] C,  >BODY 'DICT - W, ;"
- :pfa [:dup :tokenq :zbranch 3
-         :ccomma :exit
-       :dup :tocfa :cfetch
-       ; CFA>[TOKEN]
-         :charlit 0xf0 :or
-       :ccomma :tobody
-       ; TICKDICT
-         :vmaddrlit "offsetof(EnforthVM, dictionary)" :fetch
-       :minus :wcomma
+ :source ": COMPILE, ( xt --)  DUP >[TOKEN] C,  >BODY ?DUP IF 'DICT - W, ;"
+ :pfa [:dup :tocompiletoken :ccomma
+       :tobody :qdup :zbranch 6
+         ; TICKDICT
+           :vmaddrlit "offsetof(EnforthVM, dictionary)" :fetch
+         :minus :wcomma
        :exit]}
 
 {:token :count}
@@ -125,14 +115,12 @@
 
 {:token :create
  :args [[] []]
- :source ": TERMINATE-NAME ( ca u -- ca u)  2DUP 1- +  $80 SWAP C+! ;
-          : S, ( ca u --)  TUCK  HERE SWAP MOVE  ALLOT ;
-          : NAME, ( ca u --)  TERMINATE-NAME S, ;
+ :source ": S, ( ca u --)  TUCK  HERE SWAP MOVE  ALLOT ;
           : >LATEST-OFFSET ( addr -- u)  LATEST @ DUP IF - ELSE NIP THEN ;
           : CREATE ( \"<spaces>name\" -- )
             BL PARSE-WORD DUP 0= IF ABORT THEN ( ca u)
             HERE  DUP >LATEST-OFFSET W,  LATEST ! ( ca u)
-            CFADOCREATE C, ( ca u)  NAME,  ALIGN ;"
+            DUP 3 LSHIFT kDefTypeCREATE OR C,  ( ca u) S,  ALIGN ;"
  :pfa [:bl :parseword :dup :zeroequals :zbranch 2 :abort
        :here :dup
        ; >LATEST-OFFSET
@@ -140,12 +128,9 @@
            :minus :branch 2
            :nip
        :wcomma :latest :store
-       :charlit "kDefTypeCREATE" :ccomma
-       ; NAME
-         ; TERMINATE-NAME
-           :twodup :oneminus :plus :charlit 0x80 :swap :cplusstore
-         ; S,
-           :tuck :here :swap :move :allot
+       :dup :charlit 3 :lshift :charlit "kDefTypeCREATE" :or :ccomma
+       ; S,
+         :tuck :here :swap :move :allot
        :align
        :exit]}
 
@@ -180,18 +165,8 @@
 {:token :execute
  :args [[:xt] []]
  :source ": (EXECUTE) ( i*x token w -- j*x) ... ;
-          : EXECUTE ( i*x xt -- j*x)
-            DUP TOKEN? IF 0
-            ELSE DUP >CFA C@ CFA>TOKEN  SWAP >BODY THEN
-            (EXECUTE) ;"
- :pfa [:dup :tokenq :zbranch 4
-         :zero :branch 9
-       :dup :tocfa :cfetch
-       ; CFA>TOKEN
-         :charlit 0xe0 :or
-       :swap :tobody
-       :pexecute
-       :exit]}
+          : EXECUTE ( i*x xt -- j*x)  DUP >TOKEN  SWAP >BODY  (EXECUTE) ;"
+ :pfa [:dup :totoken :swap :tobody :pexecute :exit]}
 
 {:token :greaterthan :name ">"}
 
@@ -236,6 +211,8 @@
          :charlit :charlit :ccomma :ccomma :branch 5
          :charlit :lit :ccomma :comma
        :exit]}
+
+{:token :lshift :args [[:x1 :u] [:x2]]}
 
 {:token :ltbracket
  :name "["
@@ -344,6 +321,8 @@
 
 {:token :rfrom :name "R>"}
 
+{:token :rshift :args [[:x1 :u] [:x2]]}
+
 {:token :rtbracket
  :name "]"
  :flags #{:immediate}
@@ -371,8 +350,13 @@
  :name ";"
  :args [[] []]
  :flags #{:immediate}
- :source ": ; ( --)   ['] EXIT COMPILE,  REVEAL  [ ; IMMEDIATE"
- :pfa [:charlit :exit :compilecomma :reveal :ltbracket :exit]}
+ :source ": ; ( --)
+            ['] EXIT COMPILE,
+            kDefTypeCOLON CHANGE-LATEST-DEF-TYPE
+            [ ; IMMEDIATE"
+ :pfa [:charlit :exit :compilecomma
+       :charlit "kDefTypeCOLON" :changelatestdeftype
+       :ltbracket :exit]}
 
 ;; SIGN [CORE] 6.1.2210 ( n -- )
 ;;
@@ -409,18 +393,16 @@
 
 {:token :tobody
  :name ">BODY"
- :args [[:xt] [:f]]
- :source ": FFI? ( xt -- f)  >CFA C@ kDefTypeFFI0 1- > ;
-          : >BODY ( xt -- a-addr)
-            DUP >CFA 1+  SWAP FFI? IF EXIT THEN
-            BEGIN DUP C@ $80 AND 0= WHILE 1+ REPEAT 1+ ;"
- :pfa [:dup :tocfa :oneplus :swap
-       ; FFI?
-         :tocfa :cfetch :charlit "kDefTypeFFI0-1" :greaterthan
-       :zbranch 2 :exit
-       :dup :cfetch :charlit 0x80 :and :zeroequals :zbranch 4
-         :oneplus :branch -10
-       :oneplus
+ :args [[:xt] [:a-addr]]
+ :source ": >BODY ( xt -- a-addr)
+            DUP TOKEN? IF DROP 0 EXIT THEN
+            DUP NFA-LENGTH ( xt u)
+            SWAP >LFA 2 + ( lfa) 1+ ( flags) + ( nfa) ;"
+ :pfa [:dup :tokenq :zbranch 4
+         :drop :zero :exit
+       :dup :nfalength
+       :swap :tolfa :oneplus :oneplus :oneplus :plus
+       ;; TODO Add :align if we start aligning the PFA.
        :exit]}
 
 {:token :toin

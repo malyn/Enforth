@@ -1,5 +1,15 @@
 {:token :branch :flags #{:headerless}}
 
+{:token :changelatestdeftype
+ :name "CHANGE-LATEST-DEF-TYPE"
+ :args [[:u] []]
+ :flags #{:headerless}
+ :source ": CHANGE-LATEST-DEF-TYPE ( u --)
+            LATEST @ 2 + C@ %11111000 AND  OR  LATEST @ 2 + C!"
+ :pfa [:latest :fetch :oneplus :oneplus :cfetch :charlit 0xF8 :and
+       :or :latest :fetch :oneplus :oneplus :cstore
+       :exit]}
+
 {:token :charlit :flags #{:headerless}}
 
 {:token :cplusstore :name "C+!"}
@@ -29,21 +39,21 @@
          :true
        :exit]}
 
-{:token :findword :name "FIND-WORD" :flags #{:headerless}}
+{:token :exit :flags #{:headerless}}
 
-;; HIDE [ENFORTH] ( -- )
-;;
-;; Prevent the most recent definition from being found in the
-;; dictionary.
-{:token :hide
- :args [[] []]
+{:token :ffiq
+ :name "FFI?"
+ :args [[:xt] [:f]]
  :flags #{:headerless}
- :source ": HIDE ( --)  LATEST @  +LFA  DUP C@ $80 OR  SWAP C! ;"
- :pfa [:latest :fetch
-       ; pluslfa
-         :oneplus :oneplus
-       :dup :cfetch :charlit 0x80 :or :swap :cstore
-       :exit]}
+ :source ": FFI? ( xt -- f)  >DEF-TYPE kDefTypeFFI = ;"
+ :pfa [:todeftype :charlit "kDefTypeFFI" :equals :exit]}
+
+{:token :ffiarity
+ :name "FFI-ARITY"
+ :args [[:xt] [:u]]
+ :flags #{:headerless}}
+
+{:token :findword :name "FIND-WORD" :flags #{:headerless}}
 
 {:token :hld
  :args [[] [:aaddr]]
@@ -100,6 +110,20 @@
  :name "(LIT)"
  :args [[] [:x]]
  :flags #{:headerless}}
+
+;; Length of the NFA field, not necessarily the name itself (because FFI
+;; trampolines have a zero-length NFA since the name is stored in ROM in
+;; the definition itself).
+{:token :nfalength
+ :name "NFA-LENGTH"
+ :args [[:xt] [:u]]
+ :flags #{:headerless}
+ :source ": NFA-LENGTH ( xt -- ru)
+            DUP FFI? IF DROP 0 ELSE >LFA 2 + C@ 3 RSHIFT THEN "
+ :pfa [:dup :ffiq :zbranch 5
+         :drop :zero :branch 8
+         :tolfa :oneplus :oneplus :cfetch :charlit 3 :rshift
+       :exit]}
 
 ;; NUMBER? [ENFORTH] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
 ;;
@@ -163,16 +187,6 @@
 
 {:token :psquote :name "(s\")" :flags #{:headerless}}
 
-{:token :reveal
- :args [[] []]
- :flags #{:headerless}
- :source ": REVEAL ( --)  LATEST @  +LFA  DUP C@ $7F AND  SWAP C! ;"
- :pfa [:latest :fetch
-       ; pluslfa
-         :oneplus :oneplus
-       :dup :cfetch :charlit 0x7f :and :swap :cstore
-       :exit]}
-
 {:token :tib
  :args [[] [:caadr]]
  :flags #{:headerless}
@@ -184,22 +198,65 @@
  :flags #{:headerless}
  :pfa [:charlit 80 :exit]}
 
-{:token :tocfa
- :name ">CFA"
- :args [[:xt] [:addr]]
+;; xt must refer to a compiled (not primitive) definition or FFI
+;; trampoline.
+{:token :todeftype
+ :name ">DEF-TYPE"
+ :args [[:xt] [:u]]
  :flags #{:headerless}
- :source ": >CFA ( xt -- addr)  $7FFF AND  'DICT +  +LFA ;"
- :pfa [:wlit 0xff 0x7f :and
-       :vmaddrlit "offsetof(EnforthVM, dictionary)" :fetch ; 'DICT
-       :plus
-       :oneplus :oneplus ; +LFA
-       :exit]}
+ :source ": >DEF-TYPE ( xt -- u)  >LFA 2 + C@ $7 AND ;"
+ :pfa [:tolfa :oneplus :oneplus :cfetch :charlit 0x07 :and :exit]}
 
 {:token :tokenq
  :name "TOKEN?"
  :flags #{:headerless}
  :source ": TOKEN? ( xt -- f)  $8000 AND 0= ;"
  :pfa [:wlit 0x00 0x80 :and :zeroequals :exit]}
+
+;; xt must refer to a compiled (not primitive) definition or FFI
+;; trampoline.
+{:token :tolfa
+ :name ">LFA"
+ :args [[:xt] [:a-addr]]
+ :flags #{:headerless}
+ :source ": >LFA ( xt -- a-addr)  $7FFF AND 'DICT + ;"
+ :pfa [:wlit 0xff 0x7f :and
+       ; 'DICT
+         :vmaddrlit "offsetof(EnforthVM, dictionary)" :fetch
+       :plus
+       :exit]}
+
+;; >TOKEN [ENFORTH] "to-token" ( xt -- token )
+;;
+;; Return the execution token for the given XT, which may refer to a
+;; token, user definition, or FFI trampoline.
+{:token :totoken
+ :name ">TOKEN"
+ :args [[:xt] [:token]]
+ :flags #{:headerless}
+ :source ": >TOKEN ( xt -- token)
+            DUP TOKEN? IF EXIT THEN
+            DUP FFI? IF FFI-ARITY FFI-EXECUTION-TOKEN-BASE +
+            ELSE >DEF-TYPE EXECUTION-TOKEN-BASE + THEN ;"
+ :pfa [:dup :tokenq :zbranch 2 :exit
+       :dup :ffiq :zbranch 7
+         :ffiarity :charlit 0xe8 :plus :branch 5
+         :todeftype :charlit 0xe0 :plus
+       :exit]}
+
+;; >[TOKEN] [ENFORTH] "to-compile-token" ( xt -- token )
+;;
+;; Return the compilation token for the given XT, which may refer to a
+;; token, user definition, or FFI trampoline.
+{:token :tocompiletoken
+ :name ">[TOKEN]"
+ :args [[:xt] [:token]]
+ :flags #{:headerless}
+ :source ": >[TOKEN] ( xt -- token)
+            >TOKEN  DUP EXECUTION-TOKEN-BASE 1- > IF 0x10 + THEN ;"
+ :pfa [:totoken :dup :charlit "0xe0 - 1" :greaterthan :zbranch 4
+         :charlit 0x10 :plus
+       :exit]}
 
 {:token :udslashmod :flags #{:headerless}}
 

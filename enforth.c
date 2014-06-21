@@ -64,28 +64,21 @@
 
 enum EnforthDefinitionType
 {
-    kDefTypeCOLON = 0,
-    kDefTypeIMMEDIATE,
+    kDefTypeFFI = 0,
+    kDefTypeCOLONHIDDEN,
+    kDefTypeCOLON,
+    kDefTypeCOLONIMMEDIATE,
     kDefTypeCONSTANT,
     kDefTypeCREATE,
     kDefTypeDOES,
     kDefTypeVARIABLE,
-    kDefTypeFFI0,
-    kDefTypeFFI1,
-    kDefTypeFFI2,
-    kDefTypeFFI3,
-    kDefTypeFFI4,
-    kDefTypeFFI5,
-    kDefTypeFFI6,
-    kDefTypeFFI7,
-    kDefTypeFFI8
 };
 
 typedef enum EnforthToken
 {
 #include "enforth_tokens.h"
 
-    /* Tokens 0xe0-0xee are reserved for jump labels to the "CFA"
+    /* Tokens 0xe0-0xef are reserved for jump labels to the "CFA"
      * primitives *after* the point where W (the Word Pointer) has
      * already been set.  This allows words like EXECUTE to jump to a
      * CFA without having to use a switch statement to convert
@@ -94,13 +87,19 @@ typedef enum EnforthToken
      * reserving space in the token list and Address Interpreter jump
      * table, in other words), but we do list them here in order to make
      * it easier to turn raw tokens into enum values in the debugger. */
-    PDOCOLON = 0xe0,
-    PDOIMMEDIATE,
+    /* Don't need to map kDefTypeFFI because that will be mapped to one
+     * of the arity-specific values. */
+    /* Don't need to map kDefTYPECOLONHIDDEN because those definitions
+     * can never be executed (except by RECURSE, which knows to compile
+     * in a DOCOLON). */
+    PDOCOLON = 0xe2,
+    PDOCOLONIMMEDIATE,
     PDOCONSTANT,
     PDOCREATE,
     PDODOES,
     PDOVARIABLE,
-    PDOFFI0,
+
+    PDOFFI0 = 0xe8,
     PDOFFI1,
     PDOFFI2,
     PDOFFI3,
@@ -108,17 +107,17 @@ typedef enum EnforthToken
     PDOFFI5,
     PDOFFI6,
     PDOFFI7,
-    PDOFFI8,
 
     /* Just like the above, these tokens are never used in code and this
      * list of enum values is only used to simplify debugging. */
-    DOCOLON = 0xf0,
-    DOIMMEDIATE,
+    DOCOLON = 0xf2,
+    DOCOLONIMMEDIATE,
     DOCONSTANT,
     DOCREATE,
     DODOES,
     DOVARIABLE,
-    DOFFI0,
+
+    DOFFI0 = 0xf8,
     DOFFI1,
     DOFFI2,
     DOFFI3,
@@ -126,11 +125,6 @@ typedef enum EnforthToken
     DOFFI5,
     DOFFI6,
     DOFFI7,
-    DOFFI8,
-
-    /* This is a normal token and is placed at the end in order to make
-     * it easier to identify in definitions. */
-    EXIT = 0xff,
 } EnforthToken;
 
 
@@ -180,10 +174,18 @@ static int enforth_paren_find_word(EnforthVM * const vm, uint8_t * caddr, Enfort
          curWord = *(uint16_t *)curWord == 0 ? NULL : curWord - *(uint16_t *)curWord)
     {
         /* Get the definition type. */
-        uint8_t definitionType = *(curWord + 2);
+        uint8_t definitionFlags = *(curWord + 2);
+        uint8_t definitionType = definitionFlags & 0x7;
+        uint8_t definitionNameLength = (definitionFlags >> 3) & 0x1f;
 
         /* Ignore smudged words. */
-        if ((definitionType & 0x80) != 0)
+        if (definitionType == kDefTypeCOLONHIDDEN)
+        {
+            continue;
+        }
+
+        /* Compare name lengths. */
+        if (definitionNameLength != searchLen)
         {
             continue;
         }
@@ -191,34 +193,10 @@ static int enforth_paren_find_word(EnforthVM * const vm, uint8_t * caddr, Enfort
         /* Compare the strings, which happens differently depending on
          * if this is a user-defined word or an FFI trampoline. */
         int nameMatch;
-        if (definitionType < kDefTypeFFI0)
+        if (definitionType != kDefTypeFFI)
         {
-            char * pSearchName = searchName;
-            char * searchEnd = searchName + searchLen-1;
-            char * pDictName = (char *)(curWord + 3);
-            for (;;)
-            {
-                /* Try to match the characters and fail if they don't
-                 * match. */
-                if (toupper(*pSearchName) != toupper(*pDictName & 0x7f))
-                {
-                    nameMatch = 0;
-                    break;
-                }
-
-                /* We're done if this was the last character. */
-                if ((*pDictName & 0x80) != 0)
-                {
-                    /* It's only a match if we simultaneously hit the
-                     * end of the search name. */
-                    nameMatch = pSearchName == searchEnd ? -1 : 0;
-                    break;
-                }
-
-                /* Next character. */
-                pSearchName++;
-                pDictName++;
-            }
+            char * dictName = (char *)(curWord + 3);
+            nameMatch = (strncasecmp(searchName, dictName, searchLen) == 0) ? -1 : 0;
         }
         else
         {
@@ -227,22 +205,14 @@ static int enforth_paren_find_word(EnforthVM * const vm, uint8_t * caddr, Enfort
             const char * ffiName = (char *)pgm_read_word(&ffi->name);
 
             /* See if this FFI matches our search word. */
-            if ((strlen_P(ffiName) == searchLen)
-                    && (strncasecmp_P(searchName, ffiName, searchLen) == 0))
-            {
-                nameMatch = -1;
-            }
-            else
-            {
-                nameMatch = 0;
-            }
+            nameMatch = (strncasecmp_P(searchName, ffiName, searchLen) == 0) ? -1 : 0;
         }
 
         /* Is this a match?  If so, we're done. */
         if (nameMatch != 0)
         {
             *xt = 0x8000 | (uint16_t)(curWord - vm->dictionary.ram);
-            *isImmediate = *(curWord + 2) == kDefTypeIMMEDIATE ? 1 : -1;
+            *isImmediate = (definitionType == kDefTypeCOLONIMMEDIATE) ? 1 : -1;
             return -1;
         }
     }
@@ -378,47 +348,49 @@ void enforth_go(EnforthVM * const vm)
     static const void * const primitive_table[256] PROGMEM = {
 #include "enforth_jumptable.h"
 
-        /* $E0 - $EF */
+        /* $E0 - $E7 */
+        0, /* Not needed */
+        0, /* Not needed */
         &&PDOCOLON,
-        0, /* &&PDOIMMEDIATE, */
+        &&PDOCOLON, /* Immediate word */
+
         0, /* &&PDOCONSTANT, */
         0, /* &&PDOCREATE, */
-
         0, /* &&PDODOES, */
         0, /* &&PDOVARIABLE, */
+
+        /* $E8 - $EF */
         &&PDOFFI0,
         &&PDOFFI1,
-
         &&PDOFFI2,
         0, /* &&PDOFFI3, */
+
         0, /* &&PDOFFI4, */
         0, /* &&PDOFFI5, */
-
         0, /* &&PDOFFI6, */
         0, /* &&PDOFFI7, */
-        0, /* &&PDOFFI8, */
-        0,
 
-        /* $F0 - $FF */
+        /* $F0 - $F7 */
+        0, /* Not needed */
+        0, /* Not needed */
         &&DOCOLON,
-        0, /* &&DOIMMEDIATE, */
+        &&DOCOLON, /* Immediate word */
+
         0, /* &&DOCONSTANT, */
         0, /* &&DOCREATE, */
-
         0, /* &&DODOES, */
         0, /* &&DOVARIABLE, */
+
+        /* $F8 - $FF */
         &&DOFFI0,
         &&DOFFI1,
-
         &&DOFFI2,
         &&DOFFI3,
+
         &&DOFFI4,
         &&DOFFI5,
-
         &&DOFFI6,
         &&DOFFI7,
-        &&DOFFI8,
-        &&EXIT,
     };
 
     /* Initialize RP so that we can use threading to get to QUIT from
@@ -447,6 +419,22 @@ void enforth_go(EnforthVM * const vm)
 
 DISPATCH_TOKEN:
         goto *(void *)pgm_read_word(&primitive_table[token]);
+
+        /* TODO Move this to Forth once we have C@C */
+        FFIARITY:
+        {
+            /* TOS contains the XT (dictionary-relative offset with the
+             * high bit set) of the FFI trampoline.  Get the pointer to
+             * the trampoline -- which is a pointer to the definition in
+             * code space -- and then put the arity into TOS. */
+            EnforthFFIDef** trampoline = (EnforthFFIDef**)(
+                    vm->dictionary.ram
+                        + (tos.u & 0x7fff)
+                        + 2 /* LFA */
+                        + 1 /* Flags */);
+            tos.u = pgm_read_byte(&(*trampoline)->arity);
+        }
+        continue;
 
         DOFFI0:
         {
@@ -532,10 +520,6 @@ DISPATCH_TOKEN:
 
         DOFFI7:
             CHECK_STACK(7, 1);
-        continue;
-
-        DOFFI8:
-            CHECK_STACK(8, 1);
         continue;
 
         WLIT:
@@ -1400,6 +1384,20 @@ DISPATCH_TOKEN:
             *addr++ = *restDataStack++;
             *addr = *restDataStack++;
             tos = *restDataStack++;
+        }
+        continue;
+
+        RSHIFT:
+        {
+            CHECK_STACK(2, 1);
+            tos.u = restDataStack++->u >> tos.u;
+        }
+        continue;
+
+        LSHIFT:
+        {
+            CHECK_STACK(2, 1);
+            tos.u = restDataStack++->u << tos.u;
         }
         continue;
 
