@@ -1395,6 +1395,33 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        TWORFETCH:
+        {
+            CHECK_STACK(0, 2);
+            *--restDataStack = tos;
+            tos = returnTop[0];
+            *--restDataStack = returnTop[1];
+        }
+        continue;
+
+        TWORFROM:
+        {
+            CHECK_STACK(0, 2);
+            *--restDataStack = tos;
+            tos = *returnTop++;
+            *--restDataStack = *returnTop++;
+        }
+        continue;
+
+        TWOTOR:
+        {
+            CHECK_STACK(2, 0);
+            *--returnTop = *restDataStack++;
+            *--returnTop = tos;
+            tos = *restDataStack++;
+        }
+        continue;
+
         DOCOLON:
         {
             /* IP currently points to the relative offset of the PFA of

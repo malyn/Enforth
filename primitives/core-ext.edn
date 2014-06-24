@@ -3,6 +3,12 @@
  :source ": HEX ( --)  16 BASE ! ;"
  :pfa [:charlit 16 :base :store :exit]}
 
+{:token :tworfetch :name "2R@" }
+
+{:token :tworfrom :name "2R>"}
+
+{:token :twotor :name "2>R"}
+
 {:token :zeronotequals
  :name "0<>"
  :args [[:x] [:f]]}
