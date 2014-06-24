@@ -106,8 +106,9 @@
 "\x00" /* UDSLASHMOD */
 "\x00" /* VMADDRLIT */
 "\x00" /* WCOMMA */
-"\x00" /* DIGITQ */
 "\x00" /* WLIT */
+"\x00" /* DIGITQ */
+"\x00"
 "\x00"
 "\x00"
 "\x00"

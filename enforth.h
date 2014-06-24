@@ -156,7 +156,7 @@ typedef struct
 
     /* Dictionary vars */
     EnforthCell dp;
-    EnforthCell latest; /* NULL means empty dictionary */
+    EnforthCell latest; /* XT of the latest word; 0 means empty dictionary */
 
     /* Transient (dictionary-based) vars */
     uint8_t * hld;

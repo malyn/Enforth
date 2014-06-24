@@ -5,9 +5,10 @@
  :args [[:u] []]
  :flags #{:headerless}
  :source ": CHANGE-LATEST-DEF-TYPE ( u --)
-            LATEST @ 2 + C@ %11111000 AND  OR  LATEST @ 2 + C!"
- :pfa [:latest :fetch :oneplus :oneplus :cfetch :charlit 0xF8 :and
-       :or :latest :fetch :oneplus :oneplus :cstore
+            LATEST @ >LFA 2 +  C@ %11111000 AND  OR
+            LATEST @ >LFA 2 +  C!"
+ :pfa [:latest :fetch :tolfa :oneplus :oneplus :cfetch :charlit 0xF8 :and
+       :or :latest :fetch :tolfa :oneplus :oneplus :cstore
        :exit]}
 
 {:token :charlit :flags #{:headerless}}

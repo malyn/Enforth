@@ -168,11 +168,14 @@ static int enforth_paren_find_word(EnforthVM * const vm, uint8_t * caddr, Enfort
     char * searchName = (char *)caddr;
 
     /* Search the dictionary.*/
-    uint8_t * curWord;
-    for (curWord = vm->latest.ram;
-         curWord != NULL;
-         curWord = *(uint16_t *)curWord == 0 ? NULL : curWord - *(uint16_t *)curWord)
+    uint16_t curWordXT;
+    for (curWordXT = vm->latest.u;
+         curWordXT != 0;
+         curWordXT = *(uint16_t *)(vm->dictionary.ram + (curWordXT & 0x7fff)))
     {
+        /* Get the address of the word. */
+        uint8_t * curWord = vm->dictionary.ram + (curWordXT & 0x7fff);
+
         /* Get the definition type. */
         uint8_t definitionFlags = *(curWord + 2);
         uint8_t definitionType = definitionFlags & 0x7;
@@ -273,7 +276,7 @@ void enforth_init(
     vm->dictionary_size = dictionary_size;
 
     vm->dp = vm->dictionary;
-    vm->latest.ram = NULL;
+    vm->latest.u = 0;
 
     vm->hld = NULL;
 
@@ -282,29 +285,20 @@ void enforth_init(
 
 void enforth_add_definition(EnforthVM * const vm, const uint8_t * const def, int defSize)
 {
-    /* Get the address of the start of this definition and the address
-     * of the start of the last definition. */
-    const uint8_t * const prevLFA = vm->latest.ram;
-    uint8_t * newLFA = vm->dp.ram;
+    /* Get the XT of this definition and the XT of the last definition. */
+    uint16_t prevLatest = vm->latest.u;
+    uint16_t newLatest = 0x8000 | (vm->dp.ram - vm->dictionary.ram);
 
     /* Add the LFA link. */
-    if (vm->latest.ram != NULL)
-    {
-        *vm->dp.ram++ = ((newLFA - prevLFA)     ) & 0xff; /* LFAlo */
-        *vm->dp.ram++ = ((newLFA - prevLFA) >> 8) & 0xff; /* LFAhi */
-    }
-    else
-    {
-        *vm->dp.ram++ = 0x00;
-        *vm->dp.ram++ = 0x00;
-    }
+    *vm->dp.ram++ = (prevLatest     ) & 0xff; /* LFAlo */
+    *vm->dp.ram++ = (prevLatest >> 8) & 0xff; /* LFAhi */
 
     /* Copy the definition itself. */
     memcpy(vm->dp.ram, def, defSize);
     vm->dp.ram += defSize;
 
     /* Update latest. */
-    vm->latest.ram = newLFA;
+    vm->latest.u = newLatest;
 }
 
 void enforth_go(EnforthVM * const vm)

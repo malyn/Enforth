@@ -116,18 +116,18 @@
 {:token :create
  :args [[] []]
  :source ": S, ( ca u --)  TUCK  HERE SWAP MOVE  ALLOT ;
-          : >LATEST-OFFSET ( addr -- u)  LATEST @ DUP IF - ELSE NIP THEN ;
+          : >XT ( a-addr -- xt)  'DICT - $8000 OR ;
           : CREATE ( \"<spaces>name\" -- )
             BL PARSE-WORD DUP 0= IF ABORT THEN ( ca u)
-            HERE  DUP >LATEST-OFFSET W,  LATEST ! ( ca u)
+            HERE >XT  LATEST @ W,  LATEST ! ( ca u)
             DUP 3 LSHIFT kDefTypeCREATE OR C,  ( ca u) S,  ALIGN ;"
  :pfa [:bl :parseword :dup :zeroequals :zbranch 2 :abort
-       :here :dup
-       ; >LATEST-OFFSET
-         :latest :fetch :dup :zbranch 4
-           :minus :branch 2
-           :nip
-       :wcomma :latest :store
+       :here
+       ; >XT
+         ; TICKDICT
+           :vmaddrlit "offsetof(EnforthVM, dictionary)" :fetch
+         :minus :wlit 0x00 0x80 :or
+       :latest :fetch :wcomma :latest :store
        :dup :charlit 3 :lshift :charlit "kDefTypeCREATE" :or :ccomma
        ; S,
          :tuck :here :swap :move :allot

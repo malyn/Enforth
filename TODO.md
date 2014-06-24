@@ -1,4 +1,3 @@
-* `LATEST` should store an XT (instead of an absolute RAM address) so that we can treat the value in `LATEST` and LFAs the same (this will simplify `FIND-DEF`).
 * Create `C@DEFS` (fetch from dictionary-relative offset), `C@NAMES` (fetch from name-relative offset), etc. so that we can move things into Forth.
   * This allows us to move `(.")` into Forth, for example, although only if we make a ROM version of that (since the current code is smart enough to check inProgramSpace).
   * A related decision here is that these blocks of ROM must be in the first 64KB of space for AVRs, even on big AVRs.  FFIs can be anywhere since those are always accessed in C.
