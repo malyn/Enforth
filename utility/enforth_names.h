@@ -58,66 +58,112 @@
 "\x04" "EMIT"
 "\x05" "FALSE"
 "\x07" "EXECUTE"
-"\x06" "INVERT"
+"\x08" "ICOMPARE"
+"\x04" "FIND"
 "\x04" "HERE"
 "\x03" "HEX"
-"\x03" "KEY"
+"\x06" "INVERT"
 "\x04" "HOLD"
-"\x06" "LSHIFT"
+"\x03" "KEY"
 "\x06" "LATEST"
 "\x07" "LITERAL"
+"\x06" "LSHIFT"
 "\x02" "M+"
 "\x04" "MOVE"
 "\x03" "NIP"
-"\x02" "OR"
 "\x04" "QUIT"
+"\x02" "OR"
 "\x04" "OVER"
 "\x02" "R>"
 "\x02" "R@"
 "\x03" "ROT"
-"\x06" "RSHIFT"
 "\x04" "SIGN"
-"\x04" "SWAP"
+"\x06" "RSHIFT"
 "\x06" "SOURCE"
 "\x05" "SPACE"
 "\x05" "STATE"
 "\x04" "TYPE"
+"\x04" "SWAP"
 "\x04" "TRUE"
 "\x04" "TUCK"
-"\x02" "U>"
 "\x02" "U."
-"\x03" "UM*"
+"\x02" "U>"
 "\x01" "["
 "\x81" "]"
 "\x00" /* TODEFTYPE */
-"\x01" "\\"
+"\x03" "UM*"
 "\x00" /* TOLFA */
+"\x01" "\\"
 "\x00" /* PDOTQUOTE */
-"\x00" /* PEXECUTE */
 "\x00" /* TOTOKEN */
+"\x00" /* PEXECUTE */
 "\x00" /* LIT */
 "\x00" /* PSQUOTE */
 "\x00" /* ZBRANCH */
-"\x00" /* BRANCH */
 "\x00" /* TOCOMPILETOKEN */
+"\x00" /* BRANCH */
+"\x00" /* CFETCHNAMES */
+"\x00" /* CHANGELATESTDEFTYPE */
 "\x00" /* CHARLIT */
 "\x00" /* EXIT */
-"\x00" /* CHANGELATESTDEFTYPE */
 "\x00" /* FFIARITY */
-"\x00" /* FINDWORD */
 "\x00" /* INITRP */
-"\x00" /* UDSLASHMOD */
 "\x00" /* DIGITQ */
+"\x00" /* UDSLASHMOD */
 "\x00" /* VMADDRLIT */
 "\x00" /* WCOMMA */
+"\x00" /* WFETCH */
 "\x00" /* WLIT */
 "\x00"
 "\x00"
 "\x00"
 "\x00"
-"\x00"
-"\x00"
 "\x00" /* FFIQ */
+"\x00"
+"\x00" /* FINDDEF */
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00" /* FINDPRIM */
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00" /* FINDWORD */
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00" /* FOUNDDEFQ */
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00" /* FOUNDPRIMQ */
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00"
+"\x00"
 "\x00"
 "\x00" /* HLD */
 "\x00" /* HLDEND */
@@ -133,6 +179,8 @@
 "\x00"
 "\x00"
 "\x00"
+"\x00"
+"\x00" /* NAMELENGTH */
 "\x00"
 "\x00" /* NFALENGTH */
 "\x00"

@@ -158,6 +158,19 @@
 
 {:token :fetch :name "@"}
 
+;; FIND [CORE] 6.1.1550 ( c-addr -- c-addr 0 | xt 1 | xt -1 )
+;;
+;; Find the definition named in the counted string at c-addr.  If the
+;; definition is not found, return c addr and zero.  If the definition
+;; is found, return its execution token xt.  If the definition is
+;; immediate, also return one (1), otherwise also return minus-one (-1).
+;; For a given string, the values returned by FIND while compiling may
+;; differ from those returned while not compiling.
+{:token :find
+ :args [[:caddr] [[:caddr 0] [:xt 1] [:xt -1]]]
+ :source ": FIND ( c-addr -- c-addr 0 | xt 1 | xt -1 ) COUNT FIND-WORD ;"
+ :pfa [:count :findword :exit]}
+
 ;; EXECUTE [CORE] 6.1.1370 ( i*x xt -- j*x )
 ;;
 ;; Remove xt from the stack and perform the semantics identified by it.

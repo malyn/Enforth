@@ -49,7 +49,6 @@
 #define pgm_read_byte(p) (*(uint8_t*)(p))
 #define pgm_read_word(p) (*(int *)(p))
 #define memcpy_P memcpy
-#define strlen_P strlen
 #define strncasecmp_P strncasecmp
 #endif
 
@@ -147,112 +146,6 @@ static const char kDefinitionNames[] PROGMEM =
 static const int8_t definitions[] PROGMEM = {
 #include "enforth_definitions.h"
 };
-
-
-
-/* -------------------------------------
- * Private function definitions.
- */
-
-static int enforth_paren_find_word(EnforthVM * const vm, uint8_t * caddr, EnforthUnsigned u, EnforthXT * const xt, int * const isImmediate);
-
-
-
-/* -------------------------------------
- * Private functions.
- */
-
-static int enforth_paren_find_word(EnforthVM * const vm, uint8_t * caddr, EnforthUnsigned u, EnforthXT * const xt, int * const isImmediate)
-{
-    int searchLen = u;
-    char * searchName = (char *)caddr;
-
-    /* Search the dictionary.*/
-    uint16_t curWordXT;
-    for (curWordXT = vm->latest.u;
-         curWordXT != 0;
-         curWordXT = *(uint16_t *)(vm->dictionary.ram + (curWordXT & 0x7fff)))
-    {
-        /* Get the address of the word. */
-        uint8_t * curWord = vm->dictionary.ram + (curWordXT & 0x7fff);
-
-        /* Get the definition type. */
-        uint8_t definitionFlags = *(curWord + 2);
-        uint8_t definitionType = definitionFlags & 0x7;
-        uint8_t definitionNameLength = (definitionFlags >> 3) & 0x1f;
-
-        /* Ignore smudged words. */
-        if (definitionType == kDefTypeCOLONHIDDEN)
-        {
-            continue;
-        }
-
-        /* Compare name lengths. */
-        if (definitionNameLength != searchLen)
-        {
-            continue;
-        }
-
-        /* Compare the strings, which happens differently depending on
-         * if this is a user-defined word or an FFI trampoline. */
-        int nameMatch;
-        if (definitionType != kDefTypeFFI)
-        {
-            char * dictName = (char *)(curWord + 3);
-            nameMatch = (strncasecmp(searchName, dictName, searchLen) == 0) ? -1 : 0;
-        }
-        else
-        {
-            /* Get a reference to the FFI definition. */
-            const EnforthFFIDef * ffi = *(EnforthFFIDef **)(curWord + 3);
-            const char * ffiName = (char *)pgm_read_word(&ffi->name);
-
-            /* See if this FFI matches our search word. */
-            nameMatch = (strncasecmp_P(searchName, ffiName, searchLen) == 0) ? -1 : 0;
-        }
-
-        /* Is this a match?  If so, we're done. */
-        if (nameMatch != 0)
-        {
-            *xt = 0x8000 | (uint16_t)(curWord - vm->dictionary.ram);
-            *isImmediate = (definitionType == kDefTypeCOLONIMMEDIATE) ? 1 : -1;
-            return -1;
-        }
-    }
-
-    /* Search through the primitives for a match against this search
-     * name. */
-    const char * pPrimitives = kDefinitionNames;
-    uint8_t token;
-    for (token = 0; /* below */; ++token)
-    {
-        /* Get the length of this primitive; we're done if this is the
-         * end value (0xff). */
-        uint8_t primitiveFlags = (uint8_t)pgm_read_byte(pPrimitives++);
-        if (primitiveFlags == 0xff)
-        {
-            break;
-        }
-
-        uint8_t primitiveLength = primitiveFlags & 0x7f;
-        int primitiveIsImmediate = (primitiveFlags & 0x80) != 0 ? 1 : -1;
-
-        /* Is this a match?  If so, return the XT. */
-        if ((primitiveLength == searchLen)
-            && (strncasecmp_P(searchName, pPrimitives, searchLen) == 0))
-        {
-            *xt = token;
-            *isImmediate = primitiveIsImmediate;
-            return -1;
-        }
-
-        /* No match; skip over the name. */
-        pPrimitives += primitiveLength;
-    }
-
-    /* No match. */
-    return 0;
-}
 
 
 
@@ -716,6 +609,17 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        WFETCH:
+#ifdef __AVR__
+        /* Fall through, since cells are already 16-bits on the AVR. */
+#else
+        {
+            CHECK_STACK(1, 1);
+            tos.u = *(uint16_t*)tos.ram;
+        }
+        continue;
+#endif
+
         FETCH:
         {
             CHECK_STACK(1, 1);
@@ -727,41 +631,6 @@ DISPATCH_TOKEN:
         {
             CHECK_STACK(2, 1);
             tos.i |= restDataStack++->i;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-         * FIND-WORD [ENFORTH] "paren-find-paren" ( c-addr u -- c-addr u 0 | xt 1 | xt -1 )
-         *
-         * Find the definition named in the string at c-addr with length
-         * u in the word list whose latest definition is pointed to by
-         * nfa.  If the definition is not found, return the string and
-         * zero.  If the definition is found, return its execution token
-         * xt.  If the definition is immediate, also return one (1),
-         * otherwise also return minus-one (-1).  For a given string,
-         * the values returned by FIND-WORD while compiling may differ
-         * from those returned while not compiling. */
-        FINDWORD:
-        {
-            CHECK_STACK(2, 3);
-
-            uint8_t * caddr = (uint8_t *)restDataStack->ram;
-            EnforthUnsigned u = tos.u;
-
-            EnforthXT xt;
-            int isImmediate;
-            if (enforth_paren_find_word(vm, caddr, u, &xt, &isImmediate) == -1)
-            {
-                /* Stack still contains c-addr u; rewrite to xt 1|-1. */
-                restDataStack->u = xt;
-                tos.i = isImmediate;
-            }
-            else
-            {
-                /* Stack still contains c-addr u, so just push 0. */
-                *--restDataStack = tos;
-                tos.i = 0;
-            }
         }
         continue;
 
@@ -1419,6 +1288,29 @@ DISPATCH_TOKEN:
             *--returnTop = *restDataStack++;
             *--returnTop = tos;
             tos = *restDataStack++;
+        }
+        continue;
+
+        /* TODO Implement this properly (the whole different size, -1, 1
+         * thing) and in Forth.  Or just get rid of it altogether and do
+         * something name-specific in FOUND-DEF? similar to what we did
+         * in FOUND-PRIM?. */
+        ICOMPARE:
+        {
+            CHECK_STACK(4, 1);
+            EnforthUnsigned u2 = tos.u;
+            uint8_t * caddr2 = restDataStack++->ram;
+            EnforthUnsigned u1 = restDataStack++->u;
+            uint8_t * caddr1 = restDataStack++->ram;
+            tos.i = strncasecmp(caddr1, caddr2, u1 < u2 ? u1 : u2) == 0
+                        ? 0 : -1;
+        }
+        continue;
+
+        CFETCHNAMES:
+        {
+            CHECK_STACK(1, 1);
+            tos.u = pgm_read_byte(kDefinitionNames + tos.u);
         }
         continue;
 

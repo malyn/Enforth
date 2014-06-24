@@ -1,14 +1,12 @@
-* Create `C@DEFS` (fetch from dictionary-relative offset), `C@NAMES` (fetch from name-relative offset), etc. so that we can move things into Forth.
-  * This allows us to move `(.")` into Forth, for example, although only if we make a ROM version of that (since the current code is smart enough to check inProgramSpace).
-  * A related decision here is that these blocks of ROM must be in the first 64KB of space for AVRs, even on big AVRs.  FFIs can be anywhere since those are always accessed in C.
-    * Can we leverage this decision to simplify other aspects of the implementation?  *i.e.,* if we know that ROM definitions can always be accessed with a cell, do we need to do the XTs-are-relative thing at all or can they just be absolute addresses?
-    * I guess the real reason that XTs are relative is so that they are relocatable.
-* Use the new NFA, unified structure (cfa&length+chars) to implement `FIND-WORD` (as `FIND`) in Forth.
-  * A name is always a counted string now (with the higher bits masked off).  No need to mask off the high bit of each character either, because we no longer use that bit to terminate the NFA.
-  * Dictionary searches no longer have to deal with different types of strings.  Note that the names table is in ROM and will ultimately need a different word though (C@C "c-fetch from code space") or something).
-* See about moving some/all of the paren\* methods into Forth definitions.  Maybe convert some of the existing code primitives into Forth definitions as well (when they aren't perf-sensitive).
+* Modify DefGen and `FIND-PRIM` so that the flags field in the names table is in the same format as the flags field in dictionary definitions.
+* Support FFI trampolines in `FIND-WORD`.
 * Finish implementing `NUMBER?` so that unknown words are detected.
+* Add case-insensitive name lookup.
 * Add `EVALUATE` and `enforth_evaluate` and use that instead of `enforth_add_definition` (which we'll then remove).
+* Create `C@NAMES` so that we can make a ROM variant of `(.")` in Forth.
+* Consider moving other non-essential primitives to Forth: `FFIARITY`, `."`, `\\`, `W,`, `,`, `C,`, `ALLOT`.
+  * The `*COMMA` words and `ALLOT` should not use `dp` but instead use `HERE`, `'HERE`, and `!`, `C!`, and `W!`.  This change makes it possible for us to ultimately remove `dp` from the `vm` structure and instead make it a regular variable in the dictionary.
+* Move `dp` and `latest` into the dictionary so that they load/save with the dictionary.
 * Make ROM definition IPs on the return stack relative to the start of the ROM definition block.  We can do this now that all of the ROM definitions are finally in this one block.
 * Support backspace in `ACCEPT`.
 * Add `USE:` for creating FFI trampolines.

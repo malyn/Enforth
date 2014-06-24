@@ -1,5 +1,10 @@
 {:token :branch :flags #{:headerless}}
 
+{:token :cfetchnames
+ :name "C@NAMES"
+ :args [[:u] [:c]]
+ :flags #{:headerless}}
+
 {:token :changelatestdeftype
  :name "CHANGE-LATEST-DEF-TYPE"
  :args [[:u] []]
@@ -54,7 +59,160 @@
  :args [[:xt] [:u]]
  :flags #{:headerless}}
 
-{:token :findword :name "FIND-WORD" :flags #{:headerless}}
+{:token :finddef
+ :name "FIND-DEF"
+ :args [[:caddr :u] [[0] [:xt 1] [:xt -1]]]
+ :flags #{:headerless}
+ :source ": IMMEDIATE-DEF? ( xt -- f ) >DEF-TYPE kDefTypeCOLONIMMEDIATE = ;
+          : FIND-DEF ( c-addr u -- 0 | xt 1 | xt -1 )
+          2>R  LATEST @
+          BEGIN
+            ( xt R:ca u) ?DUP
+          WHILE
+            DUP 2R@ ROT ( xt ca u xt R:ca u) FOUND-DEF? ( xt f R:ca u)
+            IF  DUP IMMEDIATE-DEF? 2 AND 1-  2R> 2DROP  EXIT THEN
+            >LFA W@
+          REPEAT ( R:ca u) 2R> 2DROP FALSE ;"
+ :pfa [:twotor :latest :fetch
+       :qdup :zbranch 23
+         :dup :tworfetch :rot :founddefq :zbranch 13
+           :dup
+           ; IMMEDIATE-DEF?
+             :todeftype :charlit "kDefTypeCOLONIMMEDIATE" :equals
+           :charlit 2 :and :oneminus :tworfrom :twodrop :exit
+         :tolfa :wfetch
+         :branch -24
+       :tworfrom :twodrop :false
+       :exit]}
+
+{:token :findprim
+ :name "FIND-PRIM"
+ :args [[:caddr :u] [[0] [:xt 1] [:xt -1]]]
+ :flags #{:headerless}
+ :source ": IMMEDIATE-PRIM? ( off -- f ) C@NAMES $7 AND kDefTypeCOLONIMMEDIATE = ;
+          : FIND-PRIM ( c-addr u -- 0 | xt 1 | xt -1 )
+            2>R  0 0
+            BEGIN
+              ( token offset R:ca u) DUP C@NAMES $FF <>
+            WHILE
+              DUP 2R@ ROT ( t off ca u off R:ca u) FOUND-PRIM?
+              IF ( t off off2 R:ca u) DROP  IMMEDIATE-PRIM? 2 AND 1-
+                2R> 2DROP  EXIT THEN
+              ROT 1+ ( off off2 t+1) ROT DROP SWAP ( t+1 off2)
+            REPEAT ( token offset R:ca u) 2DROP 2R> 2DROP FALSE ;"
+ :pfa [:twotor :zero :zero
+       :dup :cfetchnames :charlit 0xff :notequals :zbranch 27
+         :dup :tworfetch :rot :foundprimq :zbranch 14
+           :drop
+           ; IMMEDIATE-PRIM?
+           ;; TODO Change DefGen so that primitive flags are the same as def flags
+           ;;:cfetchnames :charlit 0x07 :and "kDefTypeCOLONIMMEDIATE" :equals
+             :cfetchnames :charlit 0x80 :and :zeronotequals
+           :charlit 2 :and :oneminus
+           :tworfrom :twodrop :exit
+         :rot :oneplus :rot :drop :swap
+         :branch -32
+       :twodrop :tworfrom :twodrop :false
+       :exit]}
+
+;; FIND-WORD [Enforth] "paren-find-paren" ( c-addr u -- c-addr u 0 | xt 1 | xt -1 )
+;;
+;; Find the definition named in the string at c-addr with length u in
+;; the word list whose latest definition is pointed to by nfa.  If the
+;; definition is not found, return the string and zero.  If the
+;; definition is found, return its execution token xt.  If the
+;; definition is immediate, also return one (1), otherwise also return
+;; minus-one (-1).  For a given string, the values returned by FIND-WORD
+;; while compiling may differ from those returned while not compiling.
+{:token :findword
+ :name "FIND-WORD"
+ :args [[:caddr :u] [[:caddr :u 0] [:xt 1] [:xt -1]]]
+ :flags #{:headerless}
+ :source ": FIND-WORD ( c-addr u -- c-addr u 0 | xt 1 | xt -1 )
+            2DUP FIND-DEF ( ca u 0 | ca u xt 1/-1) ?DUP IF 2SWAP 2DROP
+            ELSE 2DUP FIND-PRIM ( ca u 0 | ca u xt 1/-1) DUP IF 2SWAP 2DROP
+            THEN ;"
+ :pfa [:twodup :finddef :qdup :zbranch 5
+         :twoswap :twodrop :branch 8
+         :twodup :findprim :dup :zbranch 3
+           :twoswap :twodrop
+         :exit]}
+
+;; FOUND-DEF? [Enforth] "found-def-question" ( c-addr u xt -- f)
+;;
+;; Compares the string c-addr with length u to the name of the
+;; dictionary entry identified by xt and pushes true to the stack if the
+;; names are identical (ignoring case), false otherwise.
+;; TODO Consider dropping the early length compare and let ICOMPARE deal
+;; with that.
+;; TODO Probably get rid of ICOMPARE altogether and just make the
+;; equivalent of IEQUALS (or even just manual compare like what is in
+;; FOUND-PRIM?).
+;; TODO Implement FFI support (which requires us to compare ROM strings
+;; in the same manner as we'll need to compare token names, ideally with
+;; exactly the same function).  Note that both FFI and token name
+;; support will need the C@DEFS word.
+{:token :founddefq
+ :name "FOUND-DEF?"
+ :args [[:caddr :u :xt] [:f]]
+ :flags #{:headerless}
+ :source ": HIDDEN? ( xt -- f ) >DEF-TYPE kDefTypeCOLONHIDDEN = ;
+          : FOUND-DEF? ( c-addr u xt -- f)
+            DUP HIDDEN? IF DROP 2DROP FALSE EXIT THEN
+            2DUP NAME-LENGTH ( ca u xt u u') <> IF DROP 2DROP FALSE EXIT THEN
+            DUP FFI? IF ( TODO implement this) DROP 2DROP FALSE EXIT THEN
+            >LFA 2 + 1+ ( ca u ca') OVER ICOMPARE 0= ;"
+ :pfa [:dup
+       ; HIDDEN
+         :todeftype :charlit "kDefTypeCOLONHIDDEN" :equals
+       :zbranch 5
+         :drop :twodrop :false :exit
+       :twodup :namelength :notequals :zbranch 5
+         :drop :twodrop :false :exit
+       :dup :ffiq :zbranch 5
+         :drop :twodrop :false :exit ;; TODO Implement this
+       :tolfa :oneplus :oneplus :oneplus :over :icompare :zeroequals
+       :exit]}
+
+;; TODO Add case-insensitive compares
+{:token :foundprimq
+ :name "FOUND-PRIM?"
+ :args [[:caddr :u :offset1] [:offset2 :f]]
+ :flags #{:headerless}
+ :source ": PRIM-NAME-LENGTH ( off -- u )  C@NAMES 3 RSHIFT ;
+          : TRAVERSE-PRIM-NAME ( off1 -- off2 )  DUP PRIM-NAME-LENGTH + 1+ ;
+          : FOUND-PRIM? ( c-addr u off1 -- off2 f )
+            DUP TRAVERSE-PRIM-NAME >R ( ca u off1 R:off2)
+            DUP PRIM-NAME-LENGTH ROT <> IF 2DROP R> FALSE EXIT THEN
+            1+ BEGIN ( ca off1+1 R:off2)
+              OVER C@  OVER C@NAMES <> IF 2DROP R> FALSE EXIT THEN
+              1+ SWAP 1+ SWAP ( ca' off' R:off2)
+              DUP R@ =
+            UNTIL
+            ( ca' off' R:off2) 2DROP R> TRUE ;"
+ :pfa [:dup
+       ; TRAVERSE-PRIM-NAME
+         :dup
+         ; PRIM-NAME-LENGTH
+           ;; TODO Change DefGen so that primitive flags are the same as def flags
+           ;;:cfetchnames :charlit 3 :rshift
+           :cfetchnames :charlit 0x7f :and
+         :plus :oneplus
+       :tor
+       :dup
+       ; PRIM-NAME-LENGTH
+         ;; TODO Change DefGen so that primitive flags are the same as def flags
+         ;;:cfetchnames :charlit 3 :rshift
+         :cfetchnames :charlit 0x7f :and
+       :rot :notequals :zbranch 5
+           :twodrop :rfrom :false :exit
+       :oneplus
+         :over :cfetch :over :cfetchnames :notequals :zbranch 5
+           :twodrop :rfrom :false :exit
+         :oneplus :swap :oneplus :swap
+         :dup :rfetch :equals :zbranch -19
+         :twodrop :rfrom :true
+       :exit]}
 
 {:token :hld
  :args [[] [:aaddr]]
@@ -66,6 +224,9 @@
  :flags #{:headerless}
  :source ": HLDEND ( -- u)  [ 1 CELLS 8 * 3 * ] ;"
  :pfa [:charlit "kEnforthCellSize * 8 * 3" :exit]}
+
+{:token :icompare
+ :args [[:ca1 :u1 :ca2 :u2] [:n]]}
 
 {:token :initrp :flags #{:headerless}}
 
@@ -111,6 +272,16 @@
  :name "(LIT)"
  :args [[] [:x]]
  :flags #{:headerless}}
+
+;; Length of the definition name, not necessarily the NFA field (because
+;; FFI trampolines have a zero-length NFA since the name is stored in
+;; ROM in the FFI definition).
+{:token :namelength
+ :name "NAME-LENGTH"
+ :args [[:xt] [:u]]
+ :flags #{:headerless}
+ :source ": NAME-LENGTH ( xt -- ru)  >LFA 2 + C@ 3 RSHIFT ;"
+ :pfa [:tolfa :oneplus :oneplus :cfetch :charlit 3 :rshift :exit]}
 
 ;; Length of the NFA field, not necessarily the name itself (because FFI
 ;; trampolines have a zero-length NFA since the name is stored in ROM in
@@ -264,6 +435,8 @@
 {:token :vmaddrlit :flags #{:headerless}}
 
 {:token :wcomma :name "W," :flags #{:headerless}}
+
+{:token :wfetch :name "W@" :flags #{:headerless}}
 
 {:token :wlit :flags #{:headerless}}
 
