@@ -113,13 +113,13 @@
 
 ;; Length of the NFA field, not necessarily the name itself (because FFI
 ;; trampolines have a zero-length NFA since the name is stored in ROM in
-;; the definition itself).
+;; the FFI definition).
 {:token :nfalength
  :name "NFA-LENGTH"
  :args [[:xt] [:u]]
  :flags #{:headerless}
  :source ": NFA-LENGTH ( xt -- ru)
-            DUP FFI? IF DROP 0 ELSE >LFA 2 + C@ 3 RSHIFT THEN "
+            DUP FFI? IF DROP 0 ELSE >LFA 2 + C@ 3 RSHIFT THEN ;"
  :pfa [:dup :ffiq :zbranch 5
          :drop :zero :branch 8
          :tolfa :oneplus :oneplus :cfetch :charlit 3 :rshift
