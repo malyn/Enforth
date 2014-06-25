@@ -23,108 +23,113 @@
 "\022" "2!"
 "\032" "2>R"
 "\022" "2@"
-"\062" "ACCEPT"
+"\062" ">UPPER"
 "\052" "2DROP"
 "\042" "2DUP"
+"\062" "ACCEPT"
 "\052" "2OVER"
 "\032" "2R>"
+"\032" "2R@"
+"\052" "2SWAP"
 "\042" "BASE"
 "\022" "BL"
 "\102" "COMPILE,"
-"\032" "2R@"
-"\052" "2SWAP"
-"\022" "CR"
-"\062" "CREATE"
 "\012" "<"
 "\022" "<>"
+"\022" "CR"
+"\062" "CREATE"
 "\012" "="
 "\012" ">"
 "\022" ">R"
+"\042" "?DUP"
+"\012" "@"
+"\032" "C{}"
+"\022" "C~"
 "\072" "EXECUTE"
 "\042" "FIND"
 "\042" "HERE"
 "\032" "HEX"
 "\042" "HOLD"
-"\042" "?DUP"
+"\052" "ABORT"
 "\062" "LATEST"
 "\072" "LITERAL"
-"\012" "@"
-"\052" "ABORT"
 "\032" "ABS"
-"\042" "QUIT"
 "\052" "ALIGN"
 "\052" "ALLOT"
+"\042" "QUIT"
 "\032" "AND"
-"\042" "SIGN"
 "\022" "C!"
+"\032" "C+!"
+"\042" "SIGN"
+"\022" "C,"
 "\062" "SOURCE"
 "\052" "SPACE"
 "\052" "STATE"
 "\042" "TYPE"
-"\032" "C+!"
-"\022" "C,"
-"\022" "U."
 "\022" "C@"
+"\052" "COUNT"
+"\022" "U."
+"\052" "DEPTH"
 "\012" "["
 "\013" "]"
 "\000" /* TODEFTYPE */
-"\052" "COUNT"
+"\042" "DROP"
 "\000" /* TOFFIDEF */
 "\000" /* TOLFA */
-"\052" "DEPTH"
-"\000" /* TOTOKEN */
-"\042" "DROP"
 "\032" "DUP"
+"\000" /* TOTOKEN */
 "\042" "EMIT"
-"\000" /* TOCOMPILETOKEN */
 "\052" "FALSE"
-"\000" /* CHANGELATESTDEFTYPE */
 "\102" "ICOMPARE"
+"\000" /* TOCOMPILETOKEN */
 "\062" "INVERT"
-"\000" /* DIGITQ */
+"\000" /* CHANGELATESTDEFTYPE */
 "\032" "KEY"
 "\062" "LSHIFT"
+"\000" /* DIGITQ */
 "\022" "M+"
 "\042" "MOVE"
 "\032" "NIP"
 "\022" "OR"
+"\042" "OVER"
+"\022" "R>"
 "\000" /* FFIARITY */
 "\000" /* FFINAME */
 "\000" /* FFIQ */
 "\000" /* FINDDEF */
-"\042" "OVER"
-"\022" "R>"
 "\022" "R@"
 "\032" "ROT"
 "\062" "RSHIFT"
-"\000" /* FINDPRIM */
 "\042" "SWAP"
 "\042" "TRUE"
+"\000" /* FINDPRIM */
 "\042" "TUCK"
 "\022" "U>"
 "\032" "UM*"
 "\012" "\\"
 "\000" /* PDOTQUOTE */
-"\000" /* FINDWORD */
 "\000" /* PEXECUTE */
 "\000" /* LIT */
-"\000" /* FOUNDDEFQ */
+"\000" /* FINDWORD */
 "\000" /* PSQUOTE */
 "\000" /* ZBRANCH */
+"\000" /* FOUNDDEFQ */
 "\000" /* FETCHFFIDEFS */
 "\000" /* BRANCH */
 "\000" /* CFETCHFFIDEFS */
-"\000" /* FOUNDFFIQ */
 "\000" /* CFETCHNAMES */
 "\000" /* CHARLIT */
+"\000" /* FOUNDFFIQ */
 "\000" /* EXIT */
 "\000" /* INITRP */
-"\000" /* FOUNDPRIMQ */
 "\000" /* UDSLASHMOD */
 "\000" /* VMADDRLIT */
+"\000" /* FOUNDPRIMQ */
 "\000" /* WCOMMA */
 "\000" /* WFETCH */
 "\000" /* WLIT */
+"\000"
+"\000"
 "\000"
 "\000"
 "\000" /* HLD */

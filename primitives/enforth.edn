@@ -1,5 +1,17 @@
 {:token :branch :flags #{:headerless}}
 
+{:token :cnotsimilar
+ :name "C{}"
+ :args [[:c1 :c2] [:f]]
+ :source ": C{} ( c1 c2 -- f )  C~ INVERT ;"
+ :pfa [:csimilar :invert :exit]}
+
+{:token :csimilar
+ :name "C~"
+ :args [[:c1 :c2] [:f]]
+ :source ": C~ ( c1 c2 -- f )  >UPPER SWAP >UPPER = ;"
+ :pfa [:toupper :swap :toupper :equals :exit]}
+
 {:token :cfetchffidefs
  :name "C@FFIDEFS"
  :args [[:u] [:c]]
@@ -189,7 +201,6 @@
          :tolfa :oneplus :oneplus :oneplus :over :icompare :zeroequals
        :exit]}
 
-;; TODO Add case-insensitive compares
 {:token :foundffiq
  :name "FOUND-FFI?"
  :args [[:caddr :u :xt] [:f]]
@@ -200,19 +211,18 @@
               ?DUP
             WHILE
               1- >R ( ca caffi R:u'-1)
-              OVER C@  OVER C@FFIDEFS <> IF 2DROP R> DROP FALSE EXIT THEN
+              OVER C@  OVER C@FFIDEFS C{} IF 2DROP R> DROP FALSE EXIT THEN
               1+ SWAP 1+ SWAP ( ca' caffi' R:u'-1) R>
             REPEAT ( ca' caffi') 2DROP TRUE ;"
  :pfa [:ffiname :swap
        :qdup :zbranch 21
          :oneminus :tor
-         :over :cfetch :over :cfetchffidefs :notequals :zbranch 6
+         :over :cfetch :over :cfetchffidefs :cnotsimilar :zbranch 6
            :twodrop :rfrom :drop :false :exit
          :oneplus :swap :oneplus :rfrom :branch -22
         :twodrop :true
         :exit]}
 
-;; TODO Add case-insensitive compares
 {:token :foundprimq
  :name "FOUND-PRIM?"
  :args [[:caddr :u :offset1] [:offset2 :f]]
@@ -223,7 +233,7 @@
             DUP TRAVERSE-PRIM-NAME >R ( ca u off1 R:off2)
             DUP PRIM-NAME-LENGTH ROT <> IF 2DROP R> FALSE EXIT THEN
             1+ BEGIN ( ca off1+1 R:off2)
-              OVER C@  OVER C@NAMES <> IF 2DROP R> FALSE EXIT THEN
+              OVER C@  OVER C@NAMES C{} IF 2DROP R> FALSE EXIT THEN
               1+ SWAP 1+ SWAP ( ca' off' R:off2)
               DUP R@ =
             UNTIL
@@ -241,7 +251,7 @@
        :rot :notequals :zbranch 5
            :twodrop :rfrom :false :exit
        :oneplus
-         :over :cfetch :over :cfetchnames :notequals :zbranch 5
+         :over :cfetch :over :cfetchnames :cnotsimilar :zbranch 5
            :twodrop :rfrom :false :exit
          :oneplus :swap :oneplus :swap
          :dup :rfetch :equals :zbranch -19
@@ -469,6 +479,19 @@
        :dup :ffiq :zbranch 7
          :ffiarity :charlit 0xe8 :plus :branch 5
          :todeftype :charlit 0xe0 :plus
+       :exit]}
+
+{:token :toupper
+ :name ">UPPER"
+ :args [[:c] [:c]]
+ :source ": >UPPER ( c -- c )
+            DUP [CHAR] a 1- > ( c f)
+            OVER z 1+ < (c f f)
+            AND IF 0x20 - THEN ;"
+ :pfa [:dup :charlit "'a'" :oneminus :greaterthan
+       :over :charlit "'z'" :oneplus :lessthan
+       :and :zbranch 4
+         :charlit 0x20 :minus
        :exit]}
 
 {:token :udslashmod :flags #{:headerless}}
