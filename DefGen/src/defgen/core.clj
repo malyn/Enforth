@@ -101,18 +101,19 @@
                       (map (fn [{:keys [name token-name token-value headerless? immediate?]}]
                              [token-value
                               (if headerless?
-                                (str "\"\\x00\" /* " token-name " */")
-                                (format "\"\\x%02x\" \"%s\""
-                                        (+ (count name) (if immediate? 0x80 0x00))
+                                (str "\"\\000\" /* " token-name " */")
+                                (format "\"\\%03o\" \"%s\""
+                                        (bit-or (if immediate? 0x03 0x02)
+                                                (bit-shift-left (count name) 3))
                                         (escape-c-string name)))])
                            defs))
-                possible-empty-names (into {} (map #(vector % "\"\\x00\"")
+                possible-empty-names (into {} (map #(vector % "\"\\000\"")
                                                    (range (apply max
                                                                  (map :token-value defs)))))
                 all-def-names (map val (sort-by key (merge possible-empty-names def-names)))]
             (doseq [name all-def-names]
               (println name))
-            (println "\"\\xff\"")))))
+            (println "\"\\377\"")))))
 
     ;; Output the token enums.
     (println "*** TOKEN ENUM ***")

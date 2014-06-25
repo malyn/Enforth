@@ -101,17 +101,16 @@
               ROT 1+ ( off off2 t+1) ROT DROP SWAP ( t+1 off2)
             REPEAT ( token offset R:ca u) 2DROP 2R> 2DROP FALSE ;"
  :pfa [:twotor :zero :zero
-       :dup :cfetchnames :charlit 0xff :notequals :zbranch 27
-         :dup :tworfetch :rot :foundprimq :zbranch 14
+       :dup :cfetchnames :charlit 0xff :notequals :zbranch 29
+         :dup :tworfetch :rot :foundprimq :zbranch 16
            :drop
            ; IMMEDIATE-PRIM?
-           ;; TODO Change DefGen so that primitive flags are the same as def flags
-           ;;:cfetchnames :charlit 0x07 :and "kDefTypeCOLONIMMEDIATE" :equals
-             :cfetchnames :charlit 0x80 :and :zeronotequals
+             :cfetchnames :charlit 0x07 :and
+             :charlit "kDefTypeCOLONIMMEDIATE" :equals
            :charlit 2 :and :oneminus
            :tworfrom :twodrop :exit
          :rot :oneplus :rot :drop :swap
-         :branch -32
+         :branch -34
        :twodrop :tworfrom :twodrop :false
        :exit]}
 
@@ -194,16 +193,12 @@
        ; TRAVERSE-PRIM-NAME
          :dup
          ; PRIM-NAME-LENGTH
-           ;; TODO Change DefGen so that primitive flags are the same as def flags
-           ;;:cfetchnames :charlit 3 :rshift
-           :cfetchnames :charlit 0x7f :and
+           :cfetchnames :charlit 3 :rshift
          :plus :oneplus
        :tor
        :dup
        ; PRIM-NAME-LENGTH
-         ;; TODO Change DefGen so that primitive flags are the same as def flags
-         ;;:cfetchnames :charlit 3 :rshift
-         :cfetchnames :charlit 0x7f :and
+         :cfetchnames :charlit 3 :rshift
        :rot :notequals :zbranch 5
            :twodrop :rfrom :false :exit
        :oneplus

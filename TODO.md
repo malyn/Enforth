@@ -1,4 +1,3 @@
-* Modify DefGen and `FIND-PRIM` so that the flags field in the names table is in the same format as the flags field in dictionary definitions.
 * Support FFI trampolines in `FIND-WORD`.
 * Finish implementing `NUMBER?` so that unknown words are detected.
 * Add case-insensitive name lookup.
@@ -19,6 +18,7 @@
 * Consider using the pgmspace typedefs (prog\_int8\_t, etc.) if that would make it easier to catch situations where we forgot to use the pgm\_\* accessors.
 * Consider creating EnforthDuino.cpp/.h wrappers to make it easier to interact with Enforth in the Arduino environment.
 * Add comments to all of the `.edn` files.
+* Modify DefGen so that it puts the 0xFF into the names table as soon as the last named primitive is seen (instead of adding in all of those wasted 0x00 bytes).
 * Do something about absolute RAM addresses on the stack, in variables, etc.  These prevent the VM from being saved to/from storage (such as EEPROM).
   * We can't relativize everything on save, because we don't always know what we are looking at -- how do we know that a dictionary variable contains a RAM address?  We could probably relativize all addresses in the VM though and then `@`, `!`, etc. would do the adjustment as necessary (and could offer bounds-checking).  All of these addresses are VM-relative and that VM base address will probably end up being stored in a constant register pair.  Access to memory-mapped CPU resources gets messy (this is mostly an ARM problem), although we could offer special fetch and store operations for those.  Similarly, FFI interop involving addresses is now a problem because we need to convert those back and forth.
   * Note that the VM itself has quite a few absolute addresses (DP, HERE, SOURCE, etc.) and we'll need to deal with those on load/save.  Most of these have to do with the text interpreter though and we could easily just say that persistence resets the state of the text interpreter and can only be performed when *not* in compilation mode.  That would leave a very small number of pointers in the VM and those could just be serialized as part of persisting the dictionary.
