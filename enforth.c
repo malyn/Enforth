@@ -1300,6 +1300,21 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        TWONIP:
+        {
+            CHECK_STACK(4, 2);
+            EnforthCell x3 = *restDataStack++;
+            *++restDataStack = x3;
+        }
+        continue;
+
+        NEGATE:
+        {
+            CHECK_STACK(1, 1);
+            tos.i = -tos.i;
+        }
+        continue;
+
         DOCOLON:
         {
             /* IP currently points to the relative offset of the PFA of

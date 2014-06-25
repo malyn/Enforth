@@ -27,22 +27,22 @@
 "\052" "2DROP"
 "\042" "2DUP"
 "\062" "ACCEPT"
+"\042" "2NIP"
 "\052" "2OVER"
 "\032" "2R>"
 "\032" "2R@"
-"\052" "2SWAP"
 "\042" "BASE"
 "\022" "BL"
 "\102" "COMPILE,"
+"\052" "2SWAP"
 "\012" "<"
-"\022" "<>"
 "\022" "CR"
 "\062" "CREATE"
+"\022" "<>"
 "\012" "="
 "\012" ">"
 "\022" ">R"
 "\042" "?DUP"
-"\012" "@"
 "\032" "C{}"
 "\022" "C~"
 "\072" "EXECUTE"
@@ -50,70 +50,72 @@
 "\042" "HERE"
 "\032" "HEX"
 "\042" "HOLD"
-"\052" "ABORT"
+"\012" "@"
 "\062" "LATEST"
 "\072" "LITERAL"
+"\052" "ABORT"
 "\032" "ABS"
 "\052" "ALIGN"
-"\052" "ALLOT"
 "\042" "QUIT"
+"\052" "ALLOT"
 "\032" "AND"
 "\022" "C!"
-"\032" "C+!"
 "\042" "SIGN"
-"\022" "C,"
+"\032" "C+!"
 "\062" "SOURCE"
 "\052" "SPACE"
 "\052" "STATE"
 "\042" "TYPE"
+"\022" "C,"
 "\022" "C@"
-"\052" "COUNT"
 "\022" "U."
-"\052" "DEPTH"
+"\052" "COUNT"
 "\012" "["
 "\013" "]"
 "\000" /* TODEFTYPE */
-"\042" "DROP"
+"\052" "DEPTH"
 "\000" /* TOFFIDEF */
 "\000" /* TOLFA */
-"\032" "DUP"
+"\042" "DROP"
 "\000" /* TOTOKEN */
+"\032" "DUP"
 "\042" "EMIT"
 "\052" "FALSE"
-"\062" "INVERT"
 "\000" /* TOCOMPILETOKEN */
-"\032" "KEY"
+"\062" "INVERT"
 "\000" /* CHANGELATESTDEFTYPE */
+"\032" "KEY"
 "\062" "LSHIFT"
-"\022" "M+"
 "\000" /* DIGITQ */
+"\022" "M+"
 "\042" "MOVE"
+"\062" "NEGATE"
 "\032" "NIP"
 "\022" "OR"
 "\042" "OVER"
-"\022" "R>"
-"\022" "R@"
 "\000" /* FFIARITY */
 "\000" /* FFINAME */
 "\000" /* FFIQ */
 "\000" /* FINDDEF */
+"\022" "R>"
+"\022" "R@"
 "\032" "ROT"
 "\062" "RSHIFT"
 "\042" "SWAP"
+"\000" /* FINDPRIM */
 "\042" "TRUE"
 "\042" "TUCK"
-"\000" /* FINDPRIM */
 "\022" "U>"
 "\032" "UM*"
 "\012" "\\"
 "\000" /* PDOTQUOTE */
 "\000" /* PEXECUTE */
+"\000" /* FINDWORD */
 "\000" /* LIT */
 "\000" /* PSQUOTE */
-"\000" /* FINDWORD */
+"\000" /* FOUNDDEFQ */
 "\000" /* ZBRANCH */
 "\000" /* FETCHFFIDEFS */
-"\000" /* FOUNDDEFQ */
 "\000" /* BRANCH */
 "\000" /* CFETCHFFIDEFS */
 "\000" /* CFETCHNAMES */
@@ -121,13 +123,11 @@
 "\000" /* EXIT */
 "\000" /* INITRP */
 "\000" /* UDSLASHMOD */
+"\000" /* FOUNDFFIQ */
 "\000" /* VMADDRLIT */
 "\000" /* WCOMMA */
-"\000" /* FOUNDFFIQ */
 "\000" /* WFETCH */
 "\000" /* WLIT */
-"\000"
-"\000"
 "\000" /* FOUNDPRIMQ */
 "\000"
 "\000"
@@ -153,6 +153,14 @@
 "\000"
 "\000"
 "\000" /* NUMBERQ */
+"\000"
+"\000"
+"\000"
+"\000"
+"\000"
+"\000"
+"\000"
+"\000"
 "\000"
 "\000" /* PARSEWORD */
 "\000"

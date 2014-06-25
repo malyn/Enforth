@@ -1,4 +1,3 @@
-* Finish implementing `NUMBER?` so that unknown words are detected.
 * Add `EVALUATE` and `enforth_evaluate` and use that instead of `enforth_add_definition` (which we'll then remove).
 * Create `C@NAMES` so that we can make a ROM variant of `(.")` in Forth.
 * Consider moving other non-essential primitives to Forth: `."`, `\\`, `W,`, `,`, `C,`, `ALLOT`.

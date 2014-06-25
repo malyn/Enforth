@@ -47,11 +47,11 @@
  :args [[:c] [[:u -1] [0]]]
  :flags #{:headerless}
  :source ": DIGIT? ( char -- u -1 | 0)
-            [CHAR] 0 -
+            >UPPER [CHAR] 0 -
             DUP 0< IF DROP 0 EXIT THEN
             DUP 9 > IF DUP 16 < IF DROP FALSE EXIT ELSE 7 - THEN THEN
             DUP 1+ BASE @ > IF DROP FALSE ELSE TRUE THEN ;"
- :pfa [:charlit "'0'" :minus
+ :pfa [:toupper :charlit "'0'" :minus
        :dup :zeroless :zbranch 4 :drop :zero :exit
        :dup :charlit 9 :greaterthan :zbranch 13
          :dup :charlit 17 :lessthan :zbranch 4
@@ -351,15 +351,34 @@
 ;; Attempt to convert a string at c-addr of length u into digits, using
 ;; the radix in BASE.  The number and -1 is returned if the conversion
 ;; was successful, otherwise 0 is returned.
-;;
-;; TODO Implement this for real.
 {:token :numberq
  :name "NUMBER?"
  :args [[:caddr :u] [[:caddr :u 0] [:n -1]]]
  :flags #{:headerless}
- :source ": NUMBER? ( c-addr u -- c-addr u 0 | n -1)
-            0 0 2SWAP >NUMBER 2DROP DROP TRUE ;"
- :pfa [:zero :zero :twoswap :tonumber :twodrop :drop :true :exit]}
+ :source ": SIGN? ( ca1 u1 -- ca2 u2 f )
+            OVER  C@  DUP [CHAR] - =  OVER [CHAR] + = OR  IF
+                [CHAR] - = IF -1 ELSE 0 THEN  >R 1 /STRING R>
+            ELSE DROP 0 THEN ;
+          : ?NEGATE ( n1 n2 -- n3)   0< IF NEGATE THEN ;
+          : NUMBER? ( c-addr u -- c-addr u 0 | n -1)
+            SIGN? >R  2DUP 0 0 2SWAP  >NUMBER  ( ca u ud ca2 u2)
+            IF DROP 2DROP  R> DROP  0 ELSE
+               DROP 2NIP DROP  R> ?NEGATE  -1 THEN ;"
+ :pfa [; SIGN?
+         :over :cfetch :dup :charlit "'-'" :equals
+         :over :charlit "'+'" :equals :or :zbranch 17
+           :charlit "'-'" :equals :zbranch 4
+             :true :branch 2
+             :false
+           :tor :charlit 1 :slashstring :rfrom :branch 3
+           :drop :zero
+       :tor :twodup :zero :zero :twoswap :tonumber :zbranch 8
+         :drop :twodrop :rfrom :drop :zero :branch 10
+         :drop :twonip :drop :rfrom
+         ; ?NEGATE
+           :zeroless :zbranch 2 :negate
+         :true
+       :exit]}
 
 ;; PARSE-WORD [MFORTH] "parse-word" ( char "ccc<char>" -- c-addr u )
 ;;
@@ -498,6 +517,10 @@
        :and :zbranch 4
          :charlit 0x20 :minus
        :exit]}
+
+{:token :twonip
+ :name "2NIP"
+ :args [[:x1 :x2 :x3 :x4] [:x3 :x4]]}
 
 {:token :udslashmod :flags #{:headerless}}
 

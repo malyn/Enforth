@@ -241,6 +241,8 @@
 
 {:token :nip}
 
+{:token :negate}
+
 {:token :notequals :name "<>"}
 
 ;; # [CORE] 6.1.0030 "number-sign" ( ud1 -- ud2 )
@@ -310,10 +312,6 @@
 ;;   - Display the implementation-defined system prompt if in
 ;;     interpretation state, all processing has been completed,
 ;;     and no ambiguous condition exists.
-;;
-;; ---
-;;
-;; Offset=124, Length=24 */
 {:token :quit
  :args [[] []]
  :source ": QUIT    --; R: i*x --)
@@ -438,22 +436,22 @@
 ;; condition exists if ud2 overflows during the conversion.
 {:token :tonumber
  :name ">NUMBER"
- :args [[:ud1 :u1] [:u2]]
+ :args [[:ud1 :caddr1 :u1] [:ud2 :caddr2 :u2]]
  :source ": UD* ( ud1 u1 -- ud2)   DUP >R UM* DROP  SWAP R> UM* ROT + ;
           : >NUMBER ( ud1 c-addr1 u1 -- ud2 c-addr2 u2)
             BEGIN DUP WHILE
-               OVER C@ DIGIT?  0= IF DROP EXIT THEN
+               OVER C@ DIGIT?  0= IF EXIT THEN
                >R 2SWAP BASE @ UD* R> M+ 2SWAP
                1 /STRING
             REPEAT ;"
- :pfa [:dup :zbranch 30
-         :over :cfetch :digitq :zeroequals :zbranch 3 :drop :exit
+ :pfa [:dup :zbranch 29
+         :over :cfetch :digitq :zeroequals :zbranch 2 :exit
          :tor :twoswap :base :fetch
          ; UD*
            :dup :tor :umstar :drop :swap :rfrom :umstar :rot :plus
          :rfrom :mplus :twoswap
          :charlit 1 :slashstring
-         :branch -31
+         :branch -30
        :exit]}
 
 {:token :tor :name ">R"}
