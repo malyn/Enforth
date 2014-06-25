@@ -47,6 +47,17 @@
 
 
 /* -------------------------------------
+ * Enforth tokens (for hand-compiled definitions)
+ */
+
+enum
+{
+#include "..\utility\enforth_tokens.h"
+};
+
+
+
+/* -------------------------------------
  * Sample FFI definitions.
  */
 
@@ -122,35 +133,35 @@ int main(void)
 
     /* Add a couple of hand-coded definitions. */
     const uint8_t favnumDef[] = {
-        0x00, // DOCOLON
+        (6 << 3) | 2, /* 6-character name; DOCOLON */
         'F',
         'A',
         'V',
         'N',
         'U',
-        0x80 | 'M',
-        0xd0,   // CHARLIT
+        'M',
+        CHARLIT,
         27,
-        0xff }; // EXIT
+        EXIT };
     enforth_add_definition(&enforthVM, favnumDef, sizeof(favnumDef));
 
     const uint8_t twoxDef[] = {
-        0x00, // DOCOLON
+        (2 << 3) | 2, /* 2-character name; DOCOLON */
         '2',
-        0x80 | 'X',
-        0x01,   // DUP
-        0x05,   // +
-        0xff }; // EXIT
+        'X',
+        DUP,
+        PLUS,
+        EXIT };
     enforth_add_definition(&enforthVM, twoxDef, sizeof(twoxDef));
 
     const uint8_t randDef[] = {
-        0x06, // DOFFI0
+        (4 << 3) | 0, /* 4-character name; DOFFI */
         (uint8_t)(((uint16_t)&FFIDEF_rand      ) & 0xff),  // FFIdef LSB
         (uint8_t)(((uint16_t)&FFIDEF_rand >>  8) & 0xff)}; // FFIdef MSB
     enforth_add_definition(&enforthVM, randDef, sizeof(randDef));
 
     const uint8_t srandDef[] = {
-        0x07, // DOFFI1
+        (5 << 3) | 0, /* 5-character name; DOFFI */
         (uint8_t)(((uint16_t)&FFIDEF_srand      ) & 0xff),  // FFIdef LSB
         (uint8_t)(((uint16_t)&FFIDEF_srand >>  8) & 0xff)}; // FFIdef MSB
     enforth_add_definition(&enforthVM, srandDef, sizeof(srandDef));

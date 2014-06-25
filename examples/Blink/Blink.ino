@@ -74,18 +74,18 @@ void setup()
     'N',
     'U',
     'M',
-    0x62,   // CHARLIT
+    0x77,   // CHARLIT
     27,
-    0x63 }; // EXIT
+    0x78 }; // EXIT
   enforth_add_definition(&enforthVM, favnumDef, sizeof(favnumDef));
 
   const uint8_t twoxDef[] = {
     (2 << 3) | 2, /* 2-character name; DOCOLON */
     '2',
     'X',
-    0x35,   // DUP
+    0x4e,   // DUP
     0x02,   // +
-    0x63 }; // EXIT
+    0x78 }; // EXIT
   enforth_add_definition(&enforthVM, twoxDef, sizeof(twoxDef));
 
   const uint8_t delayDef[] = {
