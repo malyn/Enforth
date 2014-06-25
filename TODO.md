@@ -1,4 +1,8 @@
-* Add `EVALUATE` and `enforth_evaluate` and use that instead of `enforth_add_definition` (which we'll then remove).
+* Add an `enforth_execute` function that calls `EXECUTE`.  `enforth_go` then sets up the stack and calls `enforth_execute` to invoke the `COLD` XT (which `enforth_go` put on the stack).  The body of `enforth_execute` is basically what is currently in `enforth_go`.
+  * Need to add `COLD` as part of this (which prints out the banner).
+  * Note that this change means that `enforth_execute` (*nee* `enforth_go`) is moving more towards a task-aware model where it is able to pop IP and RP from the stack.  We won't save those things to the stack yet, but that would be the obvious next step on the way to tasking.
+  * Enforth users could (probably?) call `enforth_execute` to run their own main loop instead of the interpreter.
+* Add `EVALUATE` and `enforth_evaluate` and use that instead of `enforth_add_definition` (which we'll then remove).  This function works by setting up the stack (again, similar to what the new `enforth_go` function does) and calling `enforth_execute` to do the actual work.
 * Create `C@NAMES` so that we can make a ROM variant of `(.")` in Forth.
 * Consider moving other non-essential primitives to Forth: `."`, `\\`, `W,`, `,`, `C,`, `ALLOT`.
   * The `*COMMA` words and `ALLOT` should not use `dp` but instead use `HERE`, `'HERE`, and `!`, `C!`, and `W!`.  This change makes it possible for us to ultimately remove `dp` from the `vm` structure and instead make it a regular variable in the dictionary.
