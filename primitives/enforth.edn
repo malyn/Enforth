@@ -171,24 +171,24 @@
 ;; Compares the string c-addr with length u to the name of the
 ;; dictionary entry identified by xt and pushes true to the stack if the
 ;; names are identical (ignoring case), false otherwise.
-;; TODO Consider dropping the early length compare and let ICOMPARE deal
-;; with that.  Looks like FOUND-FFI? is going to abort if it hits NUL
-;; anyway, so dropping the length check should be fine...  Also, this is
-;; only for finding definitions (things actually in the dictionary), so
-;; it doesn't need to be fast.
-;; TODO Probably get rid of ICOMPARE altogether and just make the
-;; equivalent of IEQUALS (or even just manual compare like what is in
-;; FOUND-PRIM?).
 {:token :founddefq
  :name "FOUND-DEF?"
  :args [[:caddr :u :xt] [:f]]
  :flags #{:headerless}
  :source ": HIDDEN? ( xt -- f ) >DEF-TYPE kDefTypeCOLONHIDDEN = ;
+          : STRING~ ( c-addr1 c-addr2 u -- f )
+            BEGIN
+              ?DUP
+            WHILE
+              1- >R ( ca1 ca2 R:u'-1)
+              OVER C@  OVER C@ C{} IF 2DROP R> DROP FALSE EXIT THEN
+              1+ SWAP 1+ SWAP ( ca1' ca2' R:u'-1) R>
+            REPEAT ( ca' ca2') 2DROP TRUE ;
           : FOUND-DEF? ( c-addr u xt -- f)
             DUP HIDDEN? IF DROP 2DROP FALSE EXIT THEN
             2DUP NAME-LENGTH ( ca u xt u u') <> IF DROP 2DROP FALSE EXIT THEN
-            DUP FFI? IF ( ca u xt) FOUND-FFI?
-            ELSE >LFA 2 + 1+ ( ca u ca') OVER ICOMPARE 0= THEN ;"
+            DUP FFI? IF ( ca u xt) FOUND-FFI? EXIT THEN
+            >LFA 2 + 1+ ( ca u ca') SWAP STRING~ ;"
  :pfa [:dup
        ; HIDDEN
          :todeftype :charlit "kDefTypeCOLONHIDDEN" :equals
@@ -196,9 +196,17 @@
          :drop :twodrop :false :exit
        :twodup :namelength :notequals :zbranch 5
          :drop :twodrop :false :exit
-       :dup :ffiq :zbranch 4
-         :foundffiq :branch 8
-         :tolfa :oneplus :oneplus :oneplus :over :icompare :zeroequals
+       :dup :ffiq :zbranch 3
+         :foundffiq :exit
+       :tolfa :oneplus :oneplus :oneplus :swap
+       ; STRING~
+         :qdup :zbranch 22
+           :oneminus :tor
+           :over :cfetch :over :cfetch :cnotsimilar :zbranch 6
+             :twodrop :rfrom :drop :false :exit
+           :oneplus :swap :oneplus :swap :rfrom
+           :branch -23
+         :twodrop :true
        :exit]}
 
 {:token :foundffiq
@@ -215,11 +223,11 @@
               1+ SWAP 1+ SWAP ( ca' caffi' R:u'-1) R>
             REPEAT ( ca' caffi') 2DROP TRUE ;"
  :pfa [:ffiname :swap
-       :qdup :zbranch 21
+       :qdup :zbranch 22
          :oneminus :tor
          :over :cfetch :over :cfetchffidefs :cnotsimilar :zbranch 6
            :twodrop :rfrom :drop :false :exit
-         :oneplus :swap :oneplus :rfrom :branch -22
+         :oneplus :swap :oneplus :swap :rfrom :branch -23
         :twodrop :true
         :exit]}
 
@@ -268,9 +276,6 @@
  :flags #{:headerless}
  :source ": HLDEND ( -- u)  [ 1 CELLS 8 * 3 * ] ;"
  :pfa [:charlit "kEnforthCellSize * 8 * 3" :exit]}
-
-{:token :icompare
- :args [[:ca1 :u1 :ca2 :u2] [:n]]}
 
 {:token :initrp :flags #{:headerless}}
 

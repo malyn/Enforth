@@ -80,54 +80,58 @@
 "\000" /* TOTOKEN */
 "\042" "EMIT"
 "\052" "FALSE"
-"\102" "ICOMPARE"
-"\000" /* TOCOMPILETOKEN */
 "\062" "INVERT"
-"\000" /* CHANGELATESTDEFTYPE */
+"\000" /* TOCOMPILETOKEN */
 "\032" "KEY"
+"\000" /* CHANGELATESTDEFTYPE */
 "\062" "LSHIFT"
-"\000" /* DIGITQ */
 "\022" "M+"
+"\000" /* DIGITQ */
 "\042" "MOVE"
 "\032" "NIP"
 "\022" "OR"
 "\042" "OVER"
 "\022" "R>"
+"\022" "R@"
 "\000" /* FFIARITY */
 "\000" /* FFINAME */
 "\000" /* FFIQ */
 "\000" /* FINDDEF */
-"\022" "R@"
 "\032" "ROT"
 "\062" "RSHIFT"
 "\042" "SWAP"
 "\042" "TRUE"
-"\000" /* FINDPRIM */
 "\042" "TUCK"
+"\000" /* FINDPRIM */
 "\022" "U>"
 "\032" "UM*"
 "\012" "\\"
 "\000" /* PDOTQUOTE */
 "\000" /* PEXECUTE */
 "\000" /* LIT */
-"\000" /* FINDWORD */
 "\000" /* PSQUOTE */
+"\000" /* FINDWORD */
 "\000" /* ZBRANCH */
-"\000" /* FOUNDDEFQ */
 "\000" /* FETCHFFIDEFS */
+"\000" /* FOUNDDEFQ */
 "\000" /* BRANCH */
 "\000" /* CFETCHFFIDEFS */
 "\000" /* CFETCHNAMES */
 "\000" /* CHARLIT */
-"\000" /* FOUNDFFIQ */
 "\000" /* EXIT */
 "\000" /* INITRP */
 "\000" /* UDSLASHMOD */
 "\000" /* VMADDRLIT */
-"\000" /* FOUNDPRIMQ */
 "\000" /* WCOMMA */
+"\000" /* FOUNDFFIQ */
 "\000" /* WFETCH */
 "\000" /* WLIT */
+"\000"
+"\000"
+"\000" /* FOUNDPRIMQ */
+"\000"
+"\000"
+"\000"
 "\000"
 "\000"
 "\000"

@@ -37,8 +37,6 @@
 
 /* ANSI C includes. */
 #include <stddef.h>
-#include <ctype.h>
-#include <stdlib.h>
 #include <string.h>
 
 /* AVR includes. */
@@ -49,7 +47,6 @@
 #define pgm_read_byte(p) (*(uint8_t*)(p))
 #define pgm_read_word(p) (*(int *)(p))
 #define memcpy_P memcpy
-#define strncasecmp_P strncasecmp
 #endif
 
 /* Enforth includes. */
@@ -1293,22 +1290,6 @@ DISPATCH_TOKEN:
             *--returnTop = *restDataStack++;
             *--returnTop = tos;
             tos = *restDataStack++;
-        }
-        continue;
-
-        /* TODO Implement this properly (the whole different size, -1, 1
-         * thing) and in Forth.  Or just get rid of it altogether and do
-         * something name-specific in FOUND-DEF? similar to what we did
-         * in FOUND-PRIM?. */
-        ICOMPARE:
-        {
-            CHECK_STACK(4, 1);
-            EnforthUnsigned u2 = tos.u;
-            uint8_t * caddr2 = restDataStack++->ram;
-            EnforthUnsigned u1 = restDataStack++->u;
-            uint8_t * caddr1 = restDataStack++->ram;
-            tos.i = strncasecmp(caddr1, caddr2, u1 < u2 ? u1 : u2) == 0
-                        ? 0 : -1;
         }
         continue;
 
