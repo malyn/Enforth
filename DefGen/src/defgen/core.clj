@@ -5,6 +5,8 @@
             [me.raynes.fs :as fs])
   (:gen-class))
 
+(def token-multiplier 6)
+
 (defn id-to-token
   [id]
   (-> id
@@ -31,9 +33,9 @@
    :args-in args-in
    :args-out args-out
    :source source
-   :pfa (when pfa (concat pfa (let [pad (mod (count pfa) 4)]
+   :pfa (when pfa (concat pfa (let [pad (mod (count pfa) token-multiplier)]
                                 (when (> pad 0)
-                                  (repeat (- 4 pad) 0)))))
+                                  (repeat (- token-multiplier pad) 0)))))
    :primitive-type (if (empty? pfa) :code :definition)
    :headerless? (flags :headerless)
    :immediate? (flags :immediate)})
@@ -68,7 +70,7 @@
   [prims]
   (let [prims (sort-by identity compare-primitives prims)
         prim-defs (filter #(-> % :primitive-type (= :definition)) prims)
-        prim-defs-token-values (reductions + 0 (map #(-> % :pfa count (/ 4))
+        prim-defs-token-values (reductions + 0 (map #(-> % :pfa count (/ token-multiplier))
                                                     prim-defs))
         prim-defs (map #(assoc %1 :token-value %2)
                        prim-defs

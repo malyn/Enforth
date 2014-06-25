@@ -1366,7 +1366,7 @@ DISPATCH_TOKEN:
 
             /* Calculate the offset of the definition and set the IP to
              * the absolute address. */
-            int definitionOffset = token << 2;
+            int definitionOffset = token * 6;
             ip = (uint8_t*)definitions + definitionOffset;
 #ifdef __AVR__
             inProgramSpace = -1;
