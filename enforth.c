@@ -126,6 +126,16 @@ typedef enum EnforthToken
 
 
 /* -------------------------------------
+ * Enforth constants.
+ */
+
+/* Multiplier used to convert a ROM-based token into an offset into the
+ * ROM-based definition table. */
+static const int kTokenMultiplier = 6;
+
+
+
+/* -------------------------------------
  * Enforth definition names.
  */
 
@@ -1362,7 +1372,7 @@ DISPATCH_TOKEN:
 
             /* Calculate the offset of the definition and set the IP to
              * the absolute address. */
-            int definitionOffset = token * 6;
+            int definitionOffset = token * kTokenMultiplier;
             ip = (uint8_t*)definitions + definitionOffset;
 #ifdef __AVR__
             inProgramSpace = -1;
