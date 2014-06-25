@@ -132,7 +132,10 @@ typedef enum EnforthToken
  * Enforth definition names.
  */
 
-/* A length with a high bit set indicates that the word is immediate. */
+/* This could be stored in far memory on large AVRs since we only ever
+ * access it using an offset.  Or we could have a single C@C word
+ * (instead of C@DEFS, C@NAMES, C@FFIDEFS) and then require that all
+ * three types of blocks are in near memory... */
 static const char kDefinitionNames[] PROGMEM =
 #include "enforth_names.h"
 ;
@@ -143,6 +146,10 @@ static const char kDefinitionNames[] PROGMEM =
  * Enforth definitions.
  */
 
+/* This could be stored in far memory on large AVRs since we only ever
+ * access it using an offset.  Or we could have a single C@C word
+ * (instead of C@DEFS, C@NAMES, C@FFIDEFS) and then require that all
+ * three types of blocks are in near memory... */
 static const int8_t definitions[] PROGMEM = {
 #include "enforth_definitions.h"
 };
@@ -306,22 +313,6 @@ void enforth_go(EnforthVM * const vm)
 
 DISPATCH_TOKEN:
         goto *(void *)pgm_read_word(&primitive_table[token]);
-
-        /* TODO Move this to Forth once we have C@C */
-        FFIARITY:
-        {
-            /* TOS contains the XT (dictionary-relative offset with the
-             * high bit set) of the FFI trampoline.  Get the pointer to
-             * the trampoline -- which is a pointer to the definition in
-             * code space -- and then put the arity into TOS. */
-            EnforthFFIDef** trampoline = (EnforthFFIDef**)(
-                    vm->dictionary.ram
-                        + (tos.u & 0x7fff)
-                        + 2 /* LFA */
-                        + 1 /* Flags */);
-            tos.u = pgm_read_byte(&(*trampoline)->arity);
-        }
-        continue;
 
         DOFFI0:
         {
@@ -627,6 +618,13 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        FETCHFFIDEFS:
+        {
+            CHECK_STACK(1, 1);
+            tos.u = pgm_read_word(tos.ram);
+        }
+        continue;
+
         OR:
         {
             CHECK_STACK(2, 1);
@@ -754,6 +752,13 @@ DISPATCH_TOKEN:
         {
             CHECK_STACK(1, 1);
             tos.u = *(uint8_t*)tos.ram;
+        }
+        continue;
+
+        CFETCHFFIDEFS:
+        {
+            CHECK_STACK(1, 1);
+            tos.u = pgm_read_byte(tos.ram);
         }
         continue;
 

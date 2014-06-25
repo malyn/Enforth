@@ -1,9 +1,8 @@
-* Support FFI trampolines in `FIND-WORD`.
 * Finish implementing `NUMBER?` so that unknown words are detected.
 * Add case-insensitive name lookup.
 * Add `EVALUATE` and `enforth_evaluate` and use that instead of `enforth_add_definition` (which we'll then remove).
 * Create `C@NAMES` so that we can make a ROM variant of `(.")` in Forth.
-* Consider moving other non-essential primitives to Forth: `FFIARITY`, `."`, `\\`, `W,`, `,`, `C,`, `ALLOT`.
+* Consider moving other non-essential primitives to Forth: `."`, `\\`, `W,`, `,`, `C,`, `ALLOT`.
   * The `*COMMA` words and `ALLOT` should not use `dp` but instead use `HERE`, `'HERE`, and `!`, `C!`, and `W!`.  This change makes it possible for us to ultimately remove `dp` from the `vm` structure and instead make it a regular variable in the dictionary.
 * Move `dp` and `latest` into the dictionary so that they load/save with the dictionary.
 * Make ROM definition IPs on the return stack relative to the start of the ROM definition block.  We can do this now that all of the ROM definitions are finally in this one block.

@@ -1,5 +1,10 @@
 {:token :branch :flags #{:headerless}}
 
+{:token :cfetchffidefs
+ :name "C@FFIDEFS"
+ :args [[:u] [:c]]
+ :flags #{:headerless}}
+
 {:token :cfetchnames
  :name "C@NAMES"
  :args [[:u] [:c]]
@@ -47,6 +52,11 @@
 
 {:token :exit :flags #{:headerless}}
 
+{:token :fetchffidefs
+ :name "@FFIDEFS"
+ :args [[:u] [:x]]
+ :flags #{:headerless}}
+
 {:token :ffiq
  :name "FFI?"
  :args [[:xt] [:f]]
@@ -57,7 +67,14 @@
 {:token :ffiarity
  :name "FFI-ARITY"
  :args [[:xt] [:u]]
- :flags #{:headerless}}
+ :flags #{:headerless}
+ :pfa [:toffidef :charlit "offsetof(EnforthFFIDef, arity)" :plus :cfetchffidefs :exit]}
+
+{:token :ffiname
+ :name "FFI-NAME"
+ :args [[:xt] [:addr]]
+ :flags #{:headerless}
+ :pfa [:toffidef :charlit "offsetof(EnforthFFIDef, name)" :plus :fetchffidefs :exit]}
 
 {:token :finddef
  :name "FIND-DEF"
@@ -143,14 +160,13 @@
 ;; dictionary entry identified by xt and pushes true to the stack if the
 ;; names are identical (ignoring case), false otherwise.
 ;; TODO Consider dropping the early length compare and let ICOMPARE deal
-;; with that.
+;; with that.  Looks like FOUND-FFI? is going to abort if it hits NUL
+;; anyway, so dropping the length check should be fine...  Also, this is
+;; only for finding definitions (things actually in the dictionary), so
+;; it doesn't need to be fast.
 ;; TODO Probably get rid of ICOMPARE altogether and just make the
 ;; equivalent of IEQUALS (or even just manual compare like what is in
 ;; FOUND-PRIM?).
-;; TODO Implement FFI support (which requires us to compare ROM strings
-;; in the same manner as we'll need to compare token names, ideally with
-;; exactly the same function).  Note that both FFI and token name
-;; support will need the C@DEFS word.
 {:token :founddefq
  :name "FOUND-DEF?"
  :args [[:caddr :u :xt] [:f]]
@@ -159,8 +175,8 @@
           : FOUND-DEF? ( c-addr u xt -- f)
             DUP HIDDEN? IF DROP 2DROP FALSE EXIT THEN
             2DUP NAME-LENGTH ( ca u xt u u') <> IF DROP 2DROP FALSE EXIT THEN
-            DUP FFI? IF ( TODO implement this) DROP 2DROP FALSE EXIT THEN
-            >LFA 2 + 1+ ( ca u ca') OVER ICOMPARE 0= ;"
+            DUP FFI? IF ( ca u xt) FOUND-FFI?
+            ELSE >LFA 2 + 1+ ( ca u ca') OVER ICOMPARE 0= THEN ;"
  :pfa [:dup
        ; HIDDEN
          :todeftype :charlit "kDefTypeCOLONHIDDEN" :equals
@@ -168,10 +184,33 @@
          :drop :twodrop :false :exit
        :twodup :namelength :notequals :zbranch 5
          :drop :twodrop :false :exit
-       :dup :ffiq :zbranch 5
-         :drop :twodrop :false :exit ;; TODO Implement this
-       :tolfa :oneplus :oneplus :oneplus :over :icompare :zeroequals
+       :dup :ffiq :zbranch 4
+         :foundffiq :branch 8
+         :tolfa :oneplus :oneplus :oneplus :over :icompare :zeroequals
        :exit]}
+
+;; TODO Add case-insensitive compares
+{:token :foundffiq
+ :name "FOUND-FFI?"
+ :args [[:caddr :u :xt] [:f]]
+ :flags #{:headerless}
+ :source ": FOUND-FFI? ( c-addr u xt -- f )
+            FFI-NAME SWAP ( c-addr c-addrffi u)
+            BEGIN
+              ?DUP
+            WHILE
+              1- >R ( ca caffi R:u'-1)
+              OVER C@  OVER C@FFIDEFS <> IF 2DROP R> DROP FALSE EXIT THEN
+              1+ SWAP 1+ SWAP ( ca' caffi' R:u'-1) R>
+            REPEAT ( ca' caffi') 2DROP TRUE ;"
+ :pfa [:ffiname :swap
+       :qdup :zbranch 21
+         :oneminus :tor
+         :over :cfetch :over :cfetchffidefs :notequals :zbranch 6
+           :twodrop :rfrom :drop :false :exit
+         :oneplus :swap :oneplus :rfrom :branch -22
+        :twodrop :true
+        :exit]}
 
 ;; TODO Add case-insensitive compares
 {:token :foundprimq
@@ -365,6 +404,20 @@
  :flags #{:headerless}
  :pfa [:charlit 80 :exit]}
 
+;; >[TOKEN] [ENFORTH] "to-compile-token" ( xt -- token )
+;;
+;; Return the compilation token for the given XT, which may refer to a
+;; token, user definition, or FFI trampoline.
+{:token :tocompiletoken
+ :name ">[TOKEN]"
+ :args [[:xt] [:token]]
+ :flags #{:headerless}
+ :source ": >[TOKEN] ( xt -- token)
+            >TOKEN  DUP EXECUTION-TOKEN-BASE 1- > IF 0x10 + THEN ;"
+ :pfa [:totoken :dup :charlit "0xe0 - 1" :greaterthan :zbranch 4
+         :charlit 0x10 :plus
+       :exit]}
+
 ;; xt must refer to a compiled (not primitive) definition or FFI
 ;; trampoline.
 {:token :todeftype
@@ -393,6 +446,13 @@
        :plus
        :exit]}
 
+{:token :toffidef
+ :name ">FFIDEF"
+ :args [[:xt] [:addr]]
+ :flags #{:headerless}
+ :source ": >FFIDEF ( xt -- addr ) >BODY @ ;"
+ :pfa [:tobody :fetch :exit]}
+
 ;; >TOKEN [ENFORTH] "to-token" ( xt -- token )
 ;;
 ;; Return the execution token for the given XT, which may refer to a
@@ -409,20 +469,6 @@
        :dup :ffiq :zbranch 7
          :ffiarity :charlit 0xe8 :plus :branch 5
          :todeftype :charlit 0xe0 :plus
-       :exit]}
-
-;; >[TOKEN] [ENFORTH] "to-compile-token" ( xt -- token )
-;;
-;; Return the compilation token for the given XT, which may refer to a
-;; token, user definition, or FFI trampoline.
-{:token :tocompiletoken
- :name ">[TOKEN]"
- :args [[:xt] [:token]]
- :flags #{:headerless}
- :source ": >[TOKEN] ( xt -- token)
-            >TOKEN  DUP EXECUTION-TOKEN-BASE 1- > IF 0x10 + THEN ;"
- :pfa [:totoken :dup :charlit "0xe0 - 1" :greaterthan :zbranch 4
-         :charlit 0x10 :plus
        :exit]}
 
 {:token :udslashmod :flags #{:headerless}}

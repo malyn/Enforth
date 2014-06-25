@@ -60,63 +60,75 @@
 "\072" "EXECUTE"
 "\102" "ICOMPARE"
 "\042" "FIND"
-"\042" "HERE"
-"\032" "HEX"
+"\122" "FOUND-FFI?"
 "\062" "INVERT"
-"\042" "HOLD"
 "\032" "KEY"
-"\062" "LATEST"
-"\072" "LITERAL"
 "\062" "LSHIFT"
 "\022" "M+"
 "\042" "MOVE"
 "\032" "NIP"
-"\042" "QUIT"
+"\042" "HERE"
+"\032" "HEX"
 "\022" "OR"
+"\042" "HOLD"
 "\042" "OVER"
+"\062" "LATEST"
+"\072" "LITERAL"
 "\022" "R>"
 "\022" "R@"
 "\032" "ROT"
-"\042" "SIGN"
 "\062" "RSHIFT"
+"\042" "QUIT"
+"\042" "SWAP"
+"\042" "TRUE"
+"\042" "TUCK"
+"\022" "U>"
+"\032" "UM*"
+"\042" "SIGN"
+"\012" "\\"
 "\062" "SOURCE"
 "\052" "SPACE"
 "\052" "STATE"
 "\042" "TYPE"
-"\042" "SWAP"
-"\042" "TRUE"
-"\042" "TUCK"
+"\000" /* PDOTQUOTE */
+"\000" /* PEXECUTE */
+"\000" /* LIT */
 "\022" "U."
-"\022" "U>"
+"\000" /* PSQUOTE */
 "\012" "["
 "\013" "]"
 "\000" /* TODEFTYPE */
-"\032" "UM*"
-"\000" /* TOLFA */
-"\012" "\\"
-"\000" /* PDOTQUOTE */
-"\000" /* TOTOKEN */
-"\000" /* PEXECUTE */
-"\000" /* LIT */
-"\000" /* PSQUOTE */
 "\000" /* ZBRANCH */
-"\000" /* TOCOMPILETOKEN */
+"\000" /* TOFFIDEF */
+"\000" /* TOLFA */
+"\000" /* FETCHFFIDEFS */
 "\000" /* BRANCH */
+"\000" /* TOTOKEN */
+"\000" /* CFETCHFFIDEFS */
 "\000" /* CFETCHNAMES */
-"\000" /* CHANGELATESTDEFTYPE */
 "\000" /* CHARLIT */
 "\000" /* EXIT */
-"\000" /* FFIARITY */
+"\000" /* TOCOMPILETOKEN */
 "\000" /* INITRP */
-"\000" /* DIGITQ */
 "\000" /* UDSLASHMOD */
+"\000" /* CHANGELATESTDEFTYPE */
 "\000" /* VMADDRLIT */
 "\000" /* WCOMMA */
 "\000" /* WFETCH */
 "\000" /* WLIT */
+"\000" /* DIGITQ */
 "\000"
 "\000"
 "\000"
+"\000"
+"\000"
+"\000"
+"\000"
+"\000"
+"\000"
+"\000" /* FFIARITY */
+"\000"
+"\000" /* FFINAME */
 "\000"
 "\000" /* FFIQ */
 "\000"

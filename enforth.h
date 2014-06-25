@@ -130,6 +130,12 @@ static const int kEnforthFFIProcPtrSize = sizeof(void*);
 /* FFI Macros */
 #define LAST_FFI NULL
 
+/* NOTE that ENFORTH_EXTERN needs to be in near (<64KB) program memory
+ * on large AVR processors since we access the definition using 16-bit
+ * references in Forth.  The code itself can (and probably should?) be
+ * located in extended program memory though since the function pointer
+ * is only ever used in C and thus can use the full address space
+ * resolution of the processor. */
 #define ENFORTH_EXTERN(name, fn, arity) \
     static const char FFIDEF_ ## name ## _NAME[] PROGMEM = #name; \
     static const EnforthFFIDef FFIDEF_##name PROGMEM = { LAST_FFI, FFIDEF_ ## name ## _NAME, arity, (void*)fn };
