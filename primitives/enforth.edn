@@ -6,6 +6,27 @@
  :source ": C{} ( c1 c2 -- f )  C~ INVERT ;"
  :pfa [:csimilar :invert :exit]}
 
+; COLD [MFORTH] ( i*x -- ) ( R: j*x -- )
+;
+; Clear the screen, display our copyright/help message, then jump to
+; ABORT (which clears the stack and calls QUIT, which clears the return
+; stack and enters the infinite text interpreter loop).
+; TODO Clear the screen
+{:token :cold
+ :args [[] []]
+ :flags #{:headerless}
+ :source ": COLD ( i*x -- ; R: j*x -- )
+            .\" Enforth -- (C) Michael Alyn Miller\" CR
+            ABORT ;"
+ :pfa [:pdotquote 31
+         "'E'" "'n'" "'f'" "'o'" "'r'" "'t'" "'h'" "' '"
+         "'('" "'C'" "')'" "' '" "'M'" "'i'" "'c'" "'h'"
+         "'a'" "'e'" "'l'" "' '" "'A'" "'l'" "'y'" "'n'"
+         "' '" "'M'" "'i'" "'l'" "'l'" "'e'" "'r'"
+       :cr
+       :abort
+       :exit]}
+
 {:token :csimilar
  :name "C~"
  :args [[:c1 :c2] [:f]]
@@ -266,6 +287,11 @@
          :twodrop :rfrom :true
        :exit]}
 
+{:token :halt
+ :flags #{:headerless}
+ :source ": HALT ( i*x -- )  (HALT) ;"
+ :pfa [:phalt :exit]}
+
 {:token :hld
  :args [[] [:aaddr]]
  :flags #{:headerless}
@@ -421,9 +447,11 @@
        :over :minus
        :exit]}
 
+{:token :pdotquote :name "(.\")" :flags #{:headerless}}
+
 {:token :pexecute :name "(EXECUTE)" :flags #{:headerless}}
 
-{:token :pdotquote :name "(.\")" :flags #{:headerless}}
+{:token :phalt :flags #{:headerless}}
 
 {:token :psquote :name "(s\")" :flags #{:headerless}}
 

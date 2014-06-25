@@ -154,6 +154,13 @@
 
 {:token :equals :name "="}
 
+;; TODO Implement this properly; probably after we add MFORTH's Input
+;; Control Blocks to Enforth..?
+{:token :evaluate
+ :args [[:caddr :u] []]
+ :source ": EVALUATE ( i*x c-addr u -- j*x )  INTERPRET ;"
+ :pfa [:interpret :exit]}
+
 {:token :false}
 
 {:token :fetch :name "@"}

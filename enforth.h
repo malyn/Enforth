@@ -179,6 +179,7 @@ typedef struct
     uint8_t * prev_leave;
 
     /* Task vars */
+    EnforthCell saved_sp; /* Index of the SP from the base of the stack */
     EnforthUnsigned base;
     EnforthCell data_stack[32];
     EnforthCell return_stack[32];
@@ -201,6 +202,9 @@ void enforth_init(
 
 void enforth_add_definition(
         EnforthVM * const vm, const uint8_t * const def, int def_size);
+
+void enforth_execute(
+        EnforthVM * const vm, uint16_t xt);
 
 void enforth_go(
         EnforthVM * const vm);

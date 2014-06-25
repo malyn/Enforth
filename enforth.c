@@ -208,7 +208,7 @@ void enforth_add_definition(EnforthVM * const vm, const uint8_t * const def, int
     vm->latest.u = newLatest;
 }
 
-void enforth_go(EnforthVM * const vm)
+void enforth_execute(EnforthVM * const vm, uint16_t xt)
 {
     register uint8_t *ip;
     register EnforthCell tos;
@@ -237,14 +237,6 @@ void enforth_go(EnforthVM * const vm)
 #else
 #define CHECK_STACK(numArgs, numResults)
 #endif
-
-    /* Print the banner. */
-    if (vm->emit != NULL)
-    {
-        vm->emit('H');
-        vm->emit('i');
-        vm->emit('\n');
-    }
 
     static const void * const primitive_table[256] PROGMEM = {
 #include "enforth_jumptable.h"
@@ -294,12 +286,31 @@ void enforth_go(EnforthVM * const vm)
         &&DOFFI7,
     };
 
-    /* Initialize RP so that we can use threading to get to QUIT from
-     * ABORT.  QUIT will immediately reset RP as well, of course. */
-    returnTop = (EnforthCell *)&vm->return_stack[32];
+    /* Initialize the stack pointer.  Note that we do not pop TOS into
+     * our register at this point because we are going to immediately
+     * put the xt argument into TOS as part of calling EXECUTE. */
+    restDataStack = (EnforthCell*)&vm->data_stack[32 - vm->saved_sp.u];
 
-    /* Jump to ABORT, which initializes the IP, our stacks, etc. */
-    goto ABORT;
+    /* Clear out the return stack (since we are about to begin a new
+     * thread of execution) and then push a return to the start of the
+     * ROM-based (so 0x8000 | definition offset) HALT definition, which
+     * will exit the inner interpreter (i.e., enforth_execute). */
+    returnTop = (EnforthCell *)&vm->return_stack[32];
+    /* TODO Needs to be relative to the ROM definition block. */
+    (--returnTop)->ram = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ((EnforthToken)HALT * kTokenMultiplier)));
+
+    /* Put the XT into the top-of-stack register, point IP at the first
+     * word in EXECUTE, and then enter the inner interpreter.  Note that
+     * this counts as an item on the data stack for the purposes of the
+     * stack checking code. */
+    tos.u = xt;
+    --restDataStack;
+
+#ifdef __AVR__
+    inProgramSpace = -1;
+#endif
+
+    ip = (uint8_t*)definitions + ((EnforthToken)EXECUTE * kTokenMultiplier);
 
     /* The inner interpreter. */
     for (;;)
@@ -320,6 +331,12 @@ void enforth_go(EnforthVM * const vm)
 
 DISPATCH_TOKEN:
         goto *(void *)pgm_read_word(&primitive_table[token]);
+
+        PHALT:
+        /* Exit the interpreter.  No need to retain state (such as the
+         * current SP) since the next call to enforth_execute will need
+         * to set up all of that again anyway. */
+        return;
 
         DOFFI0:
         {
@@ -1400,4 +1417,11 @@ DISPATCH_TOKEN:
         }
         continue;
     }
+}
+
+void enforth_go(EnforthVM * const vm)
+{
+    /* Clear the stack pointer and then execute the COLD word. */
+    vm->saved_sp.u = 0;
+    enforth_execute(vm, COLD);
 }

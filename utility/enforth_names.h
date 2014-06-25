@@ -45,6 +45,7 @@
 "\042" "?DUP"
 "\032" "C{}"
 "\022" "C~"
+"\102" "EVALUATE"
 "\072" "EXECUTE"
 "\042" "FIND"
 "\042" "HERE"
@@ -86,48 +87,54 @@
 "\000" /* CHANGELATESTDEFTYPE */
 "\032" "KEY"
 "\062" "LSHIFT"
-"\000" /* DIGITQ */
+"\000" /* COLD */
 "\022" "M+"
 "\042" "MOVE"
 "\062" "NEGATE"
 "\032" "NIP"
 "\022" "OR"
+"\000" /* DIGITQ */
 "\042" "OVER"
-"\000" /* FFIARITY */
-"\000" /* FFINAME */
-"\000" /* FFIQ */
-"\000" /* FINDDEF */
 "\022" "R>"
 "\022" "R@"
 "\032" "ROT"
 "\062" "RSHIFT"
 "\042" "SWAP"
-"\000" /* FINDPRIM */
+"\000" /* FFIARITY */
+"\000" /* FFINAME */
+"\000" /* FFIQ */
+"\000" /* FINDDEF */
 "\042" "TRUE"
 "\042" "TUCK"
 "\022" "U>"
 "\032" "UM*"
 "\012" "\\"
+"\000" /* FINDPRIM */
 "\000" /* PDOTQUOTE */
 "\000" /* PEXECUTE */
-"\000" /* FINDWORD */
 "\000" /* LIT */
 "\000" /* PSQUOTE */
-"\000" /* FOUNDDEFQ */
 "\000" /* ZBRANCH */
 "\000" /* FETCHFFIDEFS */
 "\000" /* BRANCH */
+"\000" /* FINDWORD */
 "\000" /* CFETCHFFIDEFS */
 "\000" /* CFETCHNAMES */
+"\000" /* FOUNDDEFQ */
 "\000" /* CHARLIT */
 "\000" /* EXIT */
 "\000" /* INITRP */
+"\000" /* PHALT */
 "\000" /* UDSLASHMOD */
-"\000" /* FOUNDFFIQ */
 "\000" /* VMADDRLIT */
 "\000" /* WCOMMA */
 "\000" /* WFETCH */
 "\000" /* WLIT */
+"\000" /* FOUNDFFIQ */
+"\000"
+"\000"
+"\000"
+"\000"
 "\000" /* FOUNDPRIMQ */
 "\000"
 "\000"
@@ -136,6 +143,7 @@
 "\000"
 "\000"
 "\000"
+"\000" /* HALT */
 "\000" /* HLD */
 "\000" /* HLDEND */
 "\000" /* INTERPRET */
