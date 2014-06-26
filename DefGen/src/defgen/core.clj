@@ -21,7 +21,9 @@
 
 (defn escape-c-string
   [orig]
-  (s/replace orig "\\" "\\\\"))
+  (-> orig
+      (s/replace "\\" "\\\\")
+      (s/replace "\"" "\\\"")))
 
 (defn parse-def
   [{[args-in args-out] :args
@@ -103,7 +105,9 @@
                       (map (fn [{:keys [name token-name token-value headerless? immediate?]}]
                              [token-value
                               (if headerless?
-                                (str "\"\\000\" /* " token-name " */")
+                                (format "\"\\%03o\" /* %s */",
+                                        (if immediate? 0x03 0x02)
+                                        token-name)
                                 (format "\"\\%03o\" \"%s\""
                                         (bit-or (if immediate? 0x03 0x02)
                                                 (bit-shift-left (count name) 3))
