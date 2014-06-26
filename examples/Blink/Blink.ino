@@ -65,29 +65,11 @@ void setup()
     LAST_FFI,
     serialKeyQ, serialKey, serialEmit);
 
-  /* Add a couple of hand-coded definitions. */
-  const uint8_t favnumDef[] = {
-    (6 << 3) | 2, /* 6-character name; DOCOLON */
-    'F',
-    'A',
-    'V',
-    'N',
-    'U',
-    'M',
-    0x77,   // CHARLIT
-    27,
-    0x78 }; // EXIT
-  enforth_add_definition(&enforthVM, favnumDef, sizeof(favnumDef));
+  /* Add a couple of definitions. */
+  enforth_evaluate(&enforthVM, ": favnum 27 ;");
+  enforth_evaluate(&enforthVM, ": 2x dup + ;");
 
-  const uint8_t twoxDef[] = {
-    (2 << 3) | 2, /* 2-character name; DOCOLON */
-    '2',
-    'X',
-    0x4e,   // DUP
-    0x02,   // +
-    0x78 }; // EXIT
-  enforth_add_definition(&enforthVM, twoxDef, sizeof(twoxDef));
-
+  /* Add a couple of hand-coded FFI trampolines. */
   const uint8_t delayDef[] = {
     (5 << 3) | 0, /* 5-character name; DOFFI */
     (uint8_t)(((uint16_t)&FFIDEF_delay      ) & 0xff),  // FFIdef LSB

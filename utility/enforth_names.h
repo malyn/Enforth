@@ -73,80 +73,69 @@
 "\052" "COUNT"
 "\012" "["
 "\013" "]"
-"\000" /* TODEFTYPE */
+"\002" /* TODEFTYPE */
 "\052" "DEPTH"
-"\000" /* TOFFIDEF */
-"\000" /* TOLFA */
+"\002" /* TOFFIDEF */
+"\002" /* TOLFA */
 "\042" "DROP"
-"\000" /* TOTOKEN */
+"\002" /* TOTOKEN */
 "\032" "DUP"
 "\042" "EMIT"
 "\052" "FALSE"
-"\000" /* TOCOMPILETOKEN */
+"\002" /* TOCOMPILETOKEN */
 "\062" "INVERT"
-"\000" /* CHANGELATESTDEFTYPE */
+"\002" /* CHANGELATESTDEFTYPE */
 "\032" "KEY"
 "\062" "LSHIFT"
-"\000" /* COLD */
+"\002" /* COLD */
 "\022" "M+"
 "\042" "MOVE"
 "\062" "NEGATE"
 "\032" "NIP"
 "\022" "OR"
-"\000" /* DIGITQ */
+"\002" /* DIGITQ */
 "\042" "OVER"
 "\022" "R>"
 "\022" "R@"
 "\032" "ROT"
 "\062" "RSHIFT"
 "\042" "SWAP"
-"\000" /* FFIARITY */
-"\000" /* FFINAME */
-"\000" /* FFIQ */
-"\000" /* FINDDEF */
+"\002" /* FFIARITY */
+"\002" /* FFINAME */
+"\002" /* FFIQ */
+"\002" /* FINDDEF */
 "\042" "TRUE"
 "\042" "TUCK"
 "\022" "U>"
 "\032" "UM*"
 "\012" "\\"
-"\000" /* FINDPRIM */
-"\000" /* PDOTQUOTE */
-"\000" /* PEXECUTE */
-"\000" /* LIT */
-"\000" /* PSQUOTE */
-"\000" /* ZBRANCH */
-"\000" /* FETCHFFIDEFS */
-"\000" /* BRANCH */
-"\000" /* FINDWORD */
-"\000" /* CFETCHFFIDEFS */
-"\000" /* CFETCHNAMES */
-"\000" /* FOUNDDEFQ */
-"\000" /* CHARLIT */
-"\000" /* EXIT */
-"\000" /* INITRP */
-"\000" /* PHALT */
-"\000" /* UDSLASHMOD */
-"\000" /* VMADDRLIT */
-"\000" /* WCOMMA */
-"\000" /* WFETCH */
-"\000" /* WLIT */
-"\000" /* FOUNDFFIQ */
+"\002" /* FINDPRIM */
+"\002" /* PDOTQUOTE */
+"\002" /* PEXECUTE */
+"\002" /* LIT */
+"\002" /* PSQUOTE */
+"\002" /* ZBRANCH */
+"\002" /* FETCHFFIDEFS */
+"\002" /* BRANCH */
+"\002" /* FINDWORD */
+"\002" /* CFETCHFFIDEFS */
+"\002" /* CFETCHNAMES */
+"\002" /* FOUNDDEFQ */
+"\002" /* CHARLIT */
+"\002" /* EXIT */
+"\002" /* INITRP */
+"\002" /* PHALT */
+"\002" /* UDSLASHMOD */
+"\002" /* VMADDRLIT */
+"\002" /* WCOMMA */
+"\002" /* WFETCH */
+"\002" /* WLIT */
+"\002" /* FOUNDFFIQ */
 "\000"
 "\000"
 "\000"
 "\000"
-"\000" /* FOUNDPRIMQ */
-"\000"
-"\000"
-"\000"
-"\000"
-"\000"
-"\000"
-"\000"
-"\000" /* HALT */
-"\000" /* HLD */
-"\000" /* HLDEND */
-"\000" /* INTERPRET */
+"\002" /* FOUNDPRIMQ */
 "\000"
 "\000"
 "\000"
@@ -154,13 +143,10 @@
 "\000"
 "\000"
 "\000"
-"\000"
-"\000" /* NAMELENGTH */
-"\000"
-"\000" /* NFALENGTH */
-"\000"
-"\000"
-"\000" /* NUMBERQ */
+"\002" /* HALT */
+"\002" /* HLD */
+"\002" /* HLDEND */
+"\002" /* INTERPRET */
 "\000"
 "\000"
 "\000"
@@ -169,17 +155,31 @@
 "\000"
 "\000"
 "\000"
+"\002" /* NAMELENGTH */
 "\000"
-"\000" /* PARSEWORD */
-"\000"
-"\000"
-"\000"
+"\002" /* NFALENGTH */
 "\000"
 "\000"
+"\002" /* NUMBERQ */
 "\000"
 "\000"
 "\000"
-"\000" /* TIB */
-"\000" /* TIBSIZE */
-"\000" /* TOKENQ */
+"\000"
+"\000"
+"\000"
+"\000"
+"\000"
+"\000"
+"\002" /* PARSEWORD */
+"\000"
+"\000"
+"\000"
+"\000"
+"\000"
+"\000"
+"\000"
+"\000"
+"\002" /* TIB */
+"\002" /* TIBSIZE */
+"\002" /* TOKENQ */
 "\377"

@@ -203,6 +203,9 @@ void enforth_init(
 void enforth_add_definition(
         EnforthVM * const vm, const uint8_t * const def, int def_size);
 
+void enforth_evaluate(
+        EnforthVM * const vm, const char * const text);
+
 void enforth_execute(
         EnforthVM * const vm, uint16_t xt);
 

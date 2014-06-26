@@ -415,6 +415,7 @@
 ;; of the parsed string.  If the parse area was empty, the resulting
 ;; string has a zero length.
 {:token :parseword
+ :name "PARSE-WORD"
  :args [[:caddr :u1 :c] [:caddr2 :u2]]
  :flags #{:headerless}
  :source ": SKIP-DELIM ( c-addr1 u1 c -- c-addr2 u2)

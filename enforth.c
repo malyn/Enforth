@@ -188,6 +188,8 @@ void enforth_init(
     vm->hld = NULL;
 
     vm->state = 0;
+
+    vm->base = 10;
 }
 
 void enforth_add_definition(EnforthVM * const vm, const uint8_t * const def, int defSize)
@@ -206,6 +208,16 @@ void enforth_add_definition(EnforthVM * const vm, const uint8_t * const def, int
 
     /* Update latest. */
     vm->latest.u = newLatest;
+}
+
+void enforth_evaluate(EnforthVM * const vm, const char * const text)
+{
+    /* Clear the stack pointer, push text and text length to the stack,
+     * and then execute the EVALUATE word. */
+    vm->saved_sp.u = 0;
+    vm->data_stack[31 - ++vm->saved_sp.u].ram = (uint8_t*)text;
+    vm->data_stack[31 - ++vm->saved_sp.u].u = strlen(text);
+    enforth_execute(vm, EVALUATE);
 }
 
 void enforth_execute(EnforthVM * const vm, uint16_t xt)
@@ -296,8 +308,12 @@ void enforth_execute(EnforthVM * const vm, uint16_t xt)
      * ROM-based (so 0x8000 | definition offset) HALT definition, which
      * will exit the inner interpreter (i.e., enforth_execute). */
     returnTop = (EnforthCell *)&vm->return_stack[32];
+#ifdef __AVR__
     /* TODO Needs to be relative to the ROM definition block. */
     (--returnTop)->ram = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ((EnforthToken)HALT * kTokenMultiplier)));
+#else
+    (--returnTop)->ram = (uint8_t*)definitions + ((EnforthToken)HALT * kTokenMultiplier);
+#endif
 
     /* Put the XT into the top-of-stack register, point IP at the first
      * word in EXECUTE, and then enter the inner interpreter.  Note that

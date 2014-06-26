@@ -47,17 +47,6 @@
 
 
 /* -------------------------------------
- * Enforth tokens (for hand-compiled definitions)
- */
-
-enum
-{
-#include "..\utility\enforth_tokens.h"
-};
-
-
-
-/* -------------------------------------
  * Sample FFI definitions.
  */
 
@@ -131,29 +120,11 @@ int main(void)
             LAST_FFI,
             enforthStaticKeyQuestion, enforthStaticKey, enforthStaticEmit);
 
-    /* Add a couple of hand-coded definitions. */
-    const uint8_t favnumDef[] = {
-        (6 << 3) | 2, /* 6-character name; DOCOLON */
-        'F',
-        'A',
-        'V',
-        'N',
-        'U',
-        'M',
-        CHARLIT,
-        27,
-        EXIT };
-    enforth_add_definition(&enforthVM, favnumDef, sizeof(favnumDef));
+    /* Add a couple of definitions. */
+    enforth_evaluate(&enforthVM, ": favnum 27 ;");
+    enforth_evaluate(&enforthVM, ": 2x dup + ;");
 
-    const uint8_t twoxDef[] = {
-        (2 << 3) | 2, /* 2-character name; DOCOLON */
-        '2',
-        'X',
-        DUP,
-        PLUS,
-        EXIT };
-    enforth_add_definition(&enforthVM, twoxDef, sizeof(twoxDef));
-
+    /* Add a couple of hand-coded FFI trampolines. */
     const uint8_t randDef[] = {
         (4 << 3) | 0, /* 4-character name; DOFFI */
         (uint8_t)(((uint16_t)&FFIDEF_rand      ) & 0xff),  // FFIdef LSB
