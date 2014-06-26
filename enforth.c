@@ -36,6 +36,9 @@
  */
 
 /* ANSI C includes. */
+#if ENABLE_TRACING
+#include <stdio.h>
+#endif
 #include <stddef.h>
 #include <string.h>
 
@@ -132,6 +135,16 @@ typedef enum EnforthToken
 /* Multiplier used to convert a ROM-based token into an offset into the
  * ROM-based definition table. */
 static const int kTokenMultiplier = 6;
+
+
+
+/* -------------------------------------
+ * Enforth globals.
+ */
+
+#if ENABLE_TRACING
+static int gTraceLevel = 0;
+#endif
 
 
 
@@ -346,6 +359,40 @@ void enforth_execute(EnforthVM * const vm, uint16_t xt)
         }
 
 DISPATCH_TOKEN:
+#if ENABLE_TRACING == 2
+        {
+            int i;
+            for (i = 0; i < gTraceLevel; i++)
+            {
+                printf(".");
+            }
+
+            printf(" [%02x] ", token);
+            const char * curDef = kDefinitionNames;
+            for (i = 0; i < token; i++)
+            {
+                curDef += 1 + ((((unsigned int)*curDef) & 0xff) >> 3);
+            }
+
+            for (i = 1; i <= ((((unsigned int)*curDef) & 0xff) >> 3); i++)
+            {
+                printf("%c", *(curDef + i));
+            }
+
+            for (i = 0; i < &vm->data_stack[32] - restDataStack - 1; i++)
+            {
+                printf(" %x", vm->data_stack[30 - i].u);
+            }
+
+            if ((&vm->data_stack[32] - restDataStack) > 0)
+            {
+                printf(" %x", tos.u);
+            }
+
+            printf("\n");
+        }
+#endif
+
         goto *(void *)pgm_read_word(&primitive_table[token]);
 
         PHALT:
@@ -1393,6 +1440,39 @@ DISPATCH_TOKEN:
 
         DOCOLONROM:
         {
+#if ENABLE_TRACING
+            gTraceLevel++;
+
+            int i;
+            for (i = 0; i < gTraceLevel; i++)
+            {
+                printf(">");
+            }
+
+            printf(" [%02x] ", token);
+            const char * curDef = kDefinitionNames;
+            for (i = 0; i < token; i++)
+            {
+                curDef += 1 + ((((unsigned int)*curDef) & 0xff) >> 3);
+            }
+
+            for (i = 1; i <= ((((unsigned int)*curDef) & 0xff) >> 3); i++)
+            {
+                printf("%c", *(curDef + i));
+            }
+
+            for (i = 0; i < &vm->data_stack[32] - restDataStack - 1; i++)
+            {
+                printf(" %x", vm->data_stack[30 - i].u);
+            }
+
+            if ((&vm->data_stack[32] - restDataStack) > 0)
+            {
+                printf(" %x", tos.u);
+            }
+
+            printf("\n");
+#endif
             /* Push IP to the return stack, marking IP as
              * in-program-space as necessary. */
 #ifdef __AVR__
@@ -1415,6 +1495,37 @@ DISPATCH_TOKEN:
 
         EXIT:
         {
+#if ENABLE_TRACING
+            int i;
+            for (i = 0; i < gTraceLevel; i++)
+            {
+                printf("<");
+            }
+
+            printf(" (");
+            for (i = 0; i < &vm->data_stack[32] - restDataStack - 1; i++)
+            {
+                printf("%x ", vm->data_stack[30 - i].u);
+            }
+
+            if ((&vm->data_stack[32] - restDataStack) > 0)
+            {
+                printf("%x", tos.u);
+            }
+            printf(")");
+
+            printf(" (R:");
+            for (i = 0; i < &vm->return_stack[32] - returnTop; i++)
+            {
+                printf(" %x", vm->return_stack[31 - i].u);
+            }
+            printf(")");
+
+            printf("\n");
+
+            gTraceLevel--;
+#endif
+
             ip = (uint8_t *)((returnTop++)->ram);
 
 #ifdef __AVR__
