@@ -42,7 +42,6 @@
 "\012" "="
 "\012" ">"
 "\022" ">R"
-"\042" "?DUP"
 "\032" "C{}"
 "\022" "C~"
 "\102" "EVALUATE"
@@ -51,78 +50,81 @@
 "\042" "HERE"
 "\032" "HEX"
 "\042" "HOLD"
-"\012" "@"
+"\042" "?DUP"
 "\062" "LATEST"
 "\072" "LITERAL"
+"\012" "@"
 "\052" "ABORT"
 "\032" "ABS"
-"\052" "ALIGN"
 "\042" "QUIT"
+"\052" "ALIGN"
 "\052" "ALLOT"
 "\032" "AND"
-"\022" "C!"
 "\042" "SIGN"
-"\032" "C+!"
+"\022" "C!"
 "\062" "SOURCE"
 "\052" "SPACE"
 "\052" "STATE"
 "\042" "TYPE"
+"\032" "C+!"
 "\022" "C,"
-"\022" "C@"
 "\022" "U."
+"\022" "C@"
+"\042" "USE:"
 "\052" "COUNT"
-"\012" "["
-"\013" "]"
-"\002" /* TODEFTYPE */
 "\052" "DEPTH"
-"\002" /* TOFFIDEF */
-"\002" /* TOLFA */
 "\042" "DROP"
-"\002" /* TOTOKEN */
 "\032" "DUP"
 "\042" "EMIT"
 "\052" "FALSE"
-"\002" /* TOCOMPILETOKEN */
+"\012" "["
+"\013" "]"
+"\002" /* TODEFTYPE */
 "\062" "INVERT"
-"\002" /* CHANGELATESTDEFTYPE */
+"\002" /* TOFFIDEF */
+"\002" /* TOLFA */
 "\032" "KEY"
+"\002" /* TOTOKEN */
 "\062" "LSHIFT"
-"\002" /* COLD */
 "\022" "M+"
 "\042" "MOVE"
+"\002" /* TOXT */
 "\062" "NEGATE"
+"\002" /* TOCOMPILETOKEN */
 "\032" "NIP"
+"\002" /* CHANGELATESTDEFTYPE */
 "\022" "OR"
-"\002" /* DIGITQ */
 "\042" "OVER"
+"\002" /* COLD */
 "\022" "R>"
 "\022" "R@"
 "\032" "ROT"
 "\062" "RSHIFT"
 "\042" "SWAP"
-"\002" /* FFIARITY */
-"\002" /* FFINAME */
-"\002" /* FFIQ */
-"\002" /* FINDDEF */
+"\002" /* DIGITQ */
 "\042" "TRUE"
 "\042" "TUCK"
 "\022" "U>"
 "\032" "UM*"
 "\012" "\\"
-"\002" /* FINDPRIM */
 "\002" /* PDOTQUOTE */
+"\002" /* FFIQ */
+"\002" /* FFIDEFARITY */
+"\002" /* FFIDEFNAME */
+"\002" /* FFIDEFNAMELEN */
 "\002" /* PEXECUTE */
+"\002" /* FINDDEF */
 "\002" /* LIT */
 "\002" /* PSQUOTE */
 "\002" /* ZBRANCH */
 "\002" /* FETCHFFIDEFS */
 "\002" /* BRANCH */
-"\002" /* FINDWORD */
+"\002" /* FINDFFIDEF */
 "\002" /* CFETCHFFIDEFS */
 "\002" /* CFETCHNAMES */
-"\002" /* FOUNDDEFQ */
 "\002" /* CHARLIT */
 "\002" /* EXIT */
+"\002" /* FINDPRIM */
 "\002" /* INITRP */
 "\002" /* PHALT */
 "\002" /* UDSLASHMOD */
@@ -130,7 +132,21 @@
 "\002" /* WCOMMA */
 "\002" /* WFETCH */
 "\002" /* WLIT */
+"\002" /* FINDWORD */
+"\000"
+"\000"
+"\002" /* FOUNDDEFQ */
+"\000"
+"\000"
+"\000"
+"\000"
+"\000"
+"\000"
+"\000"
+"\000"
+"\000"
 "\002" /* FOUNDFFIQ */
+"\002" /* FOUNDFFIDEFQ */
 "\000"
 "\000"
 "\000"

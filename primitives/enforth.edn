@@ -97,17 +97,30 @@
  :source ": FFI? ( xt -- f)  >DEF-TYPE kDefTypeFFI = ;"
  :pfa [:todeftype :charlit "kDefTypeFFI" :equals :exit]}
 
-{:token :ffiarity
- :name "FFI-ARITY"
- :args [[:xt] [:u]]
+{:token :ffidefarity
+ :name "FFIDEF-ARITY"
+ :args [[:addr] [:u]]
  :flags #{:headerless}
- :pfa [:toffidef :charlit "offsetof(EnforthFFIDef, arity)" :plus :cfetchffidefs :exit]}
+ :pfa [:charlit "offsetof(EnforthFFIDef, arity)" :plus :cfetchffidefs :exit]}
 
-{:token :ffiname
- :name "FFI-NAME"
- :args [[:xt] [:addr]]
+{:token :ffidefname
+ :name "FFIDEF-NAME"
+ :args [[:addr] [:c-addr]]
  :flags #{:headerless}
- :pfa [:toffidef :charlit "offsetof(EnforthFFIDef, name)" :plus :fetchffidefs :exit]}
+ :pfa [:charlit "offsetof(EnforthFFIDef, name)" :plus :fetchffidefs :exit]}
+
+{:token :ffidefnamelen
+ :name "FFIDEF-NAMELEN"
+ :args [[:addr] [:u]]
+ :flags #{:headerless}
+ :source ": FFIDEF-NAMELEN ( addr -- u )
+            FFIDEF-NAME DUP ( addr-start addr-end )
+            BEGIN DUP C@FFIDEFS WHILE 1+ REPEAT SWAP - ;"
+ :pfa [:ffidefname :dup
+       :dup :cfetchffidefs :zbranch 4
+         :oneplus :branch -6
+       :swap :minus
+       :exit]}
 
 {:token :finddef
  :name "FIND-DEF"
@@ -132,6 +145,33 @@
            :charlit 2 :and :oneminus :tworfrom :twodrop :exit
          :tolfa :wfetch
          :branch -24
+       :tworfrom :twodrop :false
+       :exit]}
+
+{:token :findffidef
+ :name "FIND-FFIDEF"
+ :flags #{:headerless}
+ :args [[:caddr :u] [[0] [:addr -1]]]
+ :source ": LAST-FFIDEF ( -- addr ) 'LAST-FFIDEF ;
+          : FIND-FFIDEF ( c-addr u -- 0 | addr -1 )
+            2>R  LAST-FFIDEF @
+            BEGIN ?DUP WHILE ( ffidef-addr R:ca u)
+              R@ OVER FFIDEF-NAMELEN ( fda u len)
+              = IF DUP 2R@ ROT ( fda ca u fda)
+                FOUND-FFIDEF? IF ( fda R:ca u) 2R> 2DROP TRUE EXIT THEN THEN
+              @FFIDEFS
+            REPEAT ( R:ca u) 2R> 2DROP  FALSE ;"
+ :pfa [:twotor
+       ; LAST-FFIDEF
+         :vmaddrlit "offsetof(EnforthVM, last_ffi)"
+       :fetch
+       :qdup :zbranch 20
+         :rfetch :over :ffidefnamelen :equals :zbranch 11
+           :dup :tworfetch :rot
+           :foundffidefq :zbranch 5
+             :tworfrom :twodrop :true :exit
+         :fetchffidefs
+         :branch -21
        :tworfrom :twodrop :false
        :exit]}
 
@@ -234,8 +274,15 @@
  :name "FOUND-FFI?"
  :args [[:caddr :u :xt] [:f]]
  :flags #{:headerless}
- :source ": FOUND-FFI? ( c-addr u xt -- f )
-            FFI-NAME SWAP ( c-addr c-addrffi u)
+ :source ": FOUND-FFI? ( c-addr u xt -- f )  >FFIDEF FOUND-FFIDEF? ;"
+ :pfa [:toffidef :foundffidefq :exit]}
+
+{:token :foundffidefq
+ :name "FOUND-FFIDEF?"
+ :args [[:caddr :u :addr] [:f]]
+ :flags #{:headerless}
+ :source ": FOUND-FFIDEF? ( c-addr u addr -- f )
+            FFIDEF-NAME SWAP ( c-addr c-addrffi u)
             BEGIN
               ?DUP
             WHILE
@@ -243,7 +290,7 @@
               OVER C@  OVER C@FFIDEFS C{} IF 2DROP R> DROP FALSE EXIT THEN
               1+ SWAP 1+ SWAP ( ca' caffi' R:u'-1) R>
             REPEAT ( ca' caffi') 2DROP TRUE ;"
- :pfa [:ffiname :swap
+ :pfa [:ffidefname :swap
        :qdup :zbranch 22
          :oneminus :tor
          :over :cfetch :over :cfetchffidefs :cnotsimilar :zbranch 6
@@ -526,11 +573,11 @@
  :flags #{:headerless}
  :source ": >TOKEN ( xt -- token)
             DUP TOKEN? IF EXIT THEN
-            DUP FFI? IF FFI-ARITY FFI-EXECUTION-TOKEN-BASE +
+            DUP FFI? IF >FFIDEF FFIDEF-ARITY FFI-EXECUTION-TOKEN-BASE +
             ELSE >DEF-TYPE EXECUTION-TOKEN-BASE + THEN ;"
  :pfa [:dup :tokenq :zbranch 2 :exit
-       :dup :ffiq :zbranch 7
-         :ffiarity :charlit 0xe8 :plus :branch 5
+       :dup :ffiq :zbranch 8
+         :toffidef :ffidefarity :charlit 0xe8 :plus :branch 5
          :todeftype :charlit 0xe0 :plus
        :exit]}
 
@@ -547,11 +594,38 @@
          :charlit 0x20 :minus
        :exit]}
 
+{:token :toxt
+ :name ">XT"
+ :args [[:a-addr] [:xt]]
+ :flags #{:headerless}
+ :source ": >XT ( a-addr -- xt)  'DICT - $8000 OR ;"
+ :pfa [:vmaddrlit "offsetof(EnforthVM, dictionary)" :fetch
+       :minus :wlit 0x00 0x80 :or
+       :exit]}
+
 {:token :twonip
  :name "2NIP"
  :args [[:x1 :x2 :x3 :x4] [:x3 :x4]]}
 
 {:token :udslashmod :flags #{:headerless}}
+
+{:token :use
+ :name "USE:"
+ :args [[] []]
+ :source ": USE: ( \"<spaces>name\" -- )
+            BL PARSE-WORD  DUP 0= IF ABORT THEN ( ca u)
+            2DUP FIND-FFIDEF ( ca u 0 | ca u addr -1)
+            0= IF TYPE  SPACE  [CHAR] ? EMIT  CR  ABORT THEN ( ca u addr)
+            HERE >XT  LATEST @ W,  LATEST ! ( ca u addr)
+            SWAP 3 LSHIFT kDefTypeFFI OR C,  ( ca addr)
+            ALIGN ,  DROP ;"
+ :pfa [:bl :parseword :dup :zeroequals :zbranch 2 :abort
+       :twodup :findffidef :zeroequals :zbranch 8
+         :type :space :charlit "'?'" :emit :cr :abort
+       :here :toxt :latest :fetch :wcomma :latest :store
+       :swap :charlit 3 :lshift :charlit "kDefTypeFFI" :or :ccomma
+       :align :comma :drop
+       :exit]}
 
 {:token :vmaddrlit :flags #{:headerless}}
 

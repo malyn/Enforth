@@ -49,7 +49,6 @@
 #define PROGMEM
 #define pgm_read_byte(p) (*(uint8_t*)(p))
 #define pgm_read_word(p) (*(int *)(p))
-#define memcpy_P memcpy
 #endif
 
 /* Enforth includes. */
@@ -203,24 +202,6 @@ void enforth_init(
     vm->state = 0;
 
     vm->base = 10;
-}
-
-void enforth_add_definition(EnforthVM * const vm, const uint8_t * const def, int defSize)
-{
-    /* Get the XT of this definition and the XT of the last definition. */
-    uint16_t prevLatest = vm->latest.u;
-    uint16_t newLatest = 0x8000 | (vm->dp.ram - vm->dictionary.ram);
-
-    /* Add the LFA link. */
-    *vm->dp.ram++ = (prevLatest     ) & 0xff; /* LFAlo */
-    *vm->dp.ram++ = (prevLatest >> 8) & 0xff; /* LFAhi */
-
-    /* Copy the definition itself. */
-    memcpy(vm->dp.ram, def, defSize);
-    vm->dp.ram += defSize;
-
-    /* Update latest. */
-    vm->latest.u = newLatest;
 }
 
 void enforth_evaluate(EnforthVM * const vm, const char * const text)

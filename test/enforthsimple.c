@@ -37,7 +37,6 @@
 
 /* ANSI C includes. */
 #include <stdio.h>
-#include <stdlib.h>
 
 /* Enforth includes. */
 #include "enforth.h"
@@ -123,23 +122,6 @@ int main(int argc, char **argv)
     /* Add a couple of definitions. */
     enforth_evaluate(&enforthVM, ": favnum 27 ;");
     enforth_evaluate(&enforthVM, ": 2x dup + ;");
-
-    /* Add a couple of hand-coded FFI trampolines. */
-    const uint8_t randDef[] = {
-        (4 << 3) | 0, /* 4-character name; DOFFI */
-        ((uint32_t)&FFIDEF_rand      ) & 0xff,  /* FFIdef LSB */
-        ((uint32_t)&FFIDEF_rand >>  8) & 0xff,  /* FFIdef */
-        ((uint32_t)&FFIDEF_rand >> 16) & 0xff,  /* FFIdef */
-        ((uint32_t)&FFIDEF_rand >> 24) & 0xff}; /* FFIdef MSB */
-    enforth_add_definition(&enforthVM, randDef, sizeof(randDef));
-
-    const uint8_t srandDef[] = {
-        (5 << 3) | 0, /* 5-character name; DOFFI */
-        ((uint32_t)&FFIDEF_srand      ) & 0xff,  /* FFIdef LSB */
-        ((uint32_t)&FFIDEF_srand >>  8) & 0xff,  /* FFIdef */
-        ((uint32_t)&FFIDEF_srand >> 16) & 0xff,  /* FFIdef */
-        ((uint32_t)&FFIDEF_srand >> 24) & 0xff}; /* FFIdef MSB */
-    enforth_add_definition(&enforthVM, srandDef, sizeof(srandDef));
 
     /* Launch the Enforth interpreter. */
     enforth_go(&enforthVM);

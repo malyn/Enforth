@@ -200,9 +200,6 @@ void enforth_init(
          * function pointers). */
         int (*keyq)(void), char (*key)(void), void (*emit)(char));
 
-void enforth_add_definition(
-        EnforthVM * const vm, const uint8_t * const def, int def_size);
-
 void enforth_evaluate(
         EnforthVM * const vm, const char * const text);
 

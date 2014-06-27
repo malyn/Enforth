@@ -124,19 +124,6 @@ int main(void)
     enforth_evaluate(&enforthVM, ": favnum 27 ;");
     enforth_evaluate(&enforthVM, ": 2x dup + ;");
 
-    /* Add a couple of hand-coded FFI trampolines. */
-    const uint8_t randDef[] = {
-        (4 << 3) | 0, /* 4-character name; DOFFI */
-        (uint8_t)(((uint16_t)&FFIDEF_rand      ) & 0xff),  // FFIdef LSB
-        (uint8_t)(((uint16_t)&FFIDEF_rand >>  8) & 0xff)}; // FFIdef MSB
-    enforth_add_definition(&enforthVM, randDef, sizeof(randDef));
-
-    const uint8_t srandDef[] = {
-        (5 << 3) | 0, /* 5-character name; DOFFI */
-        (uint8_t)(((uint16_t)&FFIDEF_srand      ) & 0xff),  // FFIdef LSB
-        (uint8_t)(((uint16_t)&FFIDEF_srand >>  8) & 0xff)}; // FFIdef MSB
-    enforth_add_definition(&enforthVM, srandDef, sizeof(srandDef));
-
     /* Launch the Enforth interpreter. */
     enforth_go(&enforthVM);
 }

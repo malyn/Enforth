@@ -68,25 +68,6 @@ void setup()
   /* Add a couple of definitions. */
   enforth_evaluate(&enforthVM, ": favnum 27 ;");
   enforth_evaluate(&enforthVM, ": 2x dup + ;");
-
-  /* Add a couple of hand-coded FFI trampolines. */
-  const uint8_t delayDef[] = {
-    (5 << 3) | 0, /* 5-character name; DOFFI */
-    (uint8_t)(((uint16_t)&FFIDEF_delay      ) & 0xff),  // FFIdef LSB
-    (uint8_t)(((uint16_t)&FFIDEF_delay >>  8) & 0xff)}; // FFIdef MSB
-  enforth_add_definition(&enforthVM, delayDef, sizeof(delayDef));
-
-  const uint8_t digitalWriteDef[] = {
-    (12 << 3) | 0, /* 12-character name; DOFFI */
-    (uint8_t)(((uint16_t)&FFIDEF_digitalWrite      ) & 0xff),  // FFIdef LSB
-    (uint8_t)(((uint16_t)&FFIDEF_digitalWrite >>  8) & 0xff)}; // FFIdef MSB
-  enforth_add_definition(&enforthVM, digitalWriteDef, sizeof(digitalWriteDef));
-
-  const uint8_t pinModeDef[] = {
-    (7 << 3) | 0, /* 12-character name; DOFFI */
-    (uint8_t)(((uint16_t)&FFIDEF_pinMode      ) & 0xff),  // FFIdef LSB
-    (uint8_t)(((uint16_t)&FFIDEF_pinMode >>  8) & 0xff)}; // FFIdef MSB
-  enforth_add_definition(&enforthVM, pinModeDef, sizeof(pinModeDef));
 }
 
 void loop()

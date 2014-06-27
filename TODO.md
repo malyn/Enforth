@@ -1,5 +1,4 @@
-* Add `USE:` for creating FFI trampolines.
-  * This enables us to get rid of `enforth_add_definition`.
+* Add `UNUSED` and `WORDS`.
 * Support backspace in `ACCEPT`.
 * Create `C@NAMES` so that we can make a ROM variant of `(.")` in Forth.
 * Consider moving other non-essential primitives to Forth: `."`, `\\`, `W,`, `,`, `C,`, `ALLOT`.
