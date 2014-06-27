@@ -249,7 +249,7 @@
             DUP HIDDEN? IF DROP 2DROP FALSE EXIT THEN
             2DUP NAME-LENGTH ( ca u xt u u') <> IF DROP 2DROP FALSE EXIT THEN
             DUP FFI? IF ( ca u xt) FOUND-FFI? EXIT THEN
-            >LFA 2 + 1+ ( ca u ca') SWAP STRING~ ;"
+            >NFA ( ca u ca') SWAP STRING~ ;"
  :pfa [:dup
        ; HIDDEN
          :todeftype :charlit "kDefTypeCOLONHIDDEN" :equals
@@ -259,7 +259,7 @@
          :drop :twodrop :false :exit
        :dup :ffiq :zbranch 3
          :foundffiq :exit
-       :tolfa :oneplus :oneplus :oneplus :swap
+       :tonfa :swap
        ; STRING~
          :qdup :zbranch 22
            :oneminus :tor
@@ -514,6 +514,11 @@
  :flags #{:headerless}
  :pfa [:charlit 80 :exit]}
 
+{:token :ticknames
+ :name "'NAMES"
+ :args [[] [:c-addr]]
+ :flags #{:headerless}}
+
 ;; >[TOKEN] [ENFORTH] "to-compile-token" ( xt -- token )
 ;;
 ;; Return the compilation token for the given XT, which may refer to a
@@ -537,6 +542,13 @@
  :source ": >DEF-TYPE ( xt -- u)  >LFA 2 + C@ $7 AND ;"
  :pfa [:tolfa :oneplus :oneplus :cfetch :charlit 0x07 :and :exit]}
 
+{:token :toffidef
+ :name ">FFIDEF"
+ :args [[:xt] [:addr]]
+ :flags #{:headerless}
+ :source ": >FFIDEF ( xt -- addr ) >BODY @ ;"
+ :pfa [:tobody :fetch :exit]}
+
 {:token :tokenq
  :name "TOKEN?"
  :flags #{:headerless}
@@ -556,12 +568,12 @@
        :plus
        :exit]}
 
-{:token :toffidef
- :name ">FFIDEF"
- :args [[:xt] [:addr]]
+{:token :tonfa
+ :name ">NFA"
+ :args [[:xt] [:c-addr]]
  :flags #{:headerless}
- :source ": >FFIDEF ( xt -- addr ) >BODY @ ;"
- :pfa [:tobody :fetch :exit]}
+ :source ": >NFA ( xt -- c-addr )  >LFA 2 + 1+ ;"
+ :pfa [:tolfa :oneplus :oneplus :oneplus :exit]}
 
 ;; >TOKEN [ENFORTH] "to-token" ( xt -- token )
 ;;

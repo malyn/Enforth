@@ -1229,6 +1229,14 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        TICKNAMES:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos.ram = (uint8_t*)kDefinitionNames;
+        }
+        continue;
+
         LESSTHAN:
         {
             CHECK_STACK(2, 1);

@@ -79,60 +79,71 @@
 "\042" "EMIT"
 "\052" "FALSE"
 "\062" "INVERT"
-"\012" "["
-"\013" "]"
-"\002" /* TODEFTYPE */
+"\052" "WORDS"
 "\032" "KEY"
-"\002" /* TOFFIDEF */
-"\002" /* TOLFA */
 "\062" "LSHIFT"
-"\002" /* TOTOKEN */
 "\022" "M+"
 "\042" "MOVE"
 "\062" "NEGATE"
-"\002" /* TOXT */
 "\032" "NIP"
-"\002" /* TOCOMPILETOKEN */
 "\022" "OR"
-"\002" /* CHANGELATESTDEFTYPE */
 "\042" "OVER"
 "\022" "R>"
-"\002" /* COLD */
+"\012" "["
+"\013" "]"
+"\002" /* TODEFTYPE */
 "\022" "R@"
+"\002" /* TOFFIDEF */
+"\002" /* TOLFA */
 "\032" "ROT"
+"\002" /* TONFA */
+"\002" /* TOTOKEN */
 "\062" "RSHIFT"
 "\042" "SWAP"
 "\042" "TRUE"
-"\002" /* DIGITQ */
+"\002" /* TOXT */
 "\042" "TUCK"
+"\002" /* TOCOMPILETOKEN */
 "\022" "U>"
+"\002" /* CHANGELATESTDEFTYPE */
 "\032" "UM*"
 "\012" "\\"
+"\002" /* COLD */
+"\002" /* TICKNAMES */
 "\002" /* PDOTQUOTE */
 "\002" /* PEXECUTE */
-"\002" /* FFIQ */
-"\002" /* FFIDEFARITY */
-"\002" /* FFIDEFNAME */
-"\002" /* FFIDEFNAMELEN */
 "\002" /* LIT */
-"\002" /* FINDDEF */
 "\002" /* PSQUOTE */
+"\002" /* DIGITQ */
 "\002" /* ZBRANCH */
 "\002" /* FETCHFFIDEFS */
 "\002" /* BRANCH */
 "\002" /* CFETCHFFIDEFS */
-"\002" /* FINDFFIDEF */
 "\002" /* CFETCHNAMES */
 "\002" /* CHARLIT */
+"\002" /* FFIQ */
+"\002" /* FFIDEFARITY */
+"\002" /* FFIDEFNAME */
+"\002" /* FFIDEFNAMELEN */
 "\002" /* EXIT */
+"\002" /* FINDDEF */
 "\002" /* INITRP */
-"\002" /* FINDPRIM */
 "\002" /* PHALT */
 "\002" /* UDSLASHMOD */
 "\002" /* VMADDRLIT */
 "\002" /* WCOMMA */
+"\002" /* FINDFFIDEF */
 "\002" /* WFETCH */
 "\002" /* WLIT */
+"\000"
+"\000"
+"\002" /* FINDPRIM */
+"\000"
+"\000"
+"\000"
+"\000"
+"\000"
+"\000"
 "\000"
 "\002" /* FINDWORD */
 "\000"
