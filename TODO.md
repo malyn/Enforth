@@ -1,7 +1,3 @@
-* Get rid of `C@DEFS`, `C@NAMES`, and `C@FFIDEFS` and just replace them all with `IC@` (instruction-c-fetch) and then require that code definitions need to be in the first 64KB of address space.  FFI functions themselves can go anywhere.
-  * We're going to go with Brad Rodriguez's I-prefixed names instead of SwiftX's C-suffixed names; the I prefix feels more natural.
-* Create a ROM variant of `TYPE` (`ITYPE`) in Forth using `IC@`.
-* Add `WORDS`.
 * Add `FFIS` which lists all of the available FFI definitions (similar to how `WORDS` lists all of the definitions and trampolines).
 * Support backspace in `ACCEPT`.
 * Consider moving other non-essential primitives to Forth: `."`, `\\`, `W,`, `,`, `C,`, `ALLOT`.

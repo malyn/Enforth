@@ -151,10 +151,9 @@ static int gTraceLevel = 0;
  * Enforth definition names.
  */
 
-/* This could be stored in far memory on large AVRs since we only ever
- * access it using an offset.  Or we could have a single C@C word
- * (instead of C@DEFS, C@NAMES, C@FFIDEFS) and then require that all
- * three types of blocks are in near memory... */
+/* This must be stored in near memory on large AVRs since it is accessed
+ * using instruction space words, all of which require that their target
+ * addresses be able to fit in a cell (which is 16 bits on the AVR). */
 static const char kDefinitionNames[] PROGMEM =
 #include "enforth_names.h"
 ;
@@ -165,10 +164,9 @@ static const char kDefinitionNames[] PROGMEM =
  * Enforth definitions.
  */
 
-/* This could be stored in far memory on large AVRs since we only ever
- * access it using an offset.  Or we could have a single C@C word
- * (instead of C@DEFS, C@NAMES, C@FFIDEFS) and then require that all
- * three types of blocks are in near memory... */
+/* This must be stored in near memory on large AVRs since it is accessed
+ * using instruction space words, all of which require that their target
+ * addresses be able to fit in a cell (which is 16 bits on the AVR). */
 static const int8_t definitions[] PROGMEM = {
 #include "enforth_definitions.h"
 };
@@ -679,17 +677,21 @@ DISPATCH_TOKEN:
         continue;
 #endif
 
+        IFETCH:
+#ifdef __AVR__
+        {
+            CHECK_STACK(1, 1);
+            tos.u = pgm_read_word(tos.ram);
+        }
+        continue;
+#else
+        /* Fall through, since the other architectures use shared
+         * instruction and data space. */
+#endif
         FETCH:
         {
             CHECK_STACK(1, 1);
             tos = *(EnforthCell*)tos.ram;
-        }
-        continue;
-
-        FETCHFFIDEFS:
-        {
-            CHECK_STACK(1, 1);
-            tos.u = pgm_read_word(tos.ram);
         }
         continue;
 
@@ -816,17 +818,21 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        ICFETCH:
+#ifdef __AVR__
+        {
+            CHECK_STACK(1, 1);
+            tos.u = pgm_read_byte(tos.ram);
+        }
+        continue;
+#else
+        /* Fall through, since the other architectures use shared
+         * instruction and data space. */
+#endif
         CFETCH:
         {
             CHECK_STACK(1, 1);
             tos.u = *(uint8_t*)tos.ram;
-        }
-        continue;
-
-        CFETCHFFIDEFS:
-        {
-            CHECK_STACK(1, 1);
-            tos.u = pgm_read_byte(tos.ram);
         }
         continue;
 
@@ -1369,13 +1375,6 @@ DISPATCH_TOKEN:
             *--returnTop = *restDataStack++;
             *--returnTop = tos;
             tos = *restDataStack++;
-        }
-        continue;
-
-        CFETCHNAMES:
-        {
-            CHECK_STACK(1, 1);
-            tos.u = pgm_read_byte(kDefinitionNames + tos.u);
         }
         continue;
 

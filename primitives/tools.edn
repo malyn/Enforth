@@ -24,24 +24,20 @@
          :latest :fetch
          :qdup :zbranch 24
            :dup :ffiq :zbranch 10
-             ;; TODO Needs to be :itype
-             :dup :toffidef :dup :ffidefname :swap :ffidefnamelen :type
+             :dup :toffidef :dup :ffidefname :swap :ffidefnamelen :itype
                :branch 6
              :dup :tonfa :over :nfalength :type
              :space :tolfa :wfetch :branch -25
        ; PRIM-WORDS
          :ticknames
-         ;; TODO Needs to be :icfetch
-         :dup :cfetch :charlit 0xff :notequals :zbranch 23
+         :dup :icfetch :charlit 0xff :notequals :zbranch 23
            :dup
            ; PRIM-NAMELEN
-             ;; TODO Needs to be :icfetch
-             :cfetch :charlit 3 :rshift
+             :icfetch :charlit 3 :rshift
            :tuck
            :over :plus :oneplus :swap :oneplus :rot
            :qdup :zbranch 5
-             ;; TODO Needs to be :itype
-             :type :space :branch 2
+             :itype :space :branch 2
              :drop
            :branch -28
          :drop

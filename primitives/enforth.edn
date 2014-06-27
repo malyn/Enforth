@@ -33,16 +33,6 @@
  :source ": C~ ( c1 c2 -- f )  >UPPER SWAP >UPPER = ;"
  :pfa [:toupper :swap :toupper :equals :exit]}
 
-{:token :cfetchffidefs
- :name "C@FFIDEFS"
- :args [[:u] [:c]]
- :flags #{:headerless}}
-
-{:token :cfetchnames
- :name "C@NAMES"
- :args [[:u] [:c]]
- :flags #{:headerless}}
-
 {:token :changelatestdeftype
  :name "CHANGE-LATEST-DEF-TYPE"
  :args [[:u] []]
@@ -85,11 +75,6 @@
 
 {:token :exit :flags #{:headerless}}
 
-{:token :fetchffidefs
- :name "@FFIDEFS"
- :args [[:u] [:x]]
- :flags #{:headerless}}
-
 {:token :ffiq
  :name "FFI?"
  :args [[:xt] [:f]]
@@ -101,23 +86,23 @@
  :name "FFIDEF-ARITY"
  :args [[:addr] [:u]]
  :flags #{:headerless}
- :pfa [:charlit "offsetof(EnforthFFIDef, arity)" :plus :cfetchffidefs :exit]}
+ :pfa [:charlit "offsetof(EnforthFFIDef, arity)" :plus :icfetch :exit]}
 
 {:token :ffidefname
  :name "FFIDEF-NAME"
  :args [[:addr] [:c-addr]]
  :flags #{:headerless}
- :pfa [:charlit "offsetof(EnforthFFIDef, name)" :plus :fetchffidefs :exit]}
+ :pfa [:charlit "offsetof(EnforthFFIDef, name)" :plus :ifetch :exit]}
 
 {:token :ffidefnamelen
  :name "FFIDEF-NAMELEN"
  :args [[:addr] [:u]]
  :flags #{:headerless}
  :source ": FFIDEF-NAMELEN ( addr -- u )
-            FFIDEF-NAME DUP ( addr-start addr-end )
-            BEGIN DUP C@FFIDEFS WHILE 1+ REPEAT SWAP - ;"
+            FFIDEF-NAME DUP ( addr-start addr )
+            BEGIN DUP IC@ WHILE 1+ REPEAT SWAP - ;"
  :pfa [:ffidefname :dup
-       :dup :cfetchffidefs :zbranch 4
+       :dup :icfetch :zbranch 4
          :oneplus :branch -6
        :swap :minus
        :exit]}
@@ -159,7 +144,7 @@
               R@ OVER FFIDEF-NAMELEN ( fda u len)
               = IF DUP 2R@ ROT ( fda ca u fda)
                 FOUND-FFIDEF? IF ( fda R:ca u) 2R> 2DROP TRUE EXIT THEN THEN
-              @FFIDEFS
+              I@
             REPEAT ( R:ca u) 2R> 2DROP  FALSE ;"
  :pfa [:twotor
        ; LAST-FFIDEF
@@ -170,7 +155,7 @@
            :dup :tworfetch :rot
            :foundffidefq :zbranch 5
              :tworfrom :twodrop :true :exit
-         :fetchffidefs
+         :ifetch
          :branch -21
        :tworfrom :twodrop :false
        :exit]}
@@ -179,23 +164,23 @@
  :name "FIND-PRIM"
  :args [[:caddr :u] [[0] [:xt 1] [:xt -1]]]
  :flags #{:headerless}
- :source ": IMMEDIATE-PRIM? ( off -- f ) C@NAMES $7 AND kDefTypeCOLONIMMEDIATE = ;
+ :source ": IMMEDIATE-PRIM? ( addr -- f ) IC@ $7 AND kDefTypeCOLONIMMEDIATE = ;
           : FIND-PRIM ( c-addr u -- 0 | xt 1 | xt -1 )
-            2>R  0 0
+            2>R  0 'NAMES
             BEGIN
-              ( token offset R:ca u) DUP C@NAMES $FF <>
+              ( token namesaddr R:ca u) DUP IC@ $FF <>
             WHILE
-              DUP 2R@ ROT ( t off ca u off R:ca u) FOUND-PRIM?
-              IF ( t off off2 R:ca u) DROP  IMMEDIATE-PRIM? 2 AND 1-
+              DUP 2R@ ROT ( t na ca u na R:ca u) FOUND-PRIM?
+              IF ( t na na' R:ca u) DROP  IMMEDIATE-PRIM? 2 AND 1-
                 2R> 2DROP  EXIT THEN
-              ROT 1+ ( off off2 t+1) ROT DROP SWAP ( t+1 off2)
-            REPEAT ( token offset R:ca u) 2DROP 2R> 2DROP FALSE ;"
- :pfa [:twotor :zero :zero
-       :dup :cfetchnames :charlit 0xff :notequals :zbranch 29
+              ROT 1+ ( na na' t+1) ROT DROP SWAP ( t+1 na')
+            REPEAT ( token na R:ca u) 2DROP 2R> 2DROP FALSE ;"
+ :pfa [:twotor :zero :ticknames
+       :dup :icfetch :charlit 0xff :notequals :zbranch 29
          :dup :tworfetch :rot :foundprimq :zbranch 16
            :drop
            ; IMMEDIATE-PRIM?
-             :cfetchnames :charlit 0x07 :and
+             :icfetch :charlit 0x07 :and
              :charlit "kDefTypeCOLONIMMEDIATE" :equals
            :charlit 2 :and :oneminus
            :tworfrom :twodrop :exit
@@ -287,13 +272,13 @@
               ?DUP
             WHILE
               1- >R ( ca caffi R:u'-1)
-              OVER C@  OVER C@FFIDEFS C{} IF 2DROP R> DROP FALSE EXIT THEN
+              OVER C@  OVER IC@ C{} IF 2DROP R> DROP FALSE EXIT THEN
               1+ SWAP 1+ SWAP ( ca' caffi' R:u'-1) R>
             REPEAT ( ca' caffi') 2DROP TRUE ;"
  :pfa [:ffidefname :swap
        :qdup :zbranch 22
          :oneminus :tor
-         :over :cfetch :over :cfetchffidefs :cnotsimilar :zbranch 6
+         :over :cfetch :over :icfetch :cnotsimilar :zbranch 6
            :twodrop :rfrom :drop :false :exit
          :oneplus :swap :oneplus :swap :rfrom :branch -23
         :twodrop :true
@@ -303,31 +288,31 @@
  :name "FOUND-PRIM?"
  :args [[:caddr :u :offset1] [:offset2 :f]]
  :flags #{:headerless}
- :source ": PRIM-NAME-LENGTH ( off -- u )  C@NAMES 3 RSHIFT ;
-          : TRAVERSE-PRIM-NAME ( off1 -- off2 )  DUP PRIM-NAME-LENGTH + 1+ ;
-          : FOUND-PRIM? ( c-addr u off1 -- off2 f )
-            DUP TRAVERSE-PRIM-NAME >R ( ca u off1 R:off2)
+ :source ": PRIM-NAMELEN ( addr -- u )  IC@ 3 RSHIFT ;
+          : TRAVERSE-PRIM-NAME ( addr1 -- addr2 )  DUP PRIM-NAME-LENGTH + 1+ ;
+          : FOUND-PRIM? ( c-addr u addr1 -- addr2 f )
+            DUP TRAVERSE-PRIM-NAME >R ( ca u addr1 R:addr2)
             DUP PRIM-NAME-LENGTH ROT <> IF 2DROP R> FALSE EXIT THEN
-            1+ BEGIN ( ca off1+1 R:off2)
-              OVER C@  OVER C@NAMES C{} IF 2DROP R> FALSE EXIT THEN
-              1+ SWAP 1+ SWAP ( ca' off' R:off2)
+            1+ BEGIN ( ca addr1+1 R:addr2)
+              OVER C@  OVER IC@ C{} IF 2DROP R> FALSE EXIT THEN
+              1+ SWAP 1+ SWAP ( ca' addr' R:addr2)
               DUP R@ =
             UNTIL
             ( ca' off' R:off2) 2DROP R> TRUE ;"
  :pfa [:dup
        ; TRAVERSE-PRIM-NAME
          :dup
-         ; PRIM-NAME-LENGTH
-           :cfetchnames :charlit 3 :rshift
+         ; PRIM-NAMELEN
+           :icfetch :charlit 3 :rshift
          :plus :oneplus
        :tor
        :dup
        ; PRIM-NAME-LENGTH
-         :cfetchnames :charlit 3 :rshift
+         :icfetch :charlit 3 :rshift
        :rot :notequals :zbranch 5
            :twodrop :rfrom :false :exit
        :oneplus
-         :over :cfetch :over :cfetchnames :cnotsimilar :zbranch 5
+         :over :cfetch :over :icfetch :cnotsimilar :zbranch 5
            :twodrop :rfrom :false :exit
          :oneplus :swap :oneplus :swap
          :dup :rfetch :equals :zbranch -19
@@ -349,6 +334,16 @@
  :flags #{:headerless}
  :source ": HLDEND ( -- u)  [ 1 CELLS 8 * 3 * ] ;"
  :pfa [:charlit "kEnforthCellSize * 8 * 3" :exit]}
+
+{:token :icfetch
+ :name "IC@"
+ :args [[:c-addr] [:c]]
+ :flags #{:headerless}}
+
+{:token :ifetch
+ :name "I@"
+ :args [[:addr] [:x]]
+ :flags #{:headerless}}
 
 {:token :initrp :flags #{:headerless}}
 
@@ -383,6 +378,18 @@
                :literal :branch 8
              :type :space :charlit "'?'" :emit :cr :abort
            :branch -40
+       :twodrop
+       :exit]}
+
+{:token :itype
+ :args [[:caddr :u] []]
+ :flags #{:headerless}
+ :source ": ITYPE ( c-addr u -- )
+            OVER + SWAP ( caend ca)
+            BEGIN 2DUP <> WHILE DUP IC@ EMIT  1+ REPEAT 2DROP ;"
+ :pfa [:over :plus :swap
+       :twodup :notequals :zbranch 7
+         :dup :icfetch :emit :oneplus :branch -9
        :twodrop
        :exit]}
 

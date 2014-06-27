@@ -116,25 +116,25 @@
 "\002" /* PSQUOTE */
 "\002" /* DIGITQ */
 "\002" /* ZBRANCH */
-"\002" /* FETCHFFIDEFS */
 "\002" /* BRANCH */
-"\002" /* CFETCHFFIDEFS */
-"\002" /* CFETCHNAMES */
 "\002" /* CHARLIT */
+"\002" /* EXIT */
+"\002" /* IFETCH */
+"\002" /* ICFETCH */
 "\002" /* FFIQ */
 "\002" /* FFIDEFARITY */
 "\002" /* FFIDEFNAME */
 "\002" /* FFIDEFNAMELEN */
-"\002" /* EXIT */
-"\002" /* FINDDEF */
 "\002" /* INITRP */
+"\002" /* FINDDEF */
 "\002" /* PHALT */
 "\002" /* UDSLASHMOD */
 "\002" /* VMADDRLIT */
 "\002" /* WCOMMA */
-"\002" /* FINDFFIDEF */
 "\002" /* WFETCH */
+"\002" /* FINDFFIDEF */
 "\002" /* WLIT */
+"\000"
 "\000"
 "\000"
 "\002" /* FINDPRIM */
@@ -182,6 +182,9 @@
 "\000"
 "\000"
 "\000"
+"\000"
+"\000"
+"\002" /* ITYPE */
 "\000"
 "\000"
 "\002" /* NAMELENGTH */
