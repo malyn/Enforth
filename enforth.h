@@ -158,7 +158,7 @@ typedef struct
     void (*emit)(char);
 
     EnforthCell dictionary;
-    int dictionary_size;
+    EnforthCell dictionary_size;
 
     /* Dictionary vars */
     EnforthCell dp;

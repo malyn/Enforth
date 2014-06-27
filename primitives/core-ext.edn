@@ -9,6 +9,13 @@
 
 {:token :twotor :name "2>R"}
 
+{:token :unused
+ :args [[] [:u]]
+ :source ": UNUSED ( -- u )  'DICT @  'DICT-SIZE @ +  HERE - ;"
+ :pfa [:vmaddrlit "offsetof(EnforthVM, dictionary)" :fetch
+       :vmaddrlit "offsetof(EnforthVM, dictionary_size)" :fetch
+       :plus :here :minus :exit]}
+
 {:token :zeronotequals
  :name "0<>"
  :args [[:x] [:f]]}

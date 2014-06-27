@@ -192,7 +192,7 @@ void enforth_init(
     vm->emit = emit;
 
     vm->dictionary.ram = dictionary;
-    vm->dictionary_size = dictionary_size;
+    vm->dictionary_size.u = dictionary_size;
 
     vm->dp = vm->dictionary;
     vm->latest.u = 0;

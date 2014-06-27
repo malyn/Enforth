@@ -1,6 +1,9 @@
-* Add `UNUSED` and `WORDS`.
+* Get rid of `C@DEFS`, `C@NAMES`, and `C@FFIDEFS` and just replace them all with `IC@` (instruction-c-fetch) and then require that code definitions need to be in the first 64KB of address space.  FFI functions themselves can go anywhere.
+  * We're going to go with Brad Rodriguez's I-prefixed names instead of SwiftX's C-suffixed names; the I prefix feels more natural.
+* Create a ROM variant of `TYPE` (`ITYPE`) in Forth using `IC@`.
+* Add `WORDS`.
+* Add `FFIS` which lists all of the available FFI definitions (similar to how `WORDS` lists all of the definitions and trampolines).
 * Support backspace in `ACCEPT`.
-* Create `C@NAMES` so that we can make a ROM variant of `(.")` in Forth.
 * Consider moving other non-essential primitives to Forth: `."`, `\\`, `W,`, `,`, `C,`, `ALLOT`.
   * The `*COMMA` words and `ALLOT` should not use `dp` but instead use `HERE`, `'HERE`, and `!`, `C!`, and `W!`.  This change makes it possible for us to ultimately remove `dp` from the `vm` structure and instead make it a regular variable in the dictionary.
 * Move `dp` and `latest` into the dictionary so that they load/save with the dictionary.
