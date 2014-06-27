@@ -667,15 +667,11 @@ DISPATCH_TOKEN:
         continue;
 
         WFETCH:
-#ifdef __AVR__
-        /* Fall through, since cells are already 16-bits on the AVR. */
-#else
         {
             CHECK_STACK(1, 1);
             tos.u = *(uint16_t*)tos.ram;
         }
         continue;
-#endif
 
         IFETCH:
 #ifdef __AVR__
