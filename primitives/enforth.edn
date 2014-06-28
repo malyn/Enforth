@@ -18,7 +18,7 @@
  :source ": COLD ( i*x -- ; R: j*x -- )
             .\" Enforth -- (C) Michael Alyn Miller\" CR
             ABORT ;"
- :pfa [:ipsquote 31
+ :pfa [:pisquote 31
          "'E'" "'n'" "'f'" "'o'" "'r'" "'t'" "'h'" "' '"
          "'('" "'C'" "')'" "' '" "'M'" "'i'" "'c'" "'h'"
          "'a'" "'e'" "'l'" "' '" "'A'" "'l'" "'y'" "'n'"
@@ -41,7 +41,7 @@
  :source ": CHANGE-LATEST-DEF-TYPE ( u --)
             LATEST @ >LFA 2 +  C@ %11111000 AND  OR
             LATEST @ >LFA 2 +  C!"
- :pfa [:latest :fetch :tolfa :oneplus :oneplus :cfetch :charlit 0xF8 :and
+ :pfa [:latest :fetch :tolfa :oneplus :oneplus :cfetch :icharlit 0xF8 :and
        :or :latest :fetch :tolfa :oneplus :oneplus :cstore
        :exit]}
 
@@ -63,13 +63,13 @@
             DUP 0< IF DROP 0 EXIT THEN
             DUP 9 > IF DUP 16 < IF DROP FALSE EXIT ELSE 7 - THEN THEN
             DUP 1+ BASE @ > IF DROP FALSE ELSE TRUE THEN ;"
- :pfa [:toupper :charlit "'0'" :minus
-       :dup :zeroless :zbranch 4 :drop :zero :exit
-       :dup :charlit 9 :greaterthan :zbranch 13
-         :dup :charlit 17 :lessthan :zbranch 4
+ :pfa [:toupper :icharlit "'0'" :minus
+       :dup :zeroless :izbranch 4 :drop :zero :exit
+       :dup :icharlit 9 :greaterthan :izbranch 13
+         :dup :icharlit 17 :lessthan :izbranch 4
            :drop :false :exit
-           :charlit 7 :minus
-       :dup :oneplus :base :fetch :ugreaterthan :zbranch 4
+           :icharlit 7 :minus
+       :dup :oneplus :base :fetch :ugreaterthan :izbranch 4
          :drop :false :exit
          :true
        :exit]}
@@ -78,7 +78,7 @@
  :args [[] [:addr]]
  :flags #{:headerless}
  :source ": DP ( -- addr )  VM +DP ;"
- :pfa [:vm :charlit "offsetof(EnforthVM, dp)" :plus :exit]}
+ :pfa [:vm :icharlit "offsetof(EnforthVM, dp)" :plus :exit]}
 
 {:token :exit :flags #{:headerless}}
 
@@ -87,19 +87,19 @@
  :args [[:xt] [:f]]
  :flags #{:headerless}
  :source ": FFI? ( xt -- f)  >DEF-TYPE kDefTypeFFI = ;"
- :pfa [:todeftype :charlit "kDefTypeFFI" :equals :exit]}
+ :pfa [:todeftype :icharlit "kDefTypeFFI" :equals :exit]}
 
 {:token :ffidefarity
  :name "FFIDEF-ARITY"
  :args [[:addr] [:u]]
  :flags #{:headerless}
- :pfa [:charlit "offsetof(EnforthFFIDef, arity)" :plus :icfetch :exit]}
+ :pfa [:icharlit "offsetof(EnforthFFIDef, arity)" :plus :icfetch :exit]}
 
 {:token :ffidefname
  :name "FFIDEF-NAME"
  :args [[:addr] [:c-addr]]
  :flags #{:headerless}
- :pfa [:charlit "offsetof(EnforthFFIDef, name)" :plus :ifetch :exit]}
+ :pfa [:icharlit "offsetof(EnforthFFIDef, name)" :plus :ifetch :exit]}
 
 {:token :ffidefnamelen
  :name "FFIDEF-NAMELEN"
@@ -109,8 +109,8 @@
             FFIDEF-NAME DUP ( addr-start addr )
             BEGIN DUP IC@ WHILE 1+ REPEAT SWAP - ;"
  :pfa [:ffidefname :dup
-       :dup :icfetch :zbranch 4
-         :oneplus :branch -6
+       :dup :icfetch :izbranch 4
+         :oneplus :ibranch -6
        :swap :minus
        :exit]}
 
@@ -124,11 +124,11 @@
               I@
             REPEAT ;"
  :pfa [; LAST-FFIDEF
-         :vm :charlit "offsetof(EnforthVM, last_ffi)" :plus
+         :vm :icharlit "offsetof(EnforthVM, last_ffi)" :plus
        :fetch
-       :qdup :zbranch 10
+       :qdup :izbranch 10
          :dup :ffidefname :over :ffidefnamelen :itype :space
-         :ifetch :branch -11
+         :ifetch :ibranch -11
        :exit]}
 
 {:token :finddef
@@ -146,14 +146,14 @@
             >LFA XT@
           REPEAT ( R:ca u) 2R> 2DROP FALSE ;"
  :pfa [:twotor :latest :fetch
-       :qdup :zbranch 23
-         :dup :tworfetch :rot :founddefq :zbranch 13
+       :qdup :izbranch 23
+         :dup :tworfetch :rot :founddefq :izbranch 13
            :dup
            ; IMMEDIATE-DEF?
-             :todeftype :charlit "kDefTypeCOLONIMMEDIATE" :equals
-           :charlit 2 :and :oneminus :tworfrom :twodrop :exit
+             :todeftype :icharlit "kDefTypeCOLONIMMEDIATE" :equals
+           :icharlit 2 :and :oneminus :tworfrom :twodrop :exit
          :tolfa :xtfetch
-         :branch -24
+         :ibranch -24
        :tworfrom :twodrop :false
        :exit]}
 
@@ -172,15 +172,15 @@
             REPEAT ( R:ca u) 2R> 2DROP  FALSE ;"
  :pfa [:twotor
        ; LAST-FFIDEF
-         :vm :charlit "offsetof(EnforthVM, last_ffi)" :plus
+         :vm :icharlit "offsetof(EnforthVM, last_ffi)" :plus
        :fetch
-       :qdup :zbranch 20
-         :rfetch :over :ffidefnamelen :equals :zbranch 11
+       :qdup :izbranch 20
+         :rfetch :over :ffidefnamelen :equals :izbranch 11
            :dup :tworfetch :rot
-           :foundffidefq :zbranch 5
+           :foundffidefq :izbranch 5
              :tworfrom :twodrop :true :exit
          :ifetch
-         :branch -21
+         :ibranch -21
        :tworfrom :twodrop :false
        :exit]}
 
@@ -200,16 +200,16 @@
               ROT 1+ ( na na' t+1) ROT DROP SWAP ( t+1 na')
             REPEAT ( token na R:ca u) 2DROP 2R> 2DROP FALSE ;"
  :pfa [:twotor :zero :ticknames
-       :dup :icfetch :charlit 0xff :notequals :zbranch 29
-         :dup :tworfetch :rot :foundprimq :zbranch 16
+       :dup :icfetch :icharlit 0xff :notequals :izbranch 29
+         :dup :tworfetch :rot :foundprimq :izbranch 16
            :drop
            ; IMMEDIATE-PRIM?
-             :icfetch :charlit 0x07 :and
-             :charlit "kDefTypeCOLONIMMEDIATE" :equals
-           :charlit 2 :and :oneminus
+             :icfetch :icharlit 0x07 :and
+             :icharlit "kDefTypeCOLONIMMEDIATE" :equals
+           :icharlit 2 :and :oneminus
            :tworfrom :twodrop :exit
          :rot :oneplus :rot :drop :swap
-         :branch -34
+         :ibranch -34
        :twodrop :tworfrom :twodrop :false
        :exit]}
 
@@ -230,9 +230,9 @@
             2DUP FIND-DEF ( ca u 0 | ca u xt 1/-1) ?DUP IF 2SWAP 2DROP
             ELSE 2DUP FIND-PRIM ( ca u 0 | ca u xt 1/-1) DUP IF 2SWAP 2DROP
             THEN ;"
- :pfa [:twodup :finddef :qdup :zbranch 5
-         :twoswap :twodrop :branch 8
-         :twodup :findprim :dup :zbranch 3
+ :pfa [:twodup :finddef :qdup :izbranch 5
+         :twoswap :twodrop :ibranch 8
+         :twodup :findprim :dup :izbranch 3
            :twoswap :twodrop
          :exit]}
 
@@ -261,21 +261,21 @@
             >NFA ( ca u ca') SWAP STRING~ ;"
  :pfa [:dup
        ; HIDDEN
-         :todeftype :charlit "kDefTypeCOLONHIDDEN" :equals
-       :zbranch 5
+         :todeftype :icharlit "kDefTypeCOLONHIDDEN" :equals
+       :izbranch 5
          :drop :twodrop :false :exit
-       :twodup :namelength :notequals :zbranch 5
+       :twodup :namelength :notequals :izbranch 5
          :drop :twodrop :false :exit
-       :dup :ffiq :zbranch 3
+       :dup :ffiq :izbranch 3
          :foundffiq :exit
        :tonfa :swap
        ; STRING~
-         :qdup :zbranch 22
+         :qdup :izbranch 22
            :oneminus :tor
-           :over :cfetch :over :cfetch :cnotsimilar :zbranch 6
+           :over :cfetch :over :cfetch :cnotsimilar :izbranch 6
              :twodrop :rfrom :drop :false :exit
            :oneplus :swap :oneplus :swap :rfrom
-           :branch -23
+           :ibranch -23
          :twodrop :true
        :exit]}
 
@@ -300,11 +300,11 @@
               1+ SWAP 1+ SWAP ( ca' caffi' R:u'-1) R>
             REPEAT ( ca' caffi') 2DROP TRUE ;"
  :pfa [:ffidefname :swap
-       :qdup :zbranch 22
+       :qdup :izbranch 22
          :oneminus :tor
-         :over :cfetch :over :icfetch :cnotsimilar :zbranch 6
+         :over :cfetch :over :icfetch :cnotsimilar :izbranch 6
            :twodrop :rfrom :drop :false :exit
-         :oneplus :swap :oneplus :swap :rfrom :branch -23
+         :oneplus :swap :oneplus :swap :rfrom :ibranch -23
         :twodrop :true
         :exit]}
 
@@ -327,19 +327,19 @@
        ; TRAVERSE-PRIM-NAME
          :dup
          ; PRIM-NAMELEN
-           :icfetch :charlit 3 :rshift
+           :icfetch :icharlit 3 :rshift
          :plus :oneplus
        :tor
        :dup
        ; PRIM-NAME-LENGTH
-         :icfetch :charlit 3 :rshift
-       :rot :notequals :zbranch 5
+         :icfetch :icharlit 3 :rshift
+       :rot :notequals :izbranch 5
            :twodrop :rfrom :false :exit
        :oneplus
-         :over :cfetch :over :icfetch :cnotsimilar :zbranch 5
+         :over :cfetch :over :icfetch :cnotsimilar :izbranch 5
            :twodrop :rfrom :false :exit
          :oneplus :swap :oneplus :swap
-         :dup :rfetch :equals :zbranch -19
+         :dup :rfetch :equals :izbranch -19
          :twodrop :rfrom :true
        :exit]}
 
@@ -351,18 +351,26 @@
 {:token :hld
  :args [[] [:aaddr]]
  :flags #{:headerless}
- :pfa [:vm :charlit "offsetof(EnforthVM, hld)" :plus :exit]}
+ :pfa [:vm :icharlit "offsetof(EnforthVM, hld)" :plus :exit]}
 
 {:token :hldend
  :args [[] [:c]]
  :flags #{:headerless}
  :source ": HLDEND ( -- u)  [ 1 CELLS 8 * 3 * ] ;"
- :pfa [:charlit "kEnforthCellSize * 8 * 3" :exit]}
+ :pfa [:icharlit "kEnforthCellSize * 8 * 3" :exit]}
+
+{:token :ibranch
+ :args [[] []]
+ :flags #{:headerless}}
 
 {:token :icfetch
  :name "IC@"
  :args [[:c-addr] [:c]]
  :flags #{:headerless}}
+
+{:token :icharlit
+ :flags #{:headerless}
+ :args [[] [:char]]}
 
 {:token :ifetch
  :name "I@"
@@ -390,24 +398,25 @@
                 THEN
               THEN
             REPEAT ( j*x ca u) 2DROP ;"
- :pfa [:vm :charlit "offsetof(EnforthVM, source_len)" :plus :twostore
+ :pfa [:vm :icharlit "offsetof(EnforthVM, source_len)" :plus :twostore
        :zero :toin :store
-         :bl :parseword :dup :zbranch 37
-           :findword :qdup :zbranch 14
-             :oneplus :state :fetch :zeroequals :or :zbranch 4
-             :execute :branch 21
-             :compilecomma :branch 18
-           :numberq :zbranch 8
-             :state :fetch :zbranch 11
-               :literal :branch 8
-             :type :space :charlit "'?'" :emit :cr :abort
-           :branch -40
+         :bl :parseword :dup :izbranch 37
+           :findword :qdup :izbranch 14
+             :oneplus :state :fetch :zeroequals :or :izbranch 4
+             :execute :ibranch 21
+             :compilecomma :ibranch 18
+           :numberq :izbranch 8
+             :state :fetch :izbranch 11
+               :literal :ibranch 8
+             :type :space :icharlit "'?'" :emit :cr :abort
+           :ibranch -40
        :twodrop
        :exit]}
 
-{:token :ipsquote
+{:token :pisquote
  :name "(IS\")"
- :args [[] [:icaddr :u]]}
+ :args [[] [:icaddr :u]]
+ :flags #{:headerless}}
 
 {:token :itype
  :args [[:icaddr :u] []]
@@ -416,14 +425,18 @@
             OVER + SWAP ( caend ca)
             BEGIN 2DUP <> WHILE DUP IC@ EMIT  1+ REPEAT 2DROP ;"
  :pfa [:over :plus :swap
-       :twodup :notequals :zbranch 7
-         :dup :icfetch :emit :oneplus :branch -9
+       :twodup :notequals :izbranch 7
+         :dup :icfetch :emit :oneplus :ibranch -9
        :twodrop
        :exit]}
 
+{:token :izbranch
+ :args [[] []]
+ :flags #{:headerless}}
+
 {:token :latest
  :args [[] [:aaadr]]
- :pfa [:vm :charlit "offsetof(EnforthVM, latest)" :plus :exit]}
+ :pfa [:vm :icharlit "offsetof(EnforthVM, latest)" :plus :exit]}
 
 {:token :lit
  :name "(LIT)"
@@ -438,7 +451,7 @@
  :args [[:xt] [:u]]
  :flags #{:headerless}
  :source ": NAME-LENGTH ( xt -- ru)  >LFA 2 + C@ 3 RSHIFT ;"
- :pfa [:tolfa :oneplus :oneplus :cfetch :charlit 3 :rshift :exit]}
+ :pfa [:tolfa :oneplus :oneplus :cfetch :icharlit 3 :rshift :exit]}
 
 ;; Length of the NFA field, not necessarily the name itself (because FFI
 ;; trampolines have a zero-length NFA since the name is stored in ROM in
@@ -449,9 +462,9 @@
  :flags #{:headerless}
  :source ": NFA-LENGTH ( xt -- ru)
             DUP FFI? IF DROP 0 ELSE >LFA 2 + C@ 3 RSHIFT THEN ;"
- :pfa [:dup :ffiq :zbranch 5
-         :drop :zero :branch 8
-         :tolfa :oneplus :oneplus :cfetch :charlit 3 :rshift
+ :pfa [:dup :ffiq :izbranch 5
+         :drop :zero :ibranch 8
+         :tolfa :oneplus :oneplus :cfetch :icharlit 3 :rshift
        :exit]}
 
 ;; NUMBER? [ENFORTH] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
@@ -473,18 +486,18 @@
             IF DROP 2DROP  R> DROP  0 ELSE
                DROP 2NIP DROP  R> ?NEGATE  -1 THEN ;"
  :pfa [; SIGN?
-         :over :cfetch :dup :charlit "'-'" :equals
-         :over :charlit "'+'" :equals :or :zbranch 17
-           :charlit "'-'" :equals :zbranch 4
-             :true :branch 2
+         :over :cfetch :dup :icharlit "'-'" :equals
+         :over :icharlit "'+'" :equals :or :izbranch 17
+           :icharlit "'-'" :equals :izbranch 4
+             :true :ibranch 2
              :false
-           :tor :charlit 1 :slashstring :rfrom :branch 3
+           :tor :icharlit 1 :slashstring :rfrom :ibranch 3
            :drop :zero
-       :tor :twodup :zero :zero :twoswap :tonumber :zbranch 8
-         :drop :twodrop :rfrom :drop :zero :branch 10
+       :tor :twodup :zero :zero :twoswap :tonumber :izbranch 8
+         :drop :twodrop :rfrom :drop :zero :ibranch 10
          :drop :twonip :drop :rfrom
          ; ?NEGATE
-           :zeroless :zbranch 2 :negate
+           :zeroless :izbranch 2 :negate
          :true
        :exit]}
 
@@ -516,15 +529,15 @@
        :rfetch
          ; SKIP-DELIM
          :tor
-         :over :cfetch :rfetch :equals :over :and :zbranch 6
-           :charlit 1 :slashstring :branch -12
+         :over :cfetch :rfetch :equals :over :and :izbranch 6
+           :icharlit 1 :slashstring :ibranch -12
          :rfrom :drop
        :over :swap
        :rfrom
          ; FIND-DELIM
          :tor
-           :over :cfetch :rfetch :notequals :over :and :zbranch 6
-           :charlit 1 :slashstring :branch -12
+           :over :cfetch :rfetch :notequals :over :and :izbranch 6
+           :icharlit 1 :slashstring :ibranch -12
          :rfrom :twodrop
        :dup :source :drop :minus :toin :store
        :over :minus
@@ -539,13 +552,13 @@
 {:token :tib
  :args [[] [:caadr]]
  :flags #{:headerless}
- :pfa [:vm :charlit "offsetof(EnforthVM, tib)" :plus :exit]}
+ :pfa [:vm :icharlit "offsetof(EnforthVM, tib)" :plus :exit]}
 
 ;; TODO Put TIBSIZE in a constant.
 {:token :tibsize
  :args [[] [:u]]
  :flags #{:headerless}
- :pfa [:charlit 80 :exit]}
+ :pfa [:icharlit 80 :exit]}
 
 {:token :ticknames
  :name "'NAMES"
@@ -562,8 +575,8 @@
  :flags #{:headerless}
  :source ": >[TOKEN] ( xt -- token)
             >TOKEN  DUP EXECUTION-TOKEN-BASE 1- > IF 0x10 + THEN ;"
- :pfa [:totoken :dup :charlit "0xe0 - 1" :greaterthan :zbranch 4
-         :charlit 0x10 :plus
+ :pfa [:totoken :dup :icharlit "0xe0 - 1" :greaterthan :izbranch 4
+         :icharlit 0x10 :plus
        :exit]}
 
 ;; xt must refer to a compiled (not primitive) definition or FFI
@@ -573,7 +586,7 @@
  :args [[:xt] [:u]]
  :flags #{:headerless}
  :source ": >DEF-TYPE ( xt -- u)  >LFA 2 + C@ $7 AND ;"
- :pfa [:tolfa :oneplus :oneplus :cfetch :charlit 0x07 :and :exit]}
+ :pfa [:tolfa :oneplus :oneplus :cfetch :icharlit 0x07 :and :exit]}
 
 {:token :toffidef
  :name ">FFIDEF"
@@ -585,8 +598,8 @@
 {:token :tokenq
  :name "TOKEN?"
  :flags #{:headerless}
- :source ": TOKEN? ( xt -- f)  $8000 AND 0= ;"
- :pfa [:wlit 0x00 0x80 :and :zeroequals :exit]}
+ :source ": TOKEN? ( xt -- f)  XTFLAG AND 0= ;"
+ :pfa [:xtflag :and :zeroequals :exit]}
 
 ;; xt must refer to a compiled (not primitive) definition or FFI
 ;; trampoline.
@@ -594,10 +607,10 @@
  :name ">LFA"
  :args [[:xt] [:a-addr]]
  :flags #{:headerless}
- :source ": >LFA ( xt -- a-addr)  $7FFF AND 'DICT + ;"
- :pfa [:wlit 0xff 0x7f :and
+ :source ": >LFA ( xt -- a-addr)  XTMASK AND 'DICT + ;"
+ :pfa [:xtmask :and
        ; 'DICT
-         :vm :charlit "offsetof(EnforthVM, dictionary)" :plus :fetch
+         :vm :icharlit "offsetof(EnforthVM, dictionary)" :plus :fetch
        :plus
        :exit]}
 
@@ -620,10 +633,10 @@
             DUP TOKEN? IF EXIT THEN
             DUP FFI? IF >FFIDEF FFIDEF-ARITY FFI-EXECUTION-TOKEN-BASE +
             ELSE >DEF-TYPE EXECUTION-TOKEN-BASE + THEN ;"
- :pfa [:dup :tokenq :zbranch 2 :exit
-       :dup :ffiq :zbranch 8
-         :toffidef :ffidefarity :charlit 0xe8 :plus :branch 5
-         :todeftype :charlit 0xe0 :plus
+ :pfa [:dup :tokenq :izbranch 2 :exit
+       :dup :ffiq :izbranch 8
+         :toffidef :ffidefarity :icharlit 0xe8 :plus :ibranch 5
+         :todeftype :icharlit 0xe0 :plus
        :exit]}
 
 {:token :toupper
@@ -633,19 +646,19 @@
             DUP [CHAR] a 1- > ( c f)
             OVER z 1+ < (c f f)
             AND IF 0x20 - THEN ;"
- :pfa [:dup :charlit "'a'" :oneminus :greaterthan
-       :over :charlit "'z'" :oneplus :lessthan
-       :and :zbranch 4
-         :charlit 0x20 :minus
+ :pfa [:dup :icharlit "'a'" :oneminus :greaterthan
+       :over :icharlit "'z'" :oneplus :lessthan
+       :and :izbranch 4
+         :icharlit 0x20 :minus
        :exit]}
 
 {:token :toxt
  :name ">XT"
  :args [[:a-addr] [:xt]]
  :flags #{:headerless}
- :source ": >XT ( a-addr -- xt)  'DICT - $8000 OR ;"
- :pfa [:vm :charlit "offsetof(EnforthVM, dictionary)" :plus :fetch
-       :minus :wlit 0x00 0x80 :or
+ :source ": >XT ( a-addr -- xt)  'DICT - XTFLAG OR ;"
+ :pfa [:vm :icharlit "offsetof(EnforthVM, dictionary)" :plus :fetch
+       :minus :xtflag :or
        :exit]}
 
 {:token :twonip
@@ -664,11 +677,11 @@
             HERE >XT  LATEST @ XT,  LATEST ! ( ca u addr)
             SWAP 3 LSHIFT kDefTypeFFI OR C,  ( ca addr)
             ALIGN ,  DROP ;"
- :pfa [:bl :parseword :dup :zeroequals :zbranch 2 :abort
-       :twodup :findffidef :zeroequals :zbranch 8
-         :type :space :charlit "'?'" :emit :cr :abort
+ :pfa [:bl :parseword :dup :zeroequals :izbranch 2 :abort
+       :twodup :findffidef :zeroequals :izbranch 8
+         :type :space :icharlit "'?'" :emit :cr :abort
        :here :toxt :latest :fetch :xtcomma :latest :store
-       :swap :charlit 3 :lshift :charlit "kDefTypeFFI" :or :ccomma
+       :swap :icharlit 3 :lshift :icharlit "kDefTypeFFI" :or :ccomma
        :align :comma :drop
        :exit]}
 
@@ -676,19 +689,29 @@
  :args [[] [:addr]]
  :flags #{:headerless}}
 
-{:token :wlit :flags #{:headerless}}
-
 {:token :xtcomma
  :name "XT,"
  :args [[:xt] []]
+ :flags #{:headerless}
  :source ": XT, ( xt -- )  DUP C,  8 RSHIFT C, ;"
- :pfa [:dup :ccomma :charlit 8 :rshift :ccomma :exit]}
+ :pfa [:dup :ccomma :icharlit 8 :rshift :ccomma :exit]}
 
 {:token :xtfetch
  :name "XT@"
  :args [[:addr] [:xt]]
+ :flags #{:headerless}
  :source ": XT@ ( addr -- xt )  DUP C@  SWAP 1+ C@ 8 LSHIFT  OR ;"
- :pfa [:dup :cfetch :swap :oneplus :cfetch :charlit 8 :lshift :or :exit]}
+ :pfa [:dup :cfetch :swap :oneplus :cfetch :icharlit 8 :lshift :or :exit]}
+
+{:token :xtflag
+ :args [[] [:u]]
+ :flags #{:headerless}
+ :pfa [:icharlit 0x80 :icharlit 8 :lshift :exit]}
+
+{:token :xtmask
+ :args [[] [:u]]
+ :flags #{:headerless}
+ :pfa [:icharlit 0xff :icharlit 0x7f :icharlit 8 :lshift :or :exit]}
 
 {:token :zbranch :name "0BRANCH" :flags #{:headerless}}
 

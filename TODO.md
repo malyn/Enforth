@@ -1,6 +1,5 @@
 * Fix multi-line definitions (currently just aborts with UNDERFLOW).
 * Move `dp` and `latest` into the dictionary so that they load/save with the dictionary.
-* Make ROM definition IPs on the return stack relative to the start of the ROM definition block.  We can do this now that all of the ROM definitions are finally in this one block.
 * Add flow control words (`IF`, `THEN`, `DO`, `WHILE`, etc.).
 * Modify `test/enforth` to optionally take a list of files on the command line and then interpret each file in order (by just feeding the data through `KEY` for now).  This will allow us to start running the anstests.
 * Improve the stack checking code.

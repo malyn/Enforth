@@ -7,7 +7,7 @@
 {:token :hex
  :args [[] []]
  :source ": HEX ( --)  16 BASE ! ;"
- :pfa [:charlit 16 :base :store :exit]}
+ :pfa [:icharlit 16 :base :store :exit]}
 
 {:token :tworfetch :name "2R@" }
 
@@ -18,8 +18,8 @@
 {:token :unused
  :args [[] [:u]]
  :source ": UNUSED ( -- u )  'DICT @  'DICT-SIZE @ +  HERE - ;"
- :pfa [:vm :charlit "offsetof(EnforthVM, dictionary)" :plus :fetch
-       :vm :charlit "offsetof(EnforthVM, dictionary_size)" :plus :fetch
+ :pfa [:vm :icharlit "offsetof(EnforthVM, dictionary)" :plus :fetch
+       :vm :icharlit "offsetof(EnforthVM, dictionary_size)" :plus :fetch
        :plus :here :minus :exit]}
 
 {:token :zeronotequals

@@ -36,15 +36,15 @@
             REPEAT
             ( ca-start ca-end ca-dest c) DROP NIP SWAP - ;"
  :pfa [:over :plus :over
-       :key :dup :charlit 10 :notequals :zbranch 43
-         :dup :charlit 8 :equals :over :charlit 127 :equals :or :zbranch 18
-           :twoover :drop :nip :over :notequals :zbranch 9
-             :oneminus :charlit 8 :emit :space :charlit 8 :emit
-             :branch 13
-         :dup :twoover :notequals :zbranch 7
-           :emit :over :cstore :oneplus :branch 2
+       :key :dup :icharlit 10 :notequals :izbranch 43
+         :dup :icharlit 8 :equals :over :icharlit 127 :equals :or :izbranch 18
+           :twoover :drop :nip :over :notequals :izbranch 9
+             :oneminus :icharlit 8 :emit :space :icharlit 8 :emit
+             :ibranch 13
+         :dup :twoover :notequals :izbranch 7
+           :emit :over :cstore :oneplus :ibranch 2
            :twodrop
-         :branch -48
+         :ibranch -48
        :drop :nip :swap :minus
        :exit]}
 
@@ -62,23 +62,23 @@
 
 {:token :base
  :args [[] [:aaddr]]
- :pfa [:vm :charlit "offsetof(EnforthVM, base)" :plus :exit]}
+ :pfa [:vm :icharlit "offsetof(EnforthVM, base)" :plus :exit]}
 
 {:token :bl
  :args [[] [:c]]
  :source ": BL ( --)  $20 ;"
- :pfa [:charlit "' '" :exit]}
+ :pfa [:icharlit "' '" :exit]}
 
 {:token :ccomma
  :name "C,"
  :args [[:char] []]
  :source ": C, ( char -- )  HERE C!  1 CHARS ALLOT ;"
- :pfa [:here :cstore :charlit 1 :chars :allot :exit]}
+ :pfa [:here :cstore :icharlit 1 :chars :allot :exit]}
 
 {:token :cells
  :args [[:n1] [:n2]]
  :source ": CELLS ( n1 -- n2 )  kEnforthCellSize * ;"
- :pfa [:charlit "kEnforthCellSize" :umstar :drop :exit]}
+ :pfa [:icharlit "kEnforthCellSize" :umstar :drop :exit]}
 
 {:token :cfetch :name "C@"}
 
@@ -113,7 +113,7 @@
  :args [[] []]
  :source ": : ( \"<spaces>name\" -- )
             CREATE  kDefTypeCOLONHIDDEN CHANGE-LATEST-DEF-TYPE  ] ;"
- :pfa [:create :charlit "kDefTypeCOLONHIDDEN" :changelatestdeftype
+ :pfa [:create :icharlit "kDefTypeCOLONHIDDEN" :changelatestdeftype
        :rtbracket
        :exit]}
 
@@ -121,16 +121,16 @@
  :name ","
  :args [[:x] []]
  :source ": , ( x -- )  HERE !  1 CELLS ALLOT ;"
- :pfa [:here :store :charlit 1 :cells :allot :exit]}
+ :pfa [:here :store :icharlit 1 :cells :allot :exit]}
 
 {:token :compilecomma
  :name "COMPILE,"
  :args [[:xt] []]
  :source ": COMPILE, ( xt --)  DUP >[TOKEN] C,  >BODY ?DUP IF 'DICT - XT, THEN ;"
  :pfa [:dup :tocompiletoken :ccomma
-       :tobody :qdup :zbranch 8
+       :tobody :qdup :izbranch 8
          ; TICKDICT
-           :vm :charlit "offsetof(EnforthVM, dictionary)" :plus :fetch
+           :vm :icharlit "offsetof(EnforthVM, dictionary)" :plus :fetch
          :minus :xtcomma
        :exit]}
 
@@ -144,7 +144,7 @@
 {:token :cr
  :args [[] []]
  :source ": CR ( --)  $0A EMIT ;"
- :pfa [:charlit 0x0a :emit :exit]}
+ :pfa [:icharlit 0x0a :emit :exit]}
 
 {:token :create
  :args [[] []]
@@ -153,9 +153,9 @@
             BL PARSE-WORD DUP 0= IF ABORT THEN ( ca u)
             HERE >XT  LATEST @ XT,  LATEST ! ( ca u)
             DUP 3 LSHIFT kDefTypeCREATE OR C,  ( ca u) S,  ALIGN ;"
- :pfa [:bl :parseword :dup :zeroequals :zbranch 2 :abort
+ :pfa [:bl :parseword :dup :zeroequals :izbranch 2 :abort
        :here :toxt :latest :fetch :xtcomma :latest :store
-       :dup :charlit 3 :lshift :charlit "kDefTypeCREATE" :or :ccomma
+       :dup :icharlit 3 :lshift :icharlit "kDefTypeCREATE" :or :ccomma
        ; S,
          :tuck :here :swap :move :allot
        :align
@@ -168,7 +168,7 @@
  :args [[:n] []]
  :source "BASE @ 10 <>  IF U. EXIT THEN
          DUP ABS 0 <# #S ROT SIGN #> TYPE SPACE ;"
- :pfa [:base :fetch :charlit 10 :notequals :zbranch 3 :udot :exit
+ :pfa [:base :fetch :icharlit 10 :notequals :izbranch 3 :udot :exit
        :dup :abs :zero :lessnumsign :numsigns :rot :sign,
        :numsigngrtr :type :space
        :exit]}
@@ -255,9 +255,9 @@
  :source ": LITERAL ( x --)
             DUP $FF INVERT AND 0= IF CHARLIT C, C,
             ELSE LIT C, , THEN ;"
- :pfa [:dup :charlit 0xff :invert :and :zeroequals :zbranch 7
-         :charlit :charlit :ccomma :ccomma :branch 5
-         :charlit :lit :ccomma :comma
+ :pfa [:dup :icharlit 0xff :invert :and :zeroequals :izbranch 7
+         :icharlit :charlit :ccomma :ccomma :ibranch 5
+         :icharlit :lit :ccomma :comma
        :exit]}
 
 {:token :lshift :args [[:x1 :u] [:x2]]}
@@ -294,8 +294,8 @@
           : # ( ud1 -- ud2 )   BASE @ UD/MOD ROT >digit HOLD ;"
  :pfa [:base :fetch :udslashmod :rot
        ; TODIGIT
-         :dup :charlit 9 :greaterthan :charlit 7 :and
-         :plus :charlit 48 :plus
+         :dup :icharlit 9 :greaterthan :icharlit 7 :and
+         :plus :icharlit 48 :plus
        :hold
        :exit]}
 
@@ -320,7 +320,7 @@
  :name "#S"
  :args [[:ud1] [:ud2]]
  :source ": #S ( ud1 -- 0 )   BEGIN # 2DUP OR WHILE REPEAT ;"
- :pfa [:numsign :twodup :or :zbranch 3 :branch -6 :exit]}
+ :pfa [:numsign :twodup :or :izbranch 3 :ibranch -6 :exit]}
 
 {:token :oneplus :name "1+"}
 
@@ -359,9 +359,9 @@
  :pfa [:initrp :zero :state :store
          :tib :dup :tibsize :accept :space
          :interpret
-         :cr :state :fetch :zeroequals :zbranch 6
-         :ipsquote 3 "'o'" "'k'" "' '" :itype
-         :branch -19]}
+         :cr :state :fetch :zeroequals :izbranch 6
+         :pisquote 3 "'o'" "'k'" "' '" :itype
+         :ibranch -19]}
 
 {:token :rfetch :name "R@"}
 
@@ -400,8 +400,8 @@
             ['] EXIT COMPILE,
             kDefTypeCOLON CHANGE-LATEST-DEF-TYPE
             [ ; IMMEDIATE"
- :pfa [:charlit :exit :compilecomma
-       :charlit "kDefTypeCOLON" :changelatestdeftype
+ :pfa [:icharlit :exit :compilecomma
+       :icharlit "kDefTypeCOLON" :changelatestdeftype
        :ltbracket :exit]}
 
 ;; SIGN [CORE] 6.1.2210 ( n -- )
@@ -416,11 +416,11 @@
 {:token :sign
  :args [[:n] []]
  :source ": SIGN ( n -- )   0< IF [CHAR] - HOLD THEN ;"
- :pfa [:zeroless :zbranch 4 :charlit "'-'" :hold :exit]}
+ :pfa [:zeroless :izbranch 4 :icharlit "'-'" :hold :exit]}
 
 {:token :source
  :args [[] [:caddr :u]]
- :pfa [:vm :charlit "offsetof(EnforthVM, source_len)" :plus :twofetch :exit]}
+ :pfa [:vm :icharlit "offsetof(EnforthVM, source_len)" :plus :twofetch :exit]}
 
 {:token :space
  :args [[] []]
@@ -429,7 +429,7 @@
 
 {:token :state
  :args [[] [:aaddr]]
- :pfa [:vm :charlit "offsetof(EnforthVM, state)" :plus :exit]}
+ :pfa [:vm :icharlit "offsetof(EnforthVM, state)" :plus :exit]}
 
 {:token :store :name "!"}
 
@@ -442,7 +442,7 @@
             DUP TOKEN? IF DROP 0 EXIT THEN
             DUP NFA-LENGTH ( xt u)
             SWAP >LFA 2 + ( lfa) 1+ ( flags) + ( nfa) ;"
- :pfa [:dup :tokenq :zbranch 4
+ :pfa [:dup :tokenq :izbranch 4
          :drop :zero :exit
        :dup :nfalength
        :swap :tolfa :oneplus :oneplus :oneplus :plus
@@ -452,7 +452,7 @@
 {:token :toin
  :name ">IN"
  :args [[] [:aaddr]]
- :pfa [:vm :charlit "offsetof(EnforthVM, to_in)" :plus :exit]}
+ :pfa [:vm :icharlit "offsetof(EnforthVM, to_in)" :plus :exit]}
 
 ;; >NUMBER [CORE] 6.1.0567 "to-number" ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 )
 ;;
@@ -477,14 +477,14 @@
                >R 2SWAP BASE @ UD* R> M+ 2SWAP
                1 /STRING
             REPEAT ;"
- :pfa [:dup :zbranch 29
-         :over :cfetch :digitq :zeroequals :zbranch 2 :exit
+ :pfa [:dup :izbranch 29
+         :over :cfetch :digitq :zeroequals :izbranch 2 :exit
          :tor :twoswap :base :fetch
          ; UD*
            :dup :tor :umstar :drop :swap :rfrom :umstar :rot :plus
          :rfrom :mplus :twoswap
-         :charlit 1 :slashstring
-         :branch -30
+         :icharlit 1 :slashstring
+         :ibranch -30
        :exit]}
 
 {:token :tor :name ">R"}
@@ -511,8 +511,8 @@
             OVER + SWAP  ( ca-end ca-next)
             BEGIN 2DUP <> WHILE DUP C@ EMIT 1+ REPEAT 2DROP ;"
  :pfa [:over :plus :swap
-       :twodup :notequals :zbranch 7
-         :dup :cfetch :emit :oneplus :branch -9
+       :twodup :notequals :izbranch 7
+         :dup :cfetch :emit :oneplus :ibranch -9
        :twodrop
        :exit]}
 

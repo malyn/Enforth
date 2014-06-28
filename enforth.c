@@ -221,7 +221,7 @@ void enforth_execute(EnforthVM * const vm, uint16_t xt)
     register EnforthCell *returnTop;
 
 #ifdef __AVR__
-    register int inProgramSpace;
+    register int8_t inProgramSpace;
 #endif
 
 #if ENABLE_STACK_CHECKING
@@ -301,7 +301,6 @@ void enforth_execute(EnforthVM * const vm, uint16_t xt)
      * will exit the inner interpreter (i.e., enforth_execute). */
     returnTop = (EnforthCell *)&vm->return_stack[32];
 #ifdef __AVR__
-    /* TODO Needs to be relative to the ROM definition block. */
     (--returnTop)->ram = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ((EnforthToken)HALT * kTokenMultiplier)));
 #else
     (--returnTop)->ram = (uint8_t*)definitions + ((EnforthToken)HALT * kTokenMultiplier);
@@ -466,36 +465,12 @@ DISPATCH_TOKEN:
             CHECK_STACK(7, 1);
         continue;
 
-        WLIT:
-#ifdef __AVR__
-        /* Fall through, since literals are already 16-bits on the AVR. */
-#else
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            /* No need for pgm_read_word here since this code is never
-             * compiled on the AVR. */
-            tos.i = (EnforthInt)*(uint16_t*)ip;
-            ip += 2;
-        }
-        continue;
-#endif
-
+        /* Cannot be used in ROM definitions! */
         LIT:
         {
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
-#ifdef __AVR__
-            if (inProgramSpace)
-            {
-                tos.i = pgm_read_word(ip);
-            }
-            else
-#endif
-            {
-                tos = *(EnforthCell*)ip;
-            }
-
+            tos = *(EnforthCell*)ip;
             ip += kEnforthCellSize;
         }
         continue;
@@ -556,6 +531,23 @@ DISPATCH_TOKEN:
          * points at the offset in BRANCH/ZBRANCH.  These offsets can be
          * positive or negative because branches can go both forwards
          * and backwards. */
+        IBRANCH:
+#ifdef __AVR__
+        {
+            CHECK_STACK(0, 0);
+            ip += (int8_t)pgm_read_byte(ip);
+        }
+        continue;
+#else
+        /* Fall through, since the other architectures use shared
+         * instruction and data space. */
+#endif
+
+        /* TODO Add docs re: Note that (branch) and (0branch) offsets
+         * are 8-bit relative offsets.  UNLIKE word addresses, the IP
+         * points at the offset in BRANCH/ZBRANCH.  These offsets can be
+         * positive or negative because branches can go both forwards
+         * and backwards. */
         BRANCH:
         {
             CHECK_STACK(0, 0);
@@ -564,19 +556,7 @@ DISPATCH_TOKEN:
              * and so we want it to be relocatable without us having to
              * do anything.  Note that the offset cannot be larger than
              * +/- 127 bytes! */
-            int8_t relativeOffset;
-#ifdef __AVR__
-            if (inProgramSpace)
-            {
-                relativeOffset = pgm_read_byte(ip);
-            }
-            else
-#endif
-            {
-                relativeOffset = *(int8_t*)ip;
-            }
-
-            ip = ip + relativeOffset;
+            ip += *(int8_t*)ip;
         }
         continue;
 
@@ -625,22 +605,25 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        ICHARLIT:
+#ifdef __AVR__
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos.i = pgm_read_byte(ip);
+            ip++;
+        }
+        continue;
+#else
+        /* Fall through, since the other architectures use shared
+         * instruction and data space. */
+#endif
+
         CHARLIT:
         {
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
-#ifdef __AVR__
-            if (inProgramSpace)
-            {
-                tos.i = pgm_read_byte(ip);
-            }
-            else
-#endif
-            {
-                tos.i = *ip;
-            }
-
-            ip++;
+            tos.i = *ip++;
         }
         continue;
 
@@ -722,25 +705,35 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        IZBRANCH:
+#ifdef __AVR__
+        {
+            CHECK_STACK(1, 0);
+
+            if (tos.i == 0)
+            {
+                ip += (int8_t)pgm_read_byte(ip);
+            }
+            else
+            {
+                ip++;
+            }
+
+            tos = *restDataStack++;
+        }
+        continue;
+#else
+        /* Fall through, since the other architectures use shared
+         * instruction and data space. */
+#endif
+
         ZBRANCH:
         {
             CHECK_STACK(1, 0);
 
             if (tos.i == 0)
             {
-                int8_t relativeOffset;
-#ifdef __AVR__
-                if (inProgramSpace)
-                {
-                    relativeOffset = pgm_read_byte(ip);
-                }
-                else
-#endif
-                {
-                    relativeOffset = *(int8_t*)ip;
-                }
-
-                ip = ip + relativeOffset;
+                ip += *(int8_t*)ip;
             }
             else
             {
@@ -782,7 +775,7 @@ DISPATCH_TOKEN:
         }
         continue;
 
-        IPSQUOTE:
+        PISQUOTE:
 #ifdef __AVR__
         {
             CHECK_STACK(0, 2);
@@ -1280,8 +1273,8 @@ DISPATCH_TOKEN:
 #ifdef __AVR__
             if (inProgramSpace)
             {
-                /* TODO Needs to be relative to the ROM definition
-                 * block. */
+                /* Set the high bit on the return address so that we
+                 * know that this address is in ROM. */
                 ip = (uint8_t*)((unsigned int)ip | 0x8000);
 
                 /* We are no longer in program space since, by design,
@@ -1391,8 +1384,8 @@ DISPATCH_TOKEN:
 #ifdef __AVR__
             if (((unsigned int)ip & 0x8000) != 0)
             {
-                /* TODO Needs to be relative to the ROM definition
-                 * block. */
+                /* This return address points at a ROM definition; strip
+                 * off that flag as part of popping the address. */
                 ip = (uint8_t*)((unsigned int)ip & 0x7FFF);
                 inProgramSpace = -1;
             }
