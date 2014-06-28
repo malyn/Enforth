@@ -334,8 +334,8 @@
          :tib :dup :tibsize :accept :space
          :interpret
          :cr :state :fetch :zeroequals :zbranch 6
-         :pdotquote 3 "'o'" "'k'" "' '"
-         :branch -18]}
+         :ipsquote 3 "'o'" "'k'" "' '" :itype
+         :branch -19]}
 
 {:token :rfetch :name "R@"}
 

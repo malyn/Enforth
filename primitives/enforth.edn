@@ -18,11 +18,12 @@
  :source ": COLD ( i*x -- ; R: j*x -- )
             .\" Enforth -- (C) Michael Alyn Miller\" CR
             ABORT ;"
- :pfa [:pdotquote 31
+ :pfa [:ipsquote 31
          "'E'" "'n'" "'f'" "'o'" "'r'" "'t'" "'h'" "' '"
          "'('" "'C'" "')'" "' '" "'M'" "'i'" "'c'" "'h'"
          "'a'" "'e'" "'l'" "' '" "'A'" "'l'" "'y'" "'n'"
          "' '" "'M'" "'i'" "'l'" "'l'" "'e'" "'r'"
+       :itype
        :cr
        :abort
        :exit]}
@@ -398,10 +399,14 @@
        :twodrop
        :exit]}
 
+{:token :ipsquote
+ :name "(IS\")"
+ :args [[] [:icaddr :u]]}
+
 {:token :itype
- :args [[:caddr :u] []]
+ :args [[:icaddr :u] []]
  :flags #{:headerless}
- :source ": ITYPE ( c-addr u -- )
+ :source ": ITYPE ( ic-addr u -- )
             OVER + SWAP ( caend ca)
             BEGIN 2DUP <> WHILE DUP IC@ EMIT  1+ REPEAT 2DROP ;"
  :pfa [:over :plus :swap
@@ -519,13 +524,11 @@
        :over :minus
        :exit]}
 
-{:token :pdotquote :name "(.\")" :flags #{:headerless}}
-
 {:token :pexecute :name "(EXECUTE)" :flags #{:headerless}}
 
 {:token :phalt :flags #{:headerless}}
 
-{:token :psquote :name "(s\")" :flags #{:headerless}}
+{:token :psquote :name "(S\")" :flags #{:headerless}}
 
 {:token :tib
  :args [[] [:caadr]]

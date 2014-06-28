@@ -789,6 +789,33 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        IPSQUOTE:
+#ifdef __AVR__
+        {
+            CHECK_STACK(0, 2);
+
+            /* Push existing TOS onto the stack. */
+            *--restDataStack = tos;
+
+            /* Instruction stream contains the length of the string as a
+             * byte and then the string itself.  Start out by getting
+             * the length into TOS. */
+            tos.u = pgm_read_byte(ip);
+            ip++;
+
+            /* Now push the address of the string (the newly-incremented
+             * IP) onto the stack. */
+            (--restDataStack)->ram = ip;
+
+            /* Advance IP over the string. */
+            ip = ip + tos.u;
+        }
+        continue;
+#else
+        /* Fall through, since the other architectures use shared
+         * instruction and data space. */
+#endif
+
         /* -------------------------------------------------------------
          * (s") [ENFORTH] "paren-s-quote-paren" ( -- c-addr u )
          *
@@ -856,61 +883,6 @@ DISPATCH_TOKEN:
              * the old TOS onto the stack. */
             *--restDataStack = tos;
             tos.i = &vm->data_stack[32] - restDataStack - 1;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-         * (.") [ENFORTH] "paren-dot-quote-paren" ( -- )
-         *
-         * Prints the string that was compiled into the definition. */
-        PDOTQUOTE:
-        {
-            /* Instruction stream contains the length of the string as a
-             * byte and then the string itself.  Get and skip over both
-             * values */
-            uint8_t * caddr;
-            uint8_t u;
-
-#ifdef __AVR__
-            if (inProgramSpace)
-            {
-                u = pgm_read_byte(ip);
-                ip++;
-            }
-            else
-#endif
-            {
-                u = *ip++;
-            }
-
-            caddr = ip;
-
-            /* Advance IP over the string. */
-            ip = ip + u;
-
-            /* Print out the string. */
-            if (vm->emit != NULL)
-            {
-                int i;
-                for (i = 0; i < u; i++)
-                {
-                    uint8_t ch;
-#ifdef __AVR__
-                    if (inProgramSpace)
-                    {
-                        ch = pgm_read_byte(caddr);
-                    }
-                    else
-#endif
-                    {
-                        ch = *caddr;
-                    }
-
-                    vm->emit(ch);
-
-                    caddr++;
-                }
-            }
         }
         continue;
 
