@@ -31,109 +31,114 @@
 "\052" "2OVER"
 "\032" "2R>"
 "\032" "2R@"
-"\042" "BASE"
-"\022" "BL"
-"\102" "COMPILE,"
 "\052" "2SWAP"
 "\012" "<"
-"\022" "CR"
-"\062" "CREATE"
 "\022" "<>"
 "\012" "="
 "\012" ">"
+"\042" "BASE"
+"\022" "BL"
+"\102" "COMPILE,"
 "\022" ">R"
+"\042" "?DUP"
+"\022" "CR"
+"\062" "CREATE"
+"\012" "@"
+"\052" "ABORT"
+"\032" "ABS"
+"\052" "ALIGN"
 "\032" "C{}"
 "\022" "C~"
 "\102" "EVALUATE"
 "\072" "EXECUTE"
 "\042" "FFIS"
-"\042" "?DUP"
-"\012" "@"
+"\052" "ALLOT"
+"\032" "AND"
 "\042" "FIND"
 "\042" "HERE"
 "\032" "HEX"
 "\042" "HOLD"
-"\052" "ABORT"
+"\022" "C!"
 "\062" "LATEST"
 "\072" "LITERAL"
-"\032" "ABS"
-"\052" "ALIGN"
-"\052" "ALLOT"
-"\042" "QUIT"
-"\032" "AND"
-"\022" "C!"
 "\032" "C+!"
-"\042" "SIGN"
 "\022" "C,"
+"\022" "C@"
+"\042" "QUIT"
+"\052" "COUNT"
+"\052" "DEPTH"
+"\042" "DROP"
+"\042" "SIGN"
+"\032" "DUP"
 "\062" "SOURCE"
 "\052" "SPACE"
 "\052" "STATE"
 "\042" "TYPE"
-"\022" "C@"
-"\052" "COUNT"
-"\022" "U."
-"\052" "DEPTH"
-"\062" "UNUSED"
-"\042" "DROP"
-"\042" "USE:"
-"\032" "DUP"
 "\042" "EMIT"
 "\052" "FALSE"
+"\022" "U."
 "\062" "INVERT"
+"\062" "UNUSED"
 "\032" "KEY"
+"\042" "USE:"
 "\062" "LSHIFT"
-"\052" "WORDS"
 "\022" "M+"
 "\042" "MOVE"
 "\062" "NEGATE"
 "\032" "NIP"
 "\022" "OR"
+"\052" "WORDS"
 "\042" "OVER"
 "\022" "R>"
 "\022" "R@"
 "\032" "ROT"
-"\012" "["
-"\013" "]"
-"\002" /* TODEFTYPE */
 "\062" "RSHIFT"
-"\002" /* TOFFIDEF */
-"\002" /* TOLFA */
 "\042" "SWAP"
-"\002" /* TONFA */
-"\002" /* TOTOKEN */
 "\042" "TRUE"
 "\042" "TUCK"
 "\022" "U>"
-"\002" /* TOXT */
+"\012" "["
+"\013" "]"
+"\002" /* TODEFTYPE */
 "\032" "UM*"
-"\002" /* TOCOMPILETOKEN */
+"\002" /* TOFFIDEF */
+"\002" /* TOLFA */
 "\012" "\\"
-"\002" /* CHANGELATESTDEFTYPE */
+"\002" /* TONFA */
+"\002" /* TOTOKEN */
 "\002" /* TICKNAMES */
 "\002" /* PDOTQUOTE */
-"\002" /* COLD */
 "\002" /* PEXECUTE */
+"\002" /* TOXT */
 "\002" /* LIT */
+"\002" /* TOCOMPILETOKEN */
 "\002" /* PSQUOTE */
+"\002" /* CHANGELATESTDEFTYPE */
 "\002" /* ZBRANCH */
 "\002" /* BRANCH */
-"\002" /* DIGITQ */
+"\002" /* COLD */
 "\002" /* CHARLIT */
 "\002" /* EXIT */
 "\002" /* IFETCH */
 "\002" /* ICFETCH */
 "\002" /* INITRP */
+"\002" /* DIGITQ */
 "\002" /* PHALT */
-"\002" /* FFIQ */
-"\002" /* FFIDEFARITY */
-"\002" /* FFIDEFNAME */
-"\002" /* FFIDEFNAMELEN */
 "\002" /* UDSLASHMOD */
-"\002" /* FINDDEF */
 "\002" /* VMADDRLIT */
 "\002" /* WCOMMA */
 "\002" /* WFETCH */
 "\002" /* WLIT */
+"\002" /* FFIQ */
+"\002" /* FFIDEFARITY */
+"\002" /* FFIDEFNAME */
+"\002" /* FFIDEFNAMELEN */
+"\000"
+"\002" /* FINDDEF */
+"\000"
+"\000"
+"\000"
+"\000"
 "\000"
 "\002" /* FINDFFIDEF */
 "\000"

@@ -17,26 +17,34 @@
 ;; and the display is maintained in an implementation-defined way.
 ;;
 ;; +n2 is the length of the string stored at c-addr.
-;;
-;; TODO Deal with backspace.
 {:token :accept
  :args [[:c-addr :n1] [:n2]]
  :source ": ACCEPT ( c-addr max -- n)
             OVER + OVER ( ca-start ca-end ca-dest)
             BEGIN  KEY  DUP 10 <> WHILE
-              DUP 2OVER ( cas cae cad c c cae cad) <> IF
-                EMIT OVER C! ( cas cae cad) 1+
+              DUP 8 =  OVER 127 =  OR IF ( cas cae cad bs)
+                2OVER DROP NIP ( cas cae cad cas) OVER <> IF
+                  ( cas cae cad) 1-  8 EMIT  SPACE  8 EMIT
+                THEN
               ELSE
-                ( cas cae cad c c) 2DROP
+                DUP 2OVER ( cas cae cad c c cae cad) <> IF
+                  EMIT OVER C! ( cas cae cad) 1+
+                ELSE
+                  ( cas cae cad c c) 2DROP
+                THEN
               THEN
             REPEAT
             ( ca-start ca-end ca-dest c) DROP NIP SWAP - ;"
  :pfa [:over :plus :over
-       :key :dup :charlit 10 :notequals :zbranch 15
+       :key :dup :charlit 10 :notequals :zbranch 43
+         :dup :charlit 8 :equals :over :charlit 127 :equals :or :zbranch 18
+           :twoover :drop :nip :over :notequals :zbranch 9
+             :oneminus :charlit 8 :emit :space :charlit 8 :emit
+             :branch 13
          :dup :twoover :notequals :zbranch 7
            :emit :over :cstore :oneplus :branch 2
            :twodrop
-         :branch -20
+         :branch -48
        :drop :nip :swap :minus
        :exit]}
 
