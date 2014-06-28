@@ -359,7 +359,7 @@
  :pfa [:initrp :zero :state :store
          :tib :dup :tibsize :accept :space
          :interpret
-         :cr :state :fetch :zeroequals :izbranch 6
+         :cr :state :fetch :zeroequals :izbranch 7
          :pisquote 3 "'o'" "'k'" "' '" :itype
          :ibranch -19]}
 
