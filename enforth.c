@@ -336,6 +336,16 @@ void enforth_execute(EnforthVM * const vm, uint16_t xt)
             token = *ip++;
         }
 
+        /* Set the W pointer if necessary. */
+        if (token >= DOCOLON)
+        {
+            /* The IP is pointing at the dictionary-relative offset of
+             * the PFA of the target definition.  Convert that to a
+             * pointer and store it in W. */
+            w = (uint8_t*)(vm->dictionary.ram + *(uint16_t*)ip);
+            ip += 2;
+        }
+
 DISPATCH_TOKEN:
 #if ENABLE_TRACING == 2
         {
@@ -380,68 +390,43 @@ DISPATCH_TOKEN:
         return;
 
         DOFFI0:
+        PDOFFI0:
         {
             CHECK_STACK(0, 1);
 
-            /* The IP is pointing at the dictionary-relative offset of
-             * the PFA of the FFI trampoline.  Convert that to a pointer
-             * and store it in W. */
-            w = (uint8_t*)(vm->dictionary.ram + *(uint16_t*)ip);
-            ip += 2;
+            /* W contains a pointer to the PFA of the FFI definition;
+             * get the FFI definition pointer and then use that to get
+             * the FFI function pointer. */
+            ZeroArgFFI fn = (ZeroArgFFI)pgm_read_word(&(*(EnforthFFIDef**)w)->fn);
 
-        PDOFFI0:
-            {
-                /* W contains a pointer to the PFA of the FFI
-                 * definition; get the FFI definition pointer and then
-                 * use that to get the FFI function pointer. */
-                ZeroArgFFI fn = (ZeroArgFFI)pgm_read_word(&(*(EnforthFFIDef**)w)->fn);
-
-                *--restDataStack = tos;
-                tos = (*fn)();
-            }
+            *--restDataStack = tos;
+            tos = (*fn)();
         }
         continue;
 
         DOFFI1:
+        PDOFFI1:
         {
             CHECK_STACK(1, 1);
 
-            /* The IP is pointing at the dictionary-relative offset of
-             * the PFA of the FFI trampoline.  Convert that to a pointer
-             * and store it in W. */
-            w = (uint8_t*)(vm->dictionary.ram + *(uint16_t*)ip);
-            ip += 2;
+            /* W contains a pointer to the PFA of the FFI definition;
+             * get the FFI definition pointer and then use that to get
+             * the FFI function pointer. */
+            OneArgFFI fn = (OneArgFFI)pgm_read_word(&(*(EnforthFFIDef**)w)->fn);
 
-        PDOFFI1:
-            {
-                /* W contains a pointer to the PFA of the FFI
-                 * definition; get the FFI definition pointer and then
-                 * use that to get the FFI function pointer. */
-                OneArgFFI fn = (OneArgFFI)pgm_read_word(&(*(EnforthFFIDef**)w)->fn);
-
-                tos = (*fn)(tos);
-            }
+            tos = (*fn)(tos);
         }
         continue;
 
         DOFFI2:
+        PDOFFI2:
         {
             CHECK_STACK(2, 1);
+            TwoArgFFI fn = (TwoArgFFI)pgm_read_word(&(*(EnforthFFIDef**)w)->fn);
 
-            /* The IP is pointing at the dictionary-relative offset of
-             * the PFA of the FFI trampoline.  Convert that to a pointer
-             * and store it in W. */
-            w = (uint8_t*)(vm->dictionary.ram + *(uint16_t*)ip);
-            ip += 2;
-
-        PDOFFI2:
-            {
-                TwoArgFFI fn = (TwoArgFFI)pgm_read_word(&(*(EnforthFFIDef**)w)->fn);
-
-                EnforthCell arg2 = tos;
-                EnforthCell arg1 = *restDataStack++;
-                tos = (*fn)(arg1, arg2);
-            }
+            EnforthCell arg2 = tos;
+            EnforthCell arg1 = *restDataStack++;
+            tos = (*fn)(arg1, arg2);
         }
         continue;
 
@@ -1259,15 +1244,9 @@ DISPATCH_TOKEN:
         continue;
 
         DOCOLON:
-        {
-            /* IP currently points to the relative offset of the PFA of
-             * the target word.  Read that offset and advance IP to the
-             * token after the offset. */
-            w = vm->dictionary.ram + *(uint16_t*)ip;
-            ip += 2;
-
         PDOCOLON:
-            /* IP now points to the next word in the PFA and that is the
+        {
+            /* IP points to the next word in the PFA and that is the
              * location to which we should return once this new word has
              * executed. */
 #ifdef __AVR__
