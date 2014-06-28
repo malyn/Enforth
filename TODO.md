@@ -1,4 +1,3 @@
-* Add `FFIS` which lists all of the available FFI definitions (similar to how `WORDS` lists all of the definitions and trampolines).
 * Support backspace in `ACCEPT`.
 * Consider moving other non-essential primitives to Forth: `."`, `\\`, `W,`, `,`, `C,`, `ALLOT`.
   * The `*COMMA` words and `ALLOT` should not use `dp` but instead use `HERE`, `'HERE`, and `!`, `C!`, and `W!`.  This change makes it possible for us to ultimately remove `dp` from the `vm` structure and instead make it a regular variable in the dictionary.

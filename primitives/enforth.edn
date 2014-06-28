@@ -107,6 +107,23 @@
        :swap :minus
        :exit]}
 
+{:token :ffis
+ :args [[] []]
+ :source ": LAST-FFIDEF ( -- addr ) 'LAST-FFIDEF ;
+          : FFIS ( -- )
+            LAST-FFIDEF @
+            BEGIN ?DUP WHILE
+              DUP FFIDEF-NAME OVER FFIDEF-NAMELEN ITYPE  SPACE
+              I@
+            REPEAT ;"
+ :pfa [; LAST-FFIDEF
+         :vmaddrlit "offsetof(EnforthVM, last_ffi)"
+       :fetch
+       :qdup :zbranch 10
+         :dup :ffidefname :over :ffidefnamelen :itype :space
+         :ifetch :branch -11
+       :exit]}
+
 {:token :finddef
  :name "FIND-DEF"
  :args [[:caddr :u] [[0] [:xt 1] [:xt -1]]]
