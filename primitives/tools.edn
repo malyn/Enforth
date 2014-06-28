@@ -1,14 +1,18 @@
 {:token :words
  :args [[] []]
- :source ": DEF-WORDS ( -- )
+ :source ": VISIBLE? ( xt -- f ) >DEF-TYPE kDefTypeCOLONHIDDEN <> ;
+          : DEF-WORDS ( -- )
             LATEST @
             BEGIN
               ?DUP
             WHILE
               DUP FFI?
-              IF DUP >FFIDEF  DUP FFIDEF-NAME  SWAP FFIDEF-NAMELEN  ITYPE
-              ELSE DUP >NFA  OVER NFA-LENGTH  TYPE THEN
-              SPACE  >LFA XT@
+              IF
+                DUP >FFIDEF  DUP FFIDEF-NAME  SWAP FFIDEF-NAMELEN  ITYPE SPACE
+              ELSE
+                DUP VISIBLE? IF DUP >NFA  OVER NFA-LENGTH  TYPE SPACE
+              THEN
+              >LFA XT@
             REPEAT ;
           : PRIM-WORDS ( -- )
             'NAMES
@@ -22,12 +26,16 @@
           : WORDS ( -- )  DEF-WORDS PRIM-WORDS ;"
  :pfa [; DEF-WORDS
          :latest :fetch
-         :qdup :izbranch 24
-           :dup :ffiq :izbranch 10
-             :dup :toffidef :dup :ffidefname :swap :ffidefnamelen :itype
-               :ibranch 6
-             :dup :tonfa :over :nfalength :type
-             :space :tolfa :xtfetch :ibranch -25
+         :qdup :izbranch 32
+           :dup :ffiq :izbranch 11
+             :dup :toffidef :dup :ffidefname :swap :ffidefnamelen :itype :space
+               :ibranch 14
+             :dup
+             ; VISIBLE?
+               :todeftype :charlit "kDefTypeCOLONHIDDEN" :notequals
+             :izbranch 7
+               :dup :tonfa :over :nfalength :type :space
+             :tolfa :xtfetch :ibranch -33
        ; PRIM-WORDS
          :ticknames
          :dup :icfetch :icharlit 0xff :notequals :izbranch 23
