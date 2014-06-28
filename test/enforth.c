@@ -37,12 +37,11 @@
 
 /* ANSI C includes. */
 #include <stdio.h>
-#include <stdlib.h>
 
 /* Curses includes. */
 #include <curses.h>
 
-/* enforth includes. */
+/* Enforth includes. */
 #include "enforth.h"
 
 
@@ -51,7 +50,7 @@
  * Sample FFI definitions.
  */
 
-// Externs
+/* Externs */
 ENFORTH_EXTERN(clear, clear, 0)
 #undef LAST_FFI
 #define LAST_FFI GET_LAST_FFI(clear)
@@ -67,12 +66,12 @@ ENFORTH_EXTERN(srand, srand, 1)
 
 
 /* -------------------------------------
- * enforth I/O primitives.
+ * Enforth I/O primitives.
  */
 
-static bool enforthCursesKeyQuestion(void)
+static int enforthCursesKeyQuestion(void)
 {
-    return true;
+    return -1;
 }
 
 /* 6.1.1750 KEY
@@ -112,11 +111,9 @@ static void enforthCursesEmit(char ch)
  * Globals.
  */
 
+static EnforthVM enforthVM;
 static unsigned char enforthDict[512];
-static ENFORTH enforth(
-        enforthDict, sizeof(enforthDict),
-        LAST_FFI,
-        enforthCursesKeyQuestion, enforthCursesKey, enforthCursesEmit);
+
 
 
 /* -------------------------------------
@@ -125,53 +122,6 @@ static ENFORTH enforth(
 
 int main(int argc, char **argv)
 {
-    /* Add a couple of hand-coded definitions. */
-    const uint8_t favnumDef[] = {
-        0x00, // DOCOLON
-        'F',
-        'A',
-        'V',
-        'N',
-        'U',
-        0x80 | 'M',
-        0x0b,   // CHARLIT
-        27,
-        0x7f }; // EXIT
-    enforth.addDefinition(favnumDef, sizeof(favnumDef));
-
-    const uint8_t twoxDef[] = {
-        0x00, // DOCOLON
-        '2',
-        0x80 | 'X',
-        0x02,   // DUP
-        0x04,   // +
-        0x7f }; // EXIT
-    enforth.addDefinition(twoxDef, sizeof(twoxDef));
-
-    const uint8_t randDef[] = {
-        0x06, // DOFFI0
-        ((uint32_t)&FFIDEF_rand      ) & 0xff,  // FFIdef LSB
-        ((uint32_t)&FFIDEF_rand >>  8) & 0xff,  // FFIdef
-        ((uint32_t)&FFIDEF_rand >> 16) & 0xff,  // FFIdef
-        ((uint32_t)&FFIDEF_rand >> 24) & 0xff}; // FFIdef MSB
-    enforth.addDefinition(randDef, sizeof(randDef));
-
-    const uint8_t srandDef[] = {
-        0x07, // DOFFI1
-        ((uint32_t)&FFIDEF_srand      ) & 0xff,  // FFIdef LSB
-        ((uint32_t)&FFIDEF_srand >>  8) & 0xff,  // FFIdef
-        ((uint32_t)&FFIDEF_srand >> 16) & 0xff,  // FFIdef
-        ((uint32_t)&FFIDEF_srand >> 24) & 0xff}; // FFIdef MSB
-    enforth.addDefinition(srandDef, sizeof(srandDef));
-
-    const uint8_t clearDef[] = {
-        0x06, // DOFFI0
-        ((uint32_t)&FFIDEF_clear      ) & 0xff,  // FFIdef LSB
-        ((uint32_t)&FFIDEF_clear >>  8) & 0xff,  // FFIdef
-        ((uint32_t)&FFIDEF_clear >> 16) & 0xff,  // FFIdef
-        ((uint32_t)&FFIDEF_clear >> 24) & 0xff}; // FFIdef MSB
-    enforth.addDefinition(clearDef, sizeof(clearDef));
-
     /* Initialize curses: disable line buffering and local echo, enable
      * line-oriented scrolling. */
     initscr();
@@ -180,8 +130,19 @@ int main(int argc, char **argv)
     idlok(stdscr, TRUE);
     scrollok(stdscr, TRUE);
 
+    /* Initialize Enforth. */
+    enforth_init(
+            &enforthVM,
+            enforthDict, sizeof(enforthDict),
+            LAST_FFI,
+            enforthCursesKeyQuestion, enforthCursesKey, enforthCursesEmit);
+
+    /* Add a couple of definitions. */
+    enforth_evaluate(&enforthVM, ": favnum 27 ;");
+    enforth_evaluate(&enforthVM, ": 2x dup + ;");
+
     /* Launch the enforth interpreter. */
-    enforth.go();
+    enforth_go(&enforthVM);
 
     /* Destroy curses. */
     endwin();
