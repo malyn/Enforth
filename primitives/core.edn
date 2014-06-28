@@ -48,26 +48,44 @@
        :drop :nip :swap :minus
        :exit]}
 
-{:token :align}
+{:token :align
+ :args [[] []]
+ :source ": ALIGN ( -- )  ( do nothing ) ;"
+ :pfa [:exit]}
 
-{:token :allot}
+{:token :allot
+ :args [[:n] []]
+ :source ": ALLOT ( n -- )  DP +! ;"
+ :pfa [:dp :plusstore :exit]}
 
 {:token :and}
 
-{:token :backslash :name "\\"}
-
 {:token :base
  :args [[] [:aaddr]]
- :pfa [:vmaddrlit "offsetof(EnforthVM, base)" :exit]}
+ :pfa [:vm :charlit "offsetof(EnforthVM, base)" :plus :exit]}
 
 {:token :bl
  :args [[] [:c]]
  :source ": BL ( --)  $20 ;"
  :pfa [:charlit "' '" :exit]}
 
-{:token :ccomma :name "C,"}
+{:token :ccomma
+ :name "C,"
+ :args [[:char] []]
+ :source ": C, ( char -- )  HERE C!  1 CHARS ALLOT ;"
+ :pfa [:here :cstore :charlit 1 :chars :allot :exit]}
+
+{:token :cells
+ :args [[:n1] [:n2]]
+ :source ": CELLS ( n1 -- n2 )  kEnforthCellSize * ;"
+ :pfa [:charlit "kEnforthCellSize" :umstar :drop :exit]}
 
 {:token :cfetch :name "C@"}
+
+{:token :chars
+ :args [[:n1] [:n2]]
+ :source ": CHARS ( n1 -- n2 )  ( do nothing );"
+ :pfa [:exit]}
 
 ;; : [CORE] 6.1.0450 "colon" ( C: "<spaces>name" -- colon-sys )
 ;;
@@ -99,20 +117,27 @@
        :rtbracket
        :exit]}
 
-{:token :comma :name ","}
+{:token :comma
+ :name ","
+ :args [[:x] []]
+ :source ": , ( x -- )  HERE !  1 CELLS ALLOT ;"
+ :pfa [:here :store :charlit 1 :cells :allot :exit]}
 
 {:token :compilecomma
  :name "COMPILE,"
  :args [[:xt] []]
- :source ": COMPILE, ( xt --)  DUP >[TOKEN] C,  >BODY ?DUP IF 'DICT - W, ;"
+ :source ": COMPILE, ( xt --)  DUP >[TOKEN] C,  >BODY ?DUP IF 'DICT - XT, THEN ;"
  :pfa [:dup :tocompiletoken :ccomma
-       :tobody :qdup :zbranch 6
+       :tobody :qdup :zbranch 8
          ; TICKDICT
-           :vmaddrlit "offsetof(EnforthVM, dictionary)" :fetch
-         :minus :wcomma
+           :vm :charlit "offsetof(EnforthVM, dictionary)" :plus :fetch
+         :minus :xtcomma
        :exit]}
 
-{:token :count}
+{:token :count
+ :args [[:caddr1] [:caddr2 :u]]
+ :source ": COUNT ( c-addr1 -- c-addr2 u )  DUP C@  SWAP 1+ SWAP ;"
+ :pfa [:dup :cfetch :swap :oneplus :swap :exit]}
 
 {:token :cstore :name "C!"}
 
@@ -126,10 +151,10 @@
  :source ": S, ( ca u --)  TUCK  HERE SWAP MOVE  ALLOT ;
           : CREATE ( \"<spaces>name\" -- )
             BL PARSE-WORD DUP 0= IF ABORT THEN ( ca u)
-            HERE >XT  LATEST @ W,  LATEST ! ( ca u)
+            HERE >XT  LATEST @ XT,  LATEST ! ( ca u)
             DUP 3 LSHIFT kDefTypeCREATE OR C,  ( ca u) S,  ALIGN ;"
  :pfa [:bl :parseword :dup :zeroequals :zbranch 2 :abort
-       :here :toxt :latest :fetch :wcomma :latest :store
+       :here :toxt :latest :fetch :xtcomma :latest :store
        :dup :charlit 3 :lshift :charlit "kDefTypeCREATE" :or :ccomma
        ; S,
          :tuck :here :swap :move :allot
@@ -194,7 +219,8 @@
 
 {:token :here
  :args [[] [:addr]]
- :pfa [:vmaddrlit "offsetof(EnforthVM, dp)" :fetch :exit]}
+ :source ": HERE ( -- addr ) DP @ ;"
+ :pfa [:dp :fetch :exit]}
 
 ;; HOLD [CORE] 6.1.1670 ( char -- )
 ;;
@@ -392,11 +418,9 @@
  :source ": SIGN ( n -- )   0< IF [CHAR] - HOLD THEN ;"
  :pfa [:zeroless :zbranch 4 :charlit "'-'" :hold :exit]}
 
-{:token :slashstring :name "/STRING"}
-
 {:token :source
  :args [[] [:caddr :u]]
- :pfa [:vmaddrlit "offsetof(EnforthVM, source_len)" :twofetch :exit]}
+ :pfa [:vm :charlit "offsetof(EnforthVM, source_len)" :plus :twofetch :exit]}
 
 {:token :space
  :args [[] []]
@@ -405,7 +429,7 @@
 
 {:token :state
  :args [[] [:aaddr]]
- :pfa [:vmaddrlit "offsetof(EnforthVM, state)" :exit]}
+ :pfa [:vm :charlit "offsetof(EnforthVM, state)" :plus :exit]}
 
 {:token :store :name "!"}
 
@@ -428,7 +452,7 @@
 {:token :toin
  :name ">IN"
  :args [[] [:aaddr]]
- :pfa [:vmaddrlit "offsetof(EnforthVM, to_in)" :exit]}
+ :pfa [:vm :charlit "offsetof(EnforthVM, to_in)" :plus :exit]}
 
 ;; >NUMBER [CORE] 6.1.0567 "to-number" ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 )
 ;;

@@ -1,0 +1,5 @@
+{:token :slashstring
+ :name "/STRING"
+ :args [[:caddr1 :u1 :n] [:caddr2 :u2]]
+ :source ": /STRING ( c-addr1 u1 n -- c-addr2 u2 )  ROT OVER + ROT ROT - ;"
+ :pfa [:rot :over :plus :rot :rot :minus :exit]}

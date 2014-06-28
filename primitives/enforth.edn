@@ -74,6 +74,12 @@
          :true
        :exit]}
 
+{:token :dp
+ :args [[] [:addr]]
+ :flags #{:headerless}
+ :source ": DP ( -- addr )  VM +DP ;"
+ :pfa [:vm :charlit "offsetof(EnforthVM, dp)" :plus :exit]}
+
 {:token :exit :flags #{:headerless}}
 
 {:token :ffiq
@@ -118,7 +124,7 @@
               I@
             REPEAT ;"
  :pfa [; LAST-FFIDEF
-         :vmaddrlit "offsetof(EnforthVM, last_ffi)"
+         :vm :charlit "offsetof(EnforthVM, last_ffi)" :plus
        :fetch
        :qdup :zbranch 10
          :dup :ffidefname :over :ffidefnamelen :itype :space
@@ -137,7 +143,7 @@
           WHILE
             DUP 2R@ ROT ( xt ca u xt R:ca u) FOUND-DEF? ( xt f R:ca u)
             IF  DUP IMMEDIATE-DEF? 2 AND 1-  2R> 2DROP  EXIT THEN
-            >LFA W@
+            >LFA XT@
           REPEAT ( R:ca u) 2R> 2DROP FALSE ;"
  :pfa [:twotor :latest :fetch
        :qdup :zbranch 23
@@ -146,7 +152,7 @@
            ; IMMEDIATE-DEF?
              :todeftype :charlit "kDefTypeCOLONIMMEDIATE" :equals
            :charlit 2 :and :oneminus :tworfrom :twodrop :exit
-         :tolfa :wfetch
+         :tolfa :xtfetch
          :branch -24
        :tworfrom :twodrop :false
        :exit]}
@@ -166,7 +172,7 @@
             REPEAT ( R:ca u) 2R> 2DROP  FALSE ;"
  :pfa [:twotor
        ; LAST-FFIDEF
-         :vmaddrlit "offsetof(EnforthVM, last_ffi)"
+         :vm :charlit "offsetof(EnforthVM, last_ffi)" :plus
        :fetch
        :qdup :zbranch 20
          :rfetch :over :ffidefnamelen :equals :zbranch 11
@@ -345,7 +351,7 @@
 {:token :hld
  :args [[] [:aaddr]]
  :flags #{:headerless}
- :pfa [:vmaddrlit "offsetof(EnforthVM, hld)" :exit]}
+ :pfa [:vm :charlit "offsetof(EnforthVM, hld)" :plus :exit]}
 
 {:token :hldend
  :args [[] [:c]]
@@ -384,7 +390,7 @@
                 THEN
               THEN
             REPEAT ( j*x ca u) 2DROP ;"
- :pfa [:vmaddrlit "offsetof(EnforthVM, source_len)" :twostore
+ :pfa [:vm :charlit "offsetof(EnforthVM, source_len)" :plus :twostore
        :zero :toin :store
          :bl :parseword :dup :zbranch 37
            :findword :qdup :zbranch 14
@@ -417,7 +423,7 @@
 
 {:token :latest
  :args [[] [:aaadr]]
- :pfa [:vmaddrlit "offsetof(EnforthVM, latest)" :exit]}
+ :pfa [:vm :charlit "offsetof(EnforthVM, latest)" :plus :exit]}
 
 {:token :lit
  :name "(LIT)"
@@ -533,7 +539,7 @@
 {:token :tib
  :args [[] [:caadr]]
  :flags #{:headerless}
- :pfa [:vmaddrlit "offsetof(EnforthVM, tib)" :exit]}
+ :pfa [:vm :charlit "offsetof(EnforthVM, tib)" :plus :exit]}
 
 ;; TODO Put TIBSIZE in a constant.
 {:token :tibsize
@@ -591,7 +597,7 @@
  :source ": >LFA ( xt -- a-addr)  $7FFF AND 'DICT + ;"
  :pfa [:wlit 0xff 0x7f :and
        ; 'DICT
-         :vmaddrlit "offsetof(EnforthVM, dictionary)" :fetch
+         :vm :charlit "offsetof(EnforthVM, dictionary)" :plus :fetch
        :plus
        :exit]}
 
@@ -638,7 +644,7 @@
  :args [[:a-addr] [:xt]]
  :flags #{:headerless}
  :source ": >XT ( a-addr -- xt)  'DICT - $8000 OR ;"
- :pfa [:vmaddrlit "offsetof(EnforthVM, dictionary)" :fetch
+ :pfa [:vm :charlit "offsetof(EnforthVM, dictionary)" :plus :fetch
        :minus :wlit 0x00 0x80 :or
        :exit]}
 
@@ -655,24 +661,34 @@
             BL PARSE-WORD  DUP 0= IF ABORT THEN ( ca u)
             2DUP FIND-FFIDEF ( ca u 0 | ca u addr -1)
             0= IF TYPE  SPACE  [CHAR] ? EMIT  CR  ABORT THEN ( ca u addr)
-            HERE >XT  LATEST @ W,  LATEST ! ( ca u addr)
+            HERE >XT  LATEST @ XT,  LATEST ! ( ca u addr)
             SWAP 3 LSHIFT kDefTypeFFI OR C,  ( ca addr)
             ALIGN ,  DROP ;"
  :pfa [:bl :parseword :dup :zeroequals :zbranch 2 :abort
        :twodup :findffidef :zeroequals :zbranch 8
          :type :space :charlit "'?'" :emit :cr :abort
-       :here :toxt :latest :fetch :wcomma :latest :store
+       :here :toxt :latest :fetch :xtcomma :latest :store
        :swap :charlit 3 :lshift :charlit "kDefTypeFFI" :or :ccomma
        :align :comma :drop
        :exit]}
 
-{:token :vmaddrlit :flags #{:headerless}}
-
-{:token :wcomma :name "W," :flags #{:headerless}}
-
-{:token :wfetch :name "W@" :flags #{:headerless}}
+{:token :vm
+ :args [[] [:addr]]
+ :flags #{:headerless}}
 
 {:token :wlit :flags #{:headerless}}
+
+{:token :xtcomma
+ :name "XT,"
+ :args [[:xt] []]
+ :source ": XT, ( xt -- )  DUP C,  8 RSHIFT C, ;"
+ :pfa [:dup :ccomma :charlit 8 :rshift :ccomma :exit]}
+
+{:token :xtfetch
+ :name "XT@"
+ :args [[:addr] [:xt]]
+ :source ": XT@ ( addr -- xt )  DUP C@  SWAP 1+ C@ 8 LSHIFT  OR ;"
+ :pfa [:dup :cfetch :swap :oneplus :cfetch :charlit 8 :lshift :or :exit]}
 
 {:token :zbranch :name "0BRANCH" :flags #{:headerless}}
 

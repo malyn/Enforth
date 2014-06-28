@@ -1,15 +1,15 @@
 all: test/enforthsimple
 
-utility/enforth_definitions.h: primitives/core.edn primitives/core-ext.edn primitives/enforth.edn primitives/tools.edn
+utility/enforth_definitions.h: primitives/core.edn primitives/core-ext.edn primitives/enforth.edn primitives/string.edn primitives/tools.edn
 	cd DefGen && lein run ../utility $(addprefix ../, $+)
 
-utility/enforth_jumptable.h: primitives/core.edn primitives/core-ext.edn primitives/enforth.edn primitives/tools.edn
+utility/enforth_jumptable.h: primitives/core.edn primitives/core-ext.edn primitives/enforth.edn primitives/string.edn primitives/tools.edn
 	cd DefGen && lein run ../utility $(addprefix ../, $+)
 
-utility/enforth_names.h: primitives/core.edn primitives/core-ext.edn primitives/enforth.edn primitives/tools.edn
+utility/enforth_names.h: primitives/core.edn primitives/core-ext.edn primitives/enforth.edn primitives/string.edn primitives/tools.edn
 	cd DefGen && lein run ../utility $(addprefix ../, $+)
 
-utility/enforth_tokens.h: primitives/core.edn primitives/core-ext.edn primitives/enforth.edn primitives/tools.edn
+utility/enforth_tokens.h: primitives/core.edn primitives/core-ext.edn primitives/enforth.edn primitives/string.edn primitives/tools.edn
 	cd DefGen && lein run ../utility $(addprefix ../, $+)
 
 test/enforthsimple: enforth.h enforth.c utility/enforth_definitions.h utility/enforth_jumptable.h utility/enforth_names.h utility/enforth_tokens.h test/enforthsimple.c

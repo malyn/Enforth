@@ -666,13 +666,6 @@ DISPATCH_TOKEN:
         }
         continue;
 
-        WFETCH:
-        {
-            CHECK_STACK(1, 1);
-            tos.u = *(uint16_t*)tos.ram;
-        }
-        continue;
-
         IFETCH:
 #ifdef __AVR__
         {
@@ -859,14 +852,6 @@ DISPATCH_TOKEN:
         }
         continue;
 
-        COUNT:
-        {
-            CHECK_STACK(1, 2);
-            (--restDataStack)->ram = (uint8_t*)tos.ram + 1;
-            tos.u = *(uint8_t*)tos.ram;
-        }
-        continue;
-
         /* -------------------------------------------------------------
          * DEPTH [CORE] 6.1.1200 ( -- +n )
          *
@@ -886,21 +871,6 @@ DISPATCH_TOKEN:
         }
         continue;
 
-        /* -------------------------------------------------------------
-         * \ [CORE-EXT] 6.2.2535 "backslash"
-         *
-         * Compilation:
-         *   Perform the execution semantics given below.
-         *
-         * Execution: ( "ccc<eol>" -- )
-         *   Parse and discard the remainder of the parse area.  \ is an
-         *   immediate word. */
-        BACKSLASH:
-        {
-            vm->to_in = vm->source_len.i;
-        }
-        continue;
-
         TWODUP:
         {
             CHECK_STACK(2, 4);
@@ -910,48 +880,11 @@ DISPATCH_TOKEN:
         }
         continue;
 
-        WCOMMA:
-#ifdef __AVR__
-        /* Fall through, since cells are already 16-bits on the AVR. */
-#else
-        {
-            CHECK_STACK(1, 0);
-            *((uint16_t*)vm->dp.ram) = (uint16_t)(tos.u & 0xffff);
-            vm->dp.ram += 2;
-            tos = *restDataStack++;
-        }
-        continue;
-#endif
-
-        COMMA:
-        {
-            CHECK_STACK(1, 0);
-            *((EnforthCell*)vm->dp.ram) = tos;
-            vm->dp.ram += kEnforthCellSize;
-            tos = *restDataStack++;
-        }
-        continue;
-
-        CCOMMA:
-        {
-            CHECK_STACK(1, 0);
-            *vm->dp.ram++ = tos.u & 0xff;
-            tos = *restDataStack++;
-        }
-        continue;
-
         TUCK:
         {
             EnforthCell second = *restDataStack;
             *restDataStack = tos;
             *--restDataStack = second;
-        }
-        continue;
-
-        ALIGN:
-        {
-            /* No alignment necessary (unless we want to expand the
-             * range of the dictionary-relative offsets at some point). */
         }
         continue;
 
@@ -972,14 +905,6 @@ DISPATCH_TOKEN:
             uint8_t c = *(uint8_t*)tos.ram;
             c += (restDataStack++)->u & 0xff;
             *(uint8_t*)tos.ram = c;
-            tos = *restDataStack++;
-        }
-        continue;
-
-        ALLOT:
-        {
-            CHECK_STACK(1, 0);
-            vm->dp.ram += tos.u;
             tos = *restDataStack++;
         }
         continue;
@@ -1166,15 +1091,6 @@ DISPATCH_TOKEN:
         }
         continue;
 
-        SLASHSTRING:
-        {
-            CHECK_STACK(3, 2);
-            EnforthCell adjust = tos;
-            tos.u = restDataStack++->u - adjust.i;
-            restDataStack[0].u += adjust.i;
-        }
-        continue;
-
         PLUSSTORE:
         {
             CHECK_STACK(2, 0);
@@ -1183,23 +1099,11 @@ DISPATCH_TOKEN:
         }
         continue;
 
-        VMADDRLIT:
+        VM:
         {
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
-
-#ifdef __AVR__
-            if (inProgramSpace)
-            {
-                tos.ram = (uint8_t*)vm + (uint8_t)pgm_read_byte(ip);
-            }
-            else
-#endif
-            {
-                tos.ram = (uint8_t*)vm + (uint8_t)*ip;
-            }
-
-            ip++;
+            tos.ram = (uint8_t*)vm;
         }
         continue;
 

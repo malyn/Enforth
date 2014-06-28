@@ -8,7 +8,7 @@
               DUP FFI?
               IF DUP >FFIDEF  DUP FFIDEF-NAME  SWAP FFIDEF-NAMELEN  ITYPE
               ELSE DUP >NFA  OVER NFA-LENGTH  TYPE THEN
-              SPACE  >LFA W@
+              SPACE  >LFA XT@
             REPEAT ;
           : PRIM-WORDS ( -- )
             'NAMES
@@ -27,7 +27,7 @@
              :dup :toffidef :dup :ffidefname :swap :ffidefnamelen :itype
                :branch 6
              :dup :tonfa :over :nfalength :type
-             :space :tolfa :wfetch :branch -25
+             :space :tolfa :xtfetch :branch -25
        ; PRIM-WORDS
          :ticknames
          :dup :icfetch :charlit 0xff :notequals :zbranch 23

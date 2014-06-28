@@ -1,3 +1,9 @@
+{:token :backslash
+ :name "\\"
+ :flags #{:immediate}
+ :source ": \\ ( -- )  SOURCE NIP >IN ! ; IMMEDIATE"
+ :pfa [:source :nip :toin :store :exit]}
+
 {:token :hex
  :args [[] []]
  :source ": HEX ( --)  16 BASE ! ;"
@@ -12,8 +18,8 @@
 {:token :unused
  :args [[] [:u]]
  :source ": UNUSED ( -- u )  'DICT @  'DICT-SIZE @ +  HERE - ;"
- :pfa [:vmaddrlit "offsetof(EnforthVM, dictionary)" :fetch
-       :vmaddrlit "offsetof(EnforthVM, dictionary_size)" :fetch
+ :pfa [:vm :charlit "offsetof(EnforthVM, dictionary)" :plus :fetch
+       :vm :charlit "offsetof(EnforthVM, dictionary_size)" :plus :fetch
        :plus :here :minus :exit]}
 
 {:token :zeronotequals
