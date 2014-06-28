@@ -93,7 +93,16 @@
   [out-path & def-paths]
   (let [defs (->> def-paths
                   (mapcat load-def)
-                  ordered-primitives)]
+                  ordered-primitives)
+        num-code-prims (->> defs
+                            (filter #(-> % :primitive-type (= :code)))
+                            count)
+        num-forth-prims (->> defs
+                             (filter #(-> % :primitive-type (= :definition)))
+                             count)]
+    ;; Output statistics.
+    (println "Number of code primitives :" num-code-prims)
+    (println "Number of Forth primitives:" num-forth-prims)
     ;; Output the name list.
     (println "*** NAMES ***")
     (spit
