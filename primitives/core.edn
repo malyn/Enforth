@@ -530,6 +530,14 @@
 
 {:token :umstar :name "UM*"}
 
+{:token :variable
+ :args [[] []]
+ :source ": VARIABLE ( \"<spaces>name\" -- )
+            CREATE  kDefTypeVARIABLE CHANGE-LATEST-DEF-TYPE  0 , ;"
+ :pfa [:create :icharlit "kDefTypeVARIABLE" :changelatestdeftype
+       :zero :comma
+       :exit]}
+
 {:token :zeroequals :name "0="}
 
 {:token :zeroless :name "0<"}

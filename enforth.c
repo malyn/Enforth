@@ -284,9 +284,9 @@ void enforth_resume(EnforthVM * const vm)
         &&PDOCOLON, /* Immediate word */
 
         0, /* &&PDOCONSTANT, */
-        0, /* &&PDOCREATE, */
+        &&PDOCREATE,
         0, /* &&PDODOES, */
-        0, /* &&PDOVARIABLE, */
+        &&PDOVARIABLE,
 
         /* $E8 - $EF */
         &&PDOFFI0,
@@ -306,9 +306,9 @@ void enforth_resume(EnforthVM * const vm)
         &&DOCOLON, /* Immediate word */
 
         0, /* &&DOCONSTANT, */
-        0, /* &&DOCREATE, */
+        &&DOCREATE,
         0, /* &&DODOES, */
-        0, /* &&DOVARIABLE, */
+        &&DOVARIABLE,
 
         /* $F8 - $FF */
         &&DOFFI0,
@@ -1291,6 +1291,18 @@ DISPATCH_TOKEN:
             /* Now set the IP to the PFA of the word that is being
              * called and continue execution inside of that word. */
             ip = w;
+        }
+        continue;
+
+        DOCREATE:
+        PDOCREATE:
+        DOVARIABLE:
+        PDOVARIABLE:
+        {
+            /* W points at the PFA of this word; push that location onto
+             * the stack. */
+            *--restDataStack = tos;
+            tos.ram = w;
         }
         continue;
 
