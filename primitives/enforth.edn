@@ -6,7 +6,7 @@
  :source ": C{} ( c1 c2 -- f )  C~ INVERT ;"
  :pfa [:csimilar :invert :exit]}
 
-; COLD [MFORTH] ( i*x -- ) ( R: j*x -- )
+; COLD [Enforth] ( i*x -- ) ( R: j*x -- )
 ;
 ; Clear the screen, display our copyright/help message, then jump to
 ; ABORT (which clears the stack and calls QUIT, which clears the return
@@ -49,7 +49,7 @@
 
 {:token :cplusstore :name "C+!"}
 
-;; DIGIT? [MFORTH] "digit-question" ( char -- u -1 | 0 )
+;; DIGIT? [Enforth] "digit-question" ( char -- u -1 | 0 )
 ;;
 ;; Attempts to convert char to a numeric value using the current BASE.
 ;; Pushes the numeric value and -1 to the stack if the value was
@@ -413,11 +413,6 @@
        :twodrop
        :exit]}
 
-{:token :pisquote
- :name "(IS\")"
- :args [[] [:icaddr :u]]
- :flags #{:headerless}}
-
 {:token :itype
  :args [[:icaddr :u] []]
  :flags #{:headerless}
@@ -501,7 +496,7 @@
          :true
        :exit]}
 
-;; PARSE-WORD [MFORTH] "parse-word" ( char "ccc<char>" -- c-addr u )
+;; PARSE-WORD [Enforth] "parse-word" ( char "ccc<char>" -- c-addr u )
 ;;
 ;; Parse ccc delimited by the delimiter char, skipping leading
 ;; delimiters.
@@ -509,21 +504,31 @@
 ;; c-addr is the address (within the input buffer) and u is the length
 ;; of the parsed string.  If the parse area was empty, the resulting
 ;; string has a zero length.
+;;
+;; Note that PARSE-WORD returns the length of the string between the
+;; found delimiters (or until the end of the parse area), but advances
+;; >IN past the final delimiter (unless we hit the end of the parse area
+;; without finding a delimiter).
 {:token :parseword
  :name "PARSE-WORD"
- :args [[:caddr :u1 :c] [:caddr2 :u2]]
+ :args [[:c] [:caddr :u]]
  :flags #{:headerless}
  :source ": SKIP-DELIM ( c-addr1 u1 c -- c-addr2 u2)
             >R  BEGIN  OVER C@  R@ =  ( ca u f R:c) OVER  AND WHILE
                1 /STRING REPEAT  R> DROP ;
-          : FIND-DELIM ( c-addr1 u1 c -- c-addr2)
-            >R  BEGIN  OVER C@  R@ <>  ( ca u f R:c) OVER  AND WHILE
-               1 /STRING REPEAT  R> 2DROP ;
+          : FIND-DELIM ( c-addr u c -- c-addr-delim -1 | c-addr-end 0)
+            >R
+            BEGIN ( ca u R:c)
+              OVER C@  R@  = ( ca u f R:c) IF R> 2DROP TRUE EXIT
+              ( ca u R:c) DUP 0= IF R> 2DROP FALSE EXIT
+              1 /STRING
+            AGAIN ;
           : PARSE-WORD ( c -- c-addr u)
             >R  SOURCE >IN @ /STRING ( ca-parse u-parse R:c)
             R@ SKIP-DELIM ( ca u R:c)  OVER SWAP ( ca-word ca-word u R:c)
-            R> FIND-DELIM ( ca-word ca-delim)
-            DUP SOURCE DROP ( caw cad cad cas) - >IN ! ( caw cad)
+            R> FIND-DELIM ( ca-word ca-delim-or-end found-delim?)
+            OVER SOURCE DROP ( caw cad found-delim? cad cas) -
+            SWAP IF 1+ ( advance past delim) THEN  >IN ! ( caw cad)
             OVER - ;"
  :pfa [:tor :source :toin :fetch :slashstring
        :rfetch
@@ -536,16 +541,26 @@
        :rfrom
          ; FIND-DELIM
          :tor
-           :over :cfetch :rfetch :notequals :over :and :izbranch 6
-           :icharlit 1 :slashstring :ibranch -12
-         :rfrom :twodrop
-       :dup :source :drop :minus :toin :store
+           :over :cfetch :rfetch :equals :izbranch 6
+             :rfrom :twodrop :true :ibranch 15
+           :dup :zeroequals :izbranch 6
+             :rfrom :twodrop :false :ibranch 6
+           :icharlit 1 :slashstring :ibranch -24
+       :over :source :drop :minus
+       :swap :izbranch 2
+         :oneplus
+       :toin :store
        :over :minus
        :exit]}
 
 {:token :pexecute :name "(EXECUTE)" :flags #{:headerless}}
 
 {:token :phalt :flags #{:headerless}}
+
+{:token :pisquote
+ :name "(IS\")"
+ :args [[] [:icaddr :u]]
+ :flags #{:headerless}}
 
 {:token :psquote :name "(S\")" :flags #{:headerless}}
 

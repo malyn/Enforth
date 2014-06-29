@@ -173,9 +173,10 @@
        :numsigngrtr :type :space
        :exit]}
 
+{:token :drop :args [[:x1 :x2] [:x1]]}
+
 {:token :dup :args [[:x] [:x :x]]}
 
-{:token :drop :args [[:x1 :x2] [:x1]]}
 
 {:token :emit}
 
