@@ -1,6 +1,8 @@
-* Move `dp` and `latest` into the dictionary so that they load/save with the dictionary.
+* Modify the Enforth interpreter so that it is resumable after a HALT.  This will make it possible to interpret multiple lines of a file (such as the anstests files) while retaining state across interpretations.
+* Create [Catch](https://github.com/philsquared/Catch)-based unit tests that run the contents of the anstests files.  We'll need to (manually) convert the anstests files into a .cpp file that calls `enforth_evaluate` for each line/test in the anstests file.
 * Add flow control words (`IF`, `THEN`, `DO`, `WHILE`, etc.).
-* Modify `test/enforth` to optionally take a list of files on the command line and then interpret each file in order (by just feeding the data through `KEY` for now).  This will allow us to start running the anstests.
+* Start creating the `enforth_*_extern.h` files for various Arduino libs in order to validate the FFI code, workflow, etc.
+  * Consider creating a namespace enum for externs so that we can rewrite the FFIDef addresses after a load.  The trampoline would then contain the 16-bit id of the extern (10 bits for namespace, 6 bits for function).
 * Improve the stack checking code.
   * First, the code is probably too aggressive and may not let us use the last stack item.
   * Second, we have the macro scattered everywhere, but it would be better if the stack sizes were declared in a separate table, organized by token, and then checked in a single place right before DISPATCH\_TOKEN.  Similar to the rest of these tables, the source auto-generator will make it easier to build this table.
@@ -12,11 +14,11 @@
 * Do something about absolute RAM addresses on the stack, in variables, etc.  These prevent the VM from being saved to/from storage (such as EEPROM).
   * We can't relativize everything on save, because we don't always know what we are looking at -- how do we know that a dictionary variable contains a RAM address?  We could probably relativize all addresses in the VM though and then `@`, `!`, etc. would do the adjustment as necessary (and could offer bounds-checking).  All of these addresses are VM-relative and that VM base address will probably end up being stored in a constant register pair.  Access to memory-mapped CPU resources gets messy (this is mostly an ARM problem), although we could offer special fetch and store operations for those.  Similarly, FFI interop involving addresses is now a problem because we need to convert those back and forth.
   * Note that the VM itself has quite a few absolute addresses (DP, HERE, SOURCE, etc.) and we'll need to deal with those on load/save.  Most of these have to do with the text interpreter though and we could easily just say that persistence resets the state of the text interpreter and can only be performed when *not* in compilation mode.  That would leave a very small number of pointers in the VM and those could just be serialized as part of persisting the dictionary.
+* Move `dp` and `latest` into the dictionary so that they load/save with the dictionary.
 * Add a single default task and move the stacks and BASE into that memory area.  No `PAUSE` yet.
   * Tasks are 32 return stack cells (64/128 bytes), 16 data stack cells (32/64 bytes), 16 user cells (32/64 bytes) for a total of 128/256 bytes per task.
     * Note that tasks go into the dictionary and not at the end!  This allows dictionaries to be resized or only partially copied to storage.
     * Need one task cell to act as a link to the previously-created task as well as a global that points to the newest task (similar to the dictionary itself).
-* Consider adding [Catch](https://github.com/philsquared/Catch)-based unit tests in order to augment the anstests-based tests.  Maybe even run the test suite using Catch?
 * Forth200x updates (mostly just `TIB` and `#TIB`?, although numeric prefixes look very useful).
 * Add `PAUSE`, which spills the registers to global variables in `vm` and then returns from `go()` similar to what we did in Ficl.
 * Add dumb exceptions that just restart the VM?
