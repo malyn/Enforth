@@ -177,6 +177,11 @@
 
 {:token :dup :args [[:x] [:x :x]]}
 
+{:token :else
+ :flags #{:immediate}
+ :source ": ELSE ( C: orig1 -- orig2 )
+            ['] branch COMPILE,  HERE  0 C,  SWAP POSTPONE THEN ; IMMEDIATE"
+ :pfa [:icharlit :branch :compilecomma :here :zero :ccomma :swap :then :exit]}
 
 {:token :emit}
 
@@ -232,6 +237,11 @@
  :args [[:c] []]
  :source ": HOLD ( c -- )   HLD @ 1- DUP HLD ! C! ;"
  :pfa [:hld :fetch :oneminus :dup :hld :store :cstore :exit]}
+
+{:token :if
+ :flags #{:immediate}
+ :source ": IF ( C: -- orig )  ['] 0branch COMPILE,  HERE  0 C, ; IMMEDIATE"
+ :pfa [:icharlit :zbranch :compilecomma :here :zero :ccomma :exit]}
 
 {:token :invert}
 
@@ -435,6 +445,11 @@
 {:token :store :name "!"}
 
 {:token :swap}
+
+{:token :then
+ :flags #{:immediate}
+ :source ": THEN ( C: orig -- )  HERE OVER -  SWAP C! ; IMMEDIATE"
+ :pfa [:here :over :minus :swap :cstore :exit]}
 
 {:token :tobody
  :name ">BODY"

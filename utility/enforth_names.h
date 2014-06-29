@@ -47,39 +47,42 @@
 "\022" "<>"
 "\032" "C{}"
 "\022" "C~"
+"\043" "ELSE"
+"\012" "="
 "\102" "EVALUATE"
 "\072" "EXECUTE"
 "\042" "FFIS"
-"\012" "="
 "\012" ">"
+"\022" ">R"
 "\042" "FIND"
 "\042" "HERE"
 "\032" "HEX"
 "\042" "HOLD"
+"\023" "IF"
 "\062" "LATEST"
 "\072" "LITERAL"
-"\022" ">R"
 "\042" "?DUP"
-"\042" "QUIT"
 "\012" "@"
+"\042" "QUIT"
 "\052" "ABORT"
+"\032" "ABS"
 "\042" "SIGN"
 "\062" "SOURCE"
 "\052" "SPACE"
 "\052" "STATE"
+"\043" "THEN"
 "\042" "TYPE"
-"\032" "ABS"
+"\032" "AND"
 "\022" "U."
 "\062" "UNUSED"
-"\032" "AND"
-"\042" "USE:"
 "\022" "C!"
+"\042" "USE:"
 "\032" "C+!"
 "\022" "C@"
 "\052" "DEPTH"
+"\042" "DROP"
 "\102" "VARIABLE"
 "\052" "WORDS"
-"\042" "DROP"
 "\032" "DUP"
 "\042" "EMIT"
 "\052" "FALSE"
@@ -87,61 +90,62 @@
 "\032" "KEY"
 "\062" "LSHIFT"
 "\022" "M+"
+"\042" "MOVE"
 "\012" "["
 "\013" "\\"
 "\013" "]"
 "\002" /* TODEFTYPE */
 "\002" /* TOFFIDEF */
 "\002" /* TOLFA */
-"\042" "MOVE"
+"\062" "NEGATE"
 "\002" /* TONFA */
 "\002" /* TOTOKEN */
-"\062" "NEGATE"
 "\032" "NIP"
-"\002" /* TOXT */
 "\022" "OR"
-"\002" /* TOCOMPILETOKEN */
+"\002" /* TOXT */
 "\042" "OVER"
-"\002" /* CHANGELATESTDEFTYPE */
+"\002" /* TOCOMPILETOKEN */
 "\022" "R>"
+"\002" /* CHANGELATESTDEFTYPE */
 "\022" "R@"
-"\002" /* COLD */
 "\032" "ROT"
+"\002" /* COLD */
 "\062" "RSHIFT"
 "\042" "SWAP"
 "\042" "TRUE"
-"\002" /* DIGITQ */
 "\042" "TUCK"
+"\002" /* DIGITQ */
 "\022" "U>"
 "\032" "UM*"
 "\002" /* TICKNAMES */
 "\002" /* PEXECUTE */
+"\002" /* PISQUOTE */
 "\002" /* DP */
 "\002" /* FFIQ */
 "\002" /* FFIDEFARITY */
 "\002" /* FFIDEFNAME */
 "\002" /* FFIDEFNAMELEN */
-"\002" /* PISQUOTE */
-"\002" /* FINDDEF */
 "\002" /* LIT */
+"\002" /* FINDDEF */
 "\002" /* PSQUOTE */
 "\002" /* ZBRANCH */
-"\002" /* FINDFFIDEF */
 "\002" /* BRANCH */
+"\002" /* FINDFFIDEF */
 "\002" /* CHARLIT */
 "\002" /* EXIT */
-"\002" /* FINDPRIM */
 "\002" /* IFETCH */
+"\002" /* FINDPRIM */
 "\002" /* IBRANCH */
 "\002" /* ICFETCH */
 "\002" /* ICHARLIT */
 "\002" /* INITRP */
-"\002" /* FINDWORD */
 "\002" /* IZBRANCH */
+"\002" /* FINDWORD */
 "\002" /* PHALT */
-"\002" /* FOUNDDEFQ */
 "\002" /* UDSLASHMOD */
+"\002" /* FOUNDDEFQ */
 "\002" /* VM */
+"\000"
 "\000"
 "\000"
 "\000"
