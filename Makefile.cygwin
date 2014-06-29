@@ -1,4 +1,9 @@
-all: test/enforthsimple
+.PHONY: test
+
+all: test/enforthsimple test/enforthtest
+
+test: test/enforthtest
+	test/enforthtest
 
 utility/enforth_definitions.h: primitives/core.edn primitives/core-ext.edn primitives/enforth.edn primitives/string.edn primitives/tools.edn
 	cd DefGen && lein run ../utility $(addprefix ../, $+)
@@ -14,3 +19,6 @@ utility/enforth_tokens.h: primitives/core.edn primitives/core-ext.edn primitives
 
 test/enforthsimple: enforth.h enforth.c utility/enforth_definitions.h utility/enforth_jumptable.h utility/enforth_names.h utility/enforth_tokens.h test/enforthsimple.c
 	cc -g -I. -I./utility -o $@ -DENABLE_STACK_CHECKING=1 enforth.c test/enforthsimple.c
+
+test/enforthtest: enforth.h enforth.c utility/enforth_definitions.h utility/enforth_jumptable.h utility/enforth_names.h utility/enforth_tokens.h test/catch.hpp test/enforthtest.cpp
+	c++ -g -I. -I./utility -o $@ -DENABLE_STACK_CHECKING=1 enforth.c test/enforthtest.cpp
