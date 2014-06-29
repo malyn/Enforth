@@ -66,24 +66,25 @@
 "\042" "QUIT"
 "\052" "ABORT"
 "\032" "ABS"
+"\023" "S\""
+"\032" "AND"
 "\042" "SIGN"
 "\062" "SOURCE"
 "\052" "SPACE"
 "\052" "STATE"
 "\043" "THEN"
 "\042" "TYPE"
-"\032" "AND"
+"\022" "C!"
 "\022" "U."
 "\062" "UNUSED"
-"\022" "C!"
-"\042" "USE:"
 "\032" "C+!"
+"\042" "USE:"
 "\022" "C@"
 "\052" "DEPTH"
 "\042" "DROP"
+"\032" "DUP"
 "\102" "VARIABLE"
 "\052" "WORDS"
-"\032" "DUP"
 "\042" "EMIT"
 "\052" "FALSE"
 "\062" "INVERT"
@@ -91,60 +92,61 @@
 "\062" "LSHIFT"
 "\022" "M+"
 "\042" "MOVE"
+"\062" "NEGATE"
 "\012" "["
 "\013" "\\"
 "\013" "]"
 "\002" /* TODEFTYPE */
 "\002" /* TOFFIDEF */
 "\002" /* TOLFA */
-"\062" "NEGATE"
+"\032" "NIP"
 "\002" /* TONFA */
 "\002" /* TOTOKEN */
-"\032" "NIP"
 "\022" "OR"
-"\002" /* TOXT */
 "\042" "OVER"
-"\002" /* TOCOMPILETOKEN */
+"\002" /* TOXT */
 "\022" "R>"
-"\002" /* CHANGELATESTDEFTYPE */
+"\002" /* TOCOMPILETOKEN */
 "\022" "R@"
+"\002" /* CHANGELATESTDEFTYPE */
 "\032" "ROT"
-"\002" /* COLD */
 "\062" "RSHIFT"
+"\002" /* COLD */
 "\042" "SWAP"
 "\042" "TRUE"
 "\042" "TUCK"
-"\002" /* DIGITQ */
 "\022" "U>"
+"\002" /* DIGITQ */
 "\032" "UM*"
 "\002" /* TICKNAMES */
 "\002" /* PEXECUTE */
 "\002" /* PISQUOTE */
+"\002" /* LIT */
 "\002" /* DP */
 "\002" /* FFIQ */
 "\002" /* FFIDEFARITY */
 "\002" /* FFIDEFNAME */
 "\002" /* FFIDEFNAMELEN */
-"\002" /* LIT */
-"\002" /* FINDDEF */
 "\002" /* PSQUOTE */
+"\002" /* FINDDEF */
 "\002" /* ZBRANCH */
 "\002" /* BRANCH */
-"\002" /* FINDFFIDEF */
 "\002" /* CHARLIT */
+"\002" /* FINDFFIDEF */
 "\002" /* EXIT */
 "\002" /* IFETCH */
-"\002" /* FINDPRIM */
 "\002" /* IBRANCH */
+"\002" /* FINDPRIM */
 "\002" /* ICFETCH */
 "\002" /* ICHARLIT */
 "\002" /* INITRP */
 "\002" /* IZBRANCH */
-"\002" /* FINDWORD */
 "\002" /* PHALT */
+"\002" /* FINDWORD */
 "\002" /* UDSLASHMOD */
-"\002" /* FOUNDDEFQ */
 "\002" /* VM */
+"\002" /* FOUNDDEFQ */
+"\000"
 "\000"
 "\000"
 "\000"

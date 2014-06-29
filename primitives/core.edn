@@ -438,6 +438,19 @@
  :source ": SPACE ( --)  BL EMIT ;"
  :pfa [:bl :emit :exit]}
 
+{:token :squote
+ :name "S\""
+ :args [[] []]
+ :flags #{:immediate}
+ :source ": S\" ( -- )
+           [CHAR] \" PARSE-WORD
+           ['] (S\") COMPILE,  ( ca u) DUP C,  HERE OVER ALLOT  SWAP MOVE ;
+           IMMEDIATE"
+ :pfa [:icharlit "'\"'" :parseword
+       :icharlit :psquote :compilecomma
+       :dup :ccomma :here :over :allot :swap :move
+       :exit]}
+
 {:token :state
  :args [[] [:aaddr]]
  :pfa [:vm :icharlit "offsetof(EnforthVM, state)" :plus :exit]}
