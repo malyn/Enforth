@@ -1,4 +1,3 @@
-* Modify the Enforth interpreter so that it is resumable after a HALT.  This will make it possible to interpret multiple lines of a file (such as the anstests files) while retaining state across interpretations.
 * Create [Catch](https://github.com/philsquared/Catch)-based unit tests that run the contents of the anstests files.  We'll need to (manually) convert the anstests files into a .cpp file that calls `enforth_evaluate` for each line/test in the anstests file.
 * Add flow control words (`IF`, `THEN`, `DO`, `WHILE`, etc.).
 * Start creating the `enforth_*_extern.h` files for various Arduino libs in order to validate the FFI code, workflow, etc.

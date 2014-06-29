@@ -119,9 +119,10 @@ int main(int argc, char **argv)
             LAST_FFI,
             enforthSimpleKeyQuestion, enforthSimpleKey, enforthSimpleEmit);
 
-    /* Add a couple of definitions. */
+    /* Add a couple of definitions (one of which is multiline). */
     enforth_evaluate(&enforthVM, ": favnum 27 ;");
-    enforth_evaluate(&enforthVM, ": 2x dup + ;");
+    enforth_evaluate(&enforthVM, ": 2x dup");
+    enforth_evaluate(&enforthVM, "     + ;");
 
     /* Launch the Enforth interpreter. */
     enforth_go(&enforthVM);

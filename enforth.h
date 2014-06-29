@@ -200,11 +200,14 @@ void enforth_init(
          * function pointers). */
         int (*keyq)(void), char (*key)(void), void (*emit)(char));
 
+void enforth_reset(
+        EnforthVM * const vm);
+
 void enforth_evaluate(
         EnforthVM * const vm, const char * const text);
 
-void enforth_execute(
-        EnforthVM * const vm, uint16_t xt);
+void enforth_resume(
+        EnforthVM * const vm);
 
 void enforth_go(
         EnforthVM * const vm);

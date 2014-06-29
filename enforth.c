@@ -192,6 +192,11 @@ void enforth_init(
     vm->dictionary.ram = dictionary;
     vm->dictionary_size.u = dictionary_size;
 
+    enforth_reset(vm);
+}
+
+void enforth_reset(EnforthVM * const vm)
+{
     vm->dp = vm->dictionary;
     vm->latest.u = 0;
 
@@ -199,20 +204,47 @@ void enforth_init(
 
     vm->state = 0;
 
+    vm->saved_sp.u = 0;
     vm->base = 10;
 }
 
 void enforth_evaluate(EnforthVM * const vm, const char * const text)
 {
-    /* Clear the stack pointer, push text and text length to the stack,
-     * and then execute the EVALUATE word. */
-    vm->saved_sp.u = 0;
-    vm->data_stack[31 - ++vm->saved_sp.u].ram = (uint8_t*)text;
-    vm->data_stack[31 - ++vm->saved_sp.u].u = strlen(text);
-    enforth_execute(vm, EVALUATE);
+    /* Clear both stacks. */
+    EnforthCell * sp = (EnforthCell*)&vm->data_stack[31];
+    EnforthCell * rsp = (EnforthCell*)&vm->return_stack[31];
+
+    /* Push the XT for HALT onto the return stack so that we exit the
+     * interpreter after EVALUATE is done. */
+#ifdef __AVR__
+    (--rsp)->ram = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ((EnforthToken)HALT * kTokenMultiplier)));
+#else
+    (--rsp)->ram = (uint8_t*)definitions + ((EnforthToken)HALT * kTokenMultiplier);
+#endif
+
+    /* Set the IP to the beginning of EVALUATE. */
+#ifdef __AVR__
+    uint8_t* ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ((EnforthToken)EVALUATE * kTokenMultiplier)));
+#else
+    uint8_t* ip = (uint8_t*)definitions + ((EnforthToken)EVALUATE * kTokenMultiplier);
+#endif
+
+    /* Push the text and text length onto the stack. */
+    (--sp)->ram = (uint8_t*)text;
+    (--sp)->u = strlen(text);
+
+    /* Push RSP and IP to the stack. */
+    (--sp)->ram = (uint8_t*)rsp;
+    (--sp)->ram = ip;
+
+    /* Save the stack pointer. */
+    vm->saved_sp.u = &vm->data_stack[31] - sp;
+
+    /* Resume the interpreter. */
+    enforth_resume(vm);
 }
 
-void enforth_execute(EnforthVM * const vm, uint16_t xt)
+void enforth_resume(EnforthVM * const vm)
 {
     register uint8_t *ip;
     register EnforthCell tos;
@@ -290,34 +322,15 @@ void enforth_execute(EnforthVM * const vm, uint16_t xt)
         &&DOFFI7,
     };
 
-    /* Initialize the stack pointer.  Note that we do not pop TOS into
-     * our register at this point because we are going to immediately
-     * put the xt argument into TOS as part of calling EXECUTE. */
-    restDataStack = (EnforthCell*)&vm->data_stack[32 - vm->saved_sp.u];
+    /* Restore the stack pointer. */
+    restDataStack = (EnforthCell*)&vm->data_stack[31 - vm->saved_sp.u];
 
-    /* Clear out the return stack (since we are about to begin a new
-     * thread of execution) and then push a return to the start of the
-     * ROM-based (so 0x8000 | definition offset) HALT definition, which
-     * will exit the inner interpreter (i.e., enforth_execute). */
-    returnTop = (EnforthCell *)&vm->return_stack[32];
-#ifdef __AVR__
-    (--returnTop)->ram = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ((EnforthToken)HALT * kTokenMultiplier)));
-#else
-    (--returnTop)->ram = (uint8_t*)definitions + ((EnforthToken)HALT * kTokenMultiplier);
-#endif
+    /* Pop IP and RSP from the stack. */
+    ip = (restDataStack++)->ram;
+    returnTop = (EnforthCell *)(restDataStack++)->ram;
 
-    /* Put the XT into the top-of-stack register, point IP at the first
-     * word in EXECUTE, and then enter the inner interpreter.  Note that
-     * this counts as an item on the data stack for the purposes of the
-     * stack checking code. */
-    tos.u = xt;
-    --restDataStack;
-
-#ifdef __AVR__
-    inProgramSpace = -1;
-#endif
-
-    ip = (uint8_t*)definitions + ((EnforthToken)EXECUTE * kTokenMultiplier);
+    /* Pop TOS into our register. */
+    tos = *restDataStack++;
 
     /* The inner interpreter. */
     for (;;)
@@ -384,10 +397,21 @@ DISPATCH_TOKEN:
         goto *(void *)pgm_read_word(&primitive_table[token]);
 
         PHALT:
-        /* Exit the interpreter.  No need to retain state (such as the
-         * current SP) since the next call to enforth_execute will need
-         * to set up all of that again anyway. */
-        return;
+        {
+            /* Push TOS onto the stack. */
+            *--restDataStack = tos;
+
+            /* Push RSP and IP to the stack. */
+            /* TODO Both of these need to be relative addresses. */
+            (--restDataStack)->ram = (uint8_t*)returnTop;
+            (--restDataStack)->ram = ip;
+
+            /* Save the stack pointer. */
+            vm->saved_sp.u = &vm->data_stack[31] - restDataStack;
+
+            /* Exit the interpreter. */
+            return;
+        }
 
         DOFFI0:
         PDOFFI0:
@@ -1262,7 +1286,7 @@ DISPATCH_TOKEN:
                 inProgramSpace = 0;
             }
 #endif
-            (--returnTop)->ram = (void *)ip;
+            (--returnTop)->ram = ip;
 
             /* Now set the IP to the PFA of the word that is being
              * called and continue execution inside of that word. */
@@ -1313,7 +1337,7 @@ DISPATCH_TOKEN:
                 ip = (uint8_t*)((unsigned int)ip | 0x8000);
             }
 #endif
-            (--returnTop)->ram = (void *)ip;
+            (--returnTop)->ram = ip;
 
             /* Calculate the offset of the definition and set the IP to
              * the absolute address. */
@@ -1380,7 +1404,24 @@ DISPATCH_TOKEN:
 
 void enforth_go(EnforthVM * const vm)
 {
-    /* Clear the stack pointer and then execute the COLD word. */
-    vm->saved_sp.u = 0;
-    enforth_execute(vm, COLD);
+    /* Clear both stacks. */
+    EnforthCell * sp = (EnforthCell*)&vm->data_stack[31];
+    EnforthCell * rsp = (EnforthCell*)&vm->return_stack[31];
+
+    /* Set the IP to the beginning of COLD. */
+#ifdef __AVR__
+    uint8_t* ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ((EnforthToken)COLD * kTokenMultiplier)));
+#else
+    uint8_t* ip = (uint8_t*)definitions + ((EnforthToken)COLD * kTokenMultiplier);
+#endif
+
+    /* Push RSP and IP to the stack. */
+    (--sp)->ram = (uint8_t*)rsp;
+    (--sp)->ram = ip;
+
+    /* Save the stack pointer. */
+    vm->saved_sp.u = &vm->data_stack[31] - sp;
+
+    /* Resume the interpreter. */
+    enforth_resume(vm);
 }
