@@ -20,7 +20,6 @@
  :args [[:addr :u] []]
  :source ": HEXCELL ( u --)  0 <# # # # # # # # # #> TYPE ;
           : HEXCHAR ( c --)  0 <# # # #> TYPE ;
-          : EMITVALID ( c --)  DUP 32 < OVER 127 > OR  [CHAR] . AND OR  EMIT ;
           : EMITVALID ( c --)  DUP 32 < OVER 127 > OR
             IF DROP [CHAR] . THEN EMIT ;
           : DUMPLINE ( addr u --)
@@ -51,7 +50,7 @@
              :dup :i :plus :cfetch
              ; EMITVALID
                :dup :icharlit 32 :lessthan :over :icharlit 127 :greaterthan :or
-               :zbranch 4 :drop :icharlit "'.'" :emit
+               :izbranch 4 :drop :icharlit "'.'" :emit
              :piloop -20
            :drop
          :icharlit 16 :piplusloop -78
