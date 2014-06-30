@@ -80,6 +80,20 @@
  :source ": DP ( -- addr )  VM +DP ;"
  :pfa [:vm :icharlit "offsetof(EnforthVM, dp)" :plus :exit]}
 
+; END-LOOP [Enforth] ( do-orig pdo-xt -- )
+;
+; Completes the loop whose loop-sys parameters on the stack.  pdo-xt
+; points to either (loop) or (+loop) and is compiled into the end of
+; the loop.
+{:token :endloop
+ :name "END-LOOP"
+ :flags #{:headerless}
+ :source ": END-LOOP ( do-orig xt )
+            COMPILE,  HERE - C,  'PREVLEAVE @ HERE>CHAIN ;"
+ :pfa [:compilecomma :here :minus :ccomma
+       :tickprevleave :fetch :heretochain
+       :exit]}
+
 {:token :exit :flags #{:headerless}}
 
 {:token :ffiq
@@ -348,6 +362,51 @@
  :source ": HALT ( i*x -- )  (HALT) ;"
  :pfa [:phalt :exit]}
 
+; HERE>CHAIN [Enforth] "here-to-chain" ( addr -- )
+;
+; Store the offset to HERE in the zero-terminated chain beginning at
+; addr.  Each addr is expected to contain the offset to the addr of the
+; previous element in the chain.  The last element in the chain (which
+; could be the initial addr if no LEAVE was present) should contain
+; zero.
+;
+; The way that this works is that DO stores zero in 'PREVLEAVE.  The
+; first LEAVE compiles a (BRANCH) token and the current contents of
+; 'PREVLEAVE, which is zero.  'PREVLEAVE is then updated to contain the
+; HERE location of the branch address.
+;
+; Subsequent LEAVEs compile a backwards (BRANCH) from HERE to the
+; previous LEAVE branch (hence 'PREVLEAVE).  'PREVLEAVE is then updated
+; to contain the address of the latest backwards branch.
+;
+; HERE>CHAIN starts at the latest 'PREVLEAVE, sets aside the branch
+; value at that location, and then replaces that value with the relative
+; forward offset to HERE.  We're done if the previous backwards branch
+; value was zero, otherwise we use that value to find the previous LEAVE
+; and repeat this same process.
+{:token :heretochain
+ :name "HERE>CHAIN"
+ :args [[:addr] []]
+ :flags #{:headerless}
+ :source ": HERE>CHAIN ( prev-leave-addr -- )
+            BEGIN
+              ?DUP
+            WHILE
+              DUP C@ ( prev-leave-addr offset-to-prev-leave)
+              OVER ( pla otpl pla) DUP HERE SWAP - ( pla otpl pla pla>here)
+              SWAP C! ( pla otpl)
+              ?DUP IF - ELSE ( pla) DROP 0 THEN
+            REPEAT ;"
+ :pfa [:qdup :izbranch 20
+         :dup :cfetch
+         :over :dup :here :swap :minus
+         :swap :cstore
+         :qdup :izbranch 4
+           :minus :ibranch 3
+           :drop :zero
+         :ibranch -21
+       :exit]}
+
 {:token :hld
  :args [[] [:aaddr]]
  :flags #{:headerless}
@@ -553,13 +612,55 @@
        :over :minus
        :exit]}
 
+; (DO) [Enforth] "paren-do-paren" ( n1|u1 n2|u2 -- ) ( R: -- loop-sys )
+;
+; Set up loop control parameters with index n2|u2 and limit n1|u1. An
+; ambiguous condition exists if n1|u1 and n2|u2 are not both the same
+; type.  Anything already on the return stack becomes unavailable until
+; the loop-control parameters are discarded.
+{:token :pdo
+ :name "(DO)"
+ :args [[:n1 :n2] []]
+ :flags #{:headerless}}
+
 {:token :pexecute :name "(EXECUTE)" :flags #{:headerless}}
 
 {:token :phalt :flags #{:headerless}}
 
+{:token :piqdo
+ :name "(I?DO)"
+ :flags #{:headerless}}
+
+{:token :piloop
+ :name "(ILOOP)"
+ :flags #{:headerless}}
+
+{:token :piplusloop
+ :name "(I+LOOP)"
+ :flags #{:headerless}}
+
 {:token :pisquote
  :name "(IS\")"
  :args [[] [:icaddr :u]]
+ :flags #{:headerless}}
+
+; (LOOP) [Enforth] "paren-loop-paren" ( -- ) ( R: loop-sys1 -- | loop-sys2 )
+;
+; An ambiguous condition exists if the loop control parameters are
+; unavailable.  Add one to the loop index.  If the loop index is then
+; equal to the loop limit, discard the loop parameters and continue
+; execution immediately following the loop.  Otherwise continue
+; execution at the beginning of the loop.
+{:token :ploop
+ :name "(LOOP)"
+ :flags #{:headerless}}
+
+{:token :pplusloop
+ :name "(+LOOP)"
+ :flags #{:headerless}}
+
+{:token :pqdo
+ :name "(?DO)"
  :flags #{:headerless}}
 
 {:token :psquote :name "(S\")" :flags #{:headerless}}
@@ -579,6 +680,11 @@
  :name "'NAMES"
  :args [[] [:c-addr]]
  :flags #{:headerless}}
+
+{:token :tickprevleave
+ :name "'PREVLEAVE"
+ :flags #{:headerless}
+ :pfa [:vm :icharlit "offsetof(EnforthVM, prev_leave)" :plus :exit]}
 
 ;; >[TOKEN] [ENFORTH] "to-compile-token" ( xt -- token )
 ;;

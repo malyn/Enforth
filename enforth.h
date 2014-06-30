@@ -169,14 +169,13 @@ typedef struct
 
     /* Text Interpreter vars */
     EnforthInt state;
+    EnforthCell prev_leave;
 
     /* TODO Put TIBSIZE in a constant. */
     uint8_t tib[80];
     EnforthCell source_len;
     EnforthCell source;
     EnforthInt to_in;
-
-    uint8_t * prev_leave;
 
     /* Task vars */
     EnforthCell saved_sp; /* Index of the SP from the base of the stack */

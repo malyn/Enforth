@@ -1,4 +1,3 @@
-* Add flow control words (`DO`, `WHILE`, etc.).
 * Create [Catch](https://github.com/philsquared/Catch)-based unit tests that run the contents of the anstests files.  We'll need to (manually) convert the anstests files into a .cpp file that calls `enforth_evaluate` for each line/test in the anstests file.
 * Start creating the `enforth_*_extern.h` files for various Arduino libs in order to validate the FFI code, workflow, etc.
   * Consider creating a namespace enum for externs so that we can rewrite the FFIDef addresses after a load.  The trampoline would then contain the 16-bit id of the extern (10 bits for namespace, 6 bits for function).

@@ -133,7 +133,7 @@ typedef enum EnforthToken
 
 /* Multiplier used to convert a ROM-based token into an offset into the
  * ROM-based definition table. */
-static const int kTokenMultiplier = 8;
+static const int kTokenMultiplier = 9;
 
 
 
@@ -1085,6 +1085,7 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        I:
         RFETCH:
         {
             CHECK_STACK(0, 1);
@@ -1250,12 +1251,66 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        PDO:
         TWOTOR:
         {
             CHECK_STACK(2, 0);
             *--returnTop = *restDataStack++;
             *--returnTop = tos;
             tos = *restDataStack++;
+        }
+        continue;
+
+        PIQDO:
+#ifdef __AVR__
+        {
+            CHECK_STACK(2, 0);
+            EnforthCell limit = *restDataStack++;
+            EnforthCell index = tos;
+            tos = *restDataStack++;
+
+            if (index.u == limit.u)
+            {
+                ip += (int8_t)pgm_read_byte(ip);
+            }
+            else
+            {
+                *--returnTop = limit;
+                *--returnTop = index;
+                ++ip;
+            }
+        }
+        continue;
+#else
+        /* Fall through, since the other architectures use shared
+         * instruction and data space. */
+#endif
+
+        PQDO:
+        {
+            CHECK_STACK(2, 0);
+            EnforthCell limit = *restDataStack++;
+            EnforthCell index = tos;
+            tos = *restDataStack++;
+
+            if (index.u == limit.u)
+            {
+                ip += *(int8_t*)ip;
+            }
+            else
+            {
+                *--returnTop = limit;
+                *--returnTop = index;
+                ++ip;
+            }
+        }
+        continue;
+
+        UNLOOP:
+        {
+            CHECK_STACK(0, 0);
+            returnTop++;
+            returnTop++;
         }
         continue;
 
@@ -1271,6 +1326,96 @@ DISPATCH_TOKEN:
         {
             CHECK_STACK(1, 1);
             tos.i = -tos.i;
+        }
+        continue;
+
+        PILOOP:
+#ifdef __AVR__
+        {
+            ++(returnTop[0]).i;
+            if (returnTop[0].i == returnTop[1].i)
+            {
+                ++returnTop;
+                ++returnTop;
+                ++ip;
+            }
+            else
+            {
+                ip += (int8_t)pgm_read_byte(ip);
+            }
+        }
+        continue;
+#else
+        /* Fall through, since the other architectures use shared
+         * instruction and data space. */
+#endif
+
+        /* (LOOP) [Enforth] "paren-loop-paren" ( -- ) ( R: loop-sys1 -- | loop-sys2 )
+         *
+         * An ambiguous condition exists if the loop control parameters
+         * are unavailable.  Add one to the loop index.  If the loop
+         * index is then equal to the loop limit, discard the loop
+         * parameters and continue execution immediately following the
+         * loop.  Otherwise continue execution at the beginning of the
+         * loop. */
+        PLOOP:
+        {
+            ++(returnTop[0]).i;
+            if (returnTop[0].i == returnTop[1].i)
+            {
+                ++returnTop;
+                ++returnTop;
+                ++ip;
+            }
+            else
+            {
+                ip += *(int8_t*)ip;
+            }
+        }
+        continue;
+
+        PIPLUSLOOP:
+#ifdef __AVR__
+        {
+            CHECK_STACK(1, 0);
+
+            returnTop[0].i += tos.i;
+            tos = *restDataStack++;
+
+            if (returnTop[0].i >= returnTop[1].i)
+            {
+                ++returnTop;
+                ++returnTop;
+                ++ip;
+            }
+            else
+            {
+                ip += (int8_t)pgm_read_byte(ip);
+            }
+        }
+        continue;
+#else
+        /* Fall through, since the other architectures use shared
+         * instruction and data space. */
+#endif
+
+        PPLUSLOOP:
+        {
+            CHECK_STACK(1, 0);
+
+            returnTop[0].i += tos.i;
+            tos = *restDataStack++;
+
+            if (returnTop[0].i >= returnTop[1].i)
+            {
+                ++returnTop;
+                ++returnTop;
+                ++ip;
+            }
+            else
+            {
+                ip += *(int8_t*)ip;
+            }
         }
         continue;
 

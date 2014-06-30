@@ -189,6 +189,16 @@
 
 {:token :depth}
 
+; do-sys in Enforth is ( do-orig ).  LEAVE locations chain from the most
+; recent LEAVE to the oldest LEAVE and then to zero, which signifies the
+; end of the LEAVE list.  LOOP/+LOOP go through the LEAVE list and fix
+; up the addresses.
+{:token :do
+ :flags #{:immediate}
+ :source ": DO ( C: -- do-sys )
+            0 'PREVLEAVE !  ['] (DO) COMPILE,  HERE ; IMMEDIATE"
+ :pfa [:zero :tickprevleave :store :icharlit :pdo :compilecomma :here :exit]}
+
 {:token :dot
  :name "."
  :args [[:n] []]
@@ -264,6 +274,9 @@
  :source ": HOLD ( c -- )   HLD @ 1- DUP HLD ! C! ;"
  :pfa [:hld :fetch :oneminus :dup :hld :store :cstore :exit]}
 
+{:token :i
+ :args [[] [:n]]}
+
 {:token :if
  :flags #{:immediate}
  :source ": IF ( C: -- orig )  ['] 0branch COMPILE,  HERE  0 C, ; IMMEDIATE"
@@ -272,6 +285,20 @@
 {:token :invert}
 
 {:token :key}
+
+{:token :leave
+ :args [[] []]
+ :flags #{:immediate}
+ :source ": LEAVE ( do-orig)
+            ['] UNLOOP COMPILE,  ['] branch COMPILE,
+            HERE  'PREVLEAVE @ DUP IF HERE SWAP - THEN C,
+            'PREVLEAVE ! ; IMMEDIATE"
+ :pfa [:icharlit :unloop :compilecomma :icharlit :branch :compilecomma
+       :here :tickprevleave :fetch :dup :izbranch 4
+         :here :swap :minus
+       :ccomma
+       :tickprevleave :store
+       :exit]}
 
 ;; <# [CORE] 6.1.0490 "less-number-sign" ( -- )
 ;;
@@ -298,6 +325,12 @@
        :exit]}
 
 {:token :lshift :args [[:x1 :u] [:x2]]}
+
+{:token :loop
+ :args [[] []]
+ :flags #{:immediate}
+ :source ": LOOP ( C: do-sys -- )  ['] (LOOP) END-LOOP ; IMMEDIATE"
+ :pfa [:icharlit :ploop :endloop :exit]}
 
 {:token :ltbracket
  :name "["
@@ -369,7 +402,25 @@
 
 {:token :plus :name "+"}
 
+{:token :plusloop
+ :name "+LOOP"
+ :args [[:n] []]
+ :flags #{:immediate}
+ :source ": +LOOP ( n -- ; C: do-sys -- )  ['] (+LOOP) END-LOOP ; IMMEDIATE"
+ :pfa [:icharlit :pplusloop :endloop :exit]}
+
 {:token :plusstore :name "+!"}
+
+{:token :qdo
+ :name "?DO"
+ :flags #{:immediate}
+ :source ": ?DO ( C: -- do-sys )
+            ['] (?DO) COMPILE,  HERE 'PREVLEAVE !  0 C,  HERE ; IMMEDIATE"
+ :pfa [:icharlit :pqdo :compilecomma
+       :here :tickprevleave :store
+       :zero :ccomma
+       :here
+       :exit]}
 
 {:token :qdup :name "?DUP"}
 
@@ -583,6 +634,9 @@
 {:token :ugreaterthan :name "U>"}
 
 {:token :umstar :name "UM*"}
+
+{:token :unloop
+ :args [[] []]}
 
 {:token :variable
  :args [[] []]
