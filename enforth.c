@@ -197,6 +197,7 @@ void enforth_init(
 
 void enforth_reset(EnforthVM * const vm)
 {
+    /* Reset the globals. */
     vm->dp = vm->dictionary;
     vm->latest.u = 0;
 
@@ -206,12 +207,41 @@ void enforth_reset(EnforthVM * const vm)
 
     vm->saved_sp.u = 0;
     vm->base = 10;
+
+    /* TODO This entire block below isn't really necessary since people
+     * aren't allowed to call enforth_resume on their own.  Instead,
+     * they should always call enforth_evaluate or enforth_go.  But if
+     * they call enforth_evaluate then enforth_evaluate needs to have an
+     * IP and RSP to pop from the stack and so enforth_reset needs to
+     * prepare the stack.
+     *
+     * What we really need is some sort of vm->status enum that tells us
+     * if the VM is halted and can be resumed (and therefore has IP and
+     * RSP stack items) or has never been run and therefore
+     * enforth_evaluate doesn't need to clean anything up. */
+
+    /* Clear both stacks. */
+    EnforthCell * sp = (EnforthCell*)&vm->data_stack[31];
+    EnforthCell * rsp = (EnforthCell*)&vm->return_stack[31];
+
+    /* Set the IP to the beginning of COLD. */
+#ifdef __AVR__
+    uint8_t* ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ((EnforthToken)COLD * kTokenMultiplier)));
+#else
+    uint8_t* ip = (uint8_t*)definitions + ((EnforthToken)COLD * kTokenMultiplier);
+#endif
+
+    /* Push RSP and IP to the stack. */
+    (--sp)->ram = (uint8_t*)rsp;
+    (--sp)->ram = ip;
+
+    /* Save the stack pointer. */
+    vm->saved_sp.u = &vm->data_stack[31] - sp;
 }
 
 void enforth_evaluate(EnforthVM * const vm, const char * const text)
 {
-    /* Clear both stacks. */
-    EnforthCell * sp = (EnforthCell*)&vm->data_stack[31];
+    /* Clear the return stack. */
     EnforthCell * rsp = (EnforthCell*)&vm->return_stack[31];
 
     /* Push the XT for HALT onto the return stack so that we exit the
@@ -229,15 +259,23 @@ void enforth_evaluate(EnforthVM * const vm, const char * const text)
     uint8_t* ip = (uint8_t*)definitions + ((EnforthToken)EVALUATE * kTokenMultiplier);
 #endif
 
+    /* Restore the stack pointer. */
+    EnforthCell * sp = (EnforthCell*)&vm->data_stack[31 - vm->saved_sp.u];
+
+    /* Pop the previous IP and RSP; we're about to replace them. */
+    ++sp; /* IP */
+    ++sp; /* RSP */
+
     /* Push the text and text length onto the stack. */
     (--sp)->ram = (uint8_t*)text;
     (--sp)->u = strlen(text);
 
-    /* Push RSP and IP to the stack. */
+    /* Push the new RSP and IP to the stack. */
     (--sp)->ram = (uint8_t*)rsp;
     (--sp)->ram = ip;
 
-    /* Save the stack pointer. */
+    /* Update the saved the stack pointer now that we have modified the
+     * stack. */
     vm->saved_sp.u = &vm->data_stack[31] - sp;
 
     /* Resume the interpreter. */
