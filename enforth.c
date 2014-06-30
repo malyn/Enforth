@@ -283,7 +283,7 @@ void enforth_resume(EnforthVM * const vm)
         &&PDOCOLON,
         &&PDOCOLON, /* Immediate word */
 
-        0, /* &&PDOCONSTANT, */
+        &&PDOCONSTANT,
         &&PDOCREATE,
         0, /* &&PDODOES, */
         &&PDOVARIABLE,
@@ -305,7 +305,7 @@ void enforth_resume(EnforthVM * const vm)
         &&DOCOLON,
         &&DOCOLON, /* Immediate word */
 
-        0, /* &&DOCONSTANT, */
+        &&DOCONSTANT,
         &&DOCREATE,
         0, /* &&DODOES, */
         &&DOVARIABLE,
@@ -1020,6 +1020,13 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        XOR:
+        {
+            CHECK_STACK(2, 1);
+            tos.i ^= restDataStack++->i;
+        }
+        continue;
+
         NOTEQUALS:
         {
             CHECK_STACK(2, 1);
@@ -1303,6 +1310,16 @@ DISPATCH_TOKEN:
              * the stack. */
             *--restDataStack = tos;
             tos.ram = w;
+        }
+        continue;
+
+        DOCONSTANT:
+        PDOCONSTANT:
+        {
+            /* W points at the PFA of this word; push the address in
+             * that location onto the stack. */
+            *--restDataStack = tos;
+            tos = *(EnforthCell*)w;
         }
         continue;
 

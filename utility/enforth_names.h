@@ -36,9 +36,11 @@
 "\022" "BL"
 "\022" "C,"
 "\052" "CELLS"
+"\042" "CHAR"
 "\052" "CHARS"
 "\102" "COMPILE,"
 "\032" "2R@"
+"\102" "CONSTANT"
 "\052" "COUNT"
 "\022" "CR"
 "\062" "CREATE"
@@ -47,6 +49,7 @@
 "\022" "<>"
 "\032" "C{}"
 "\022" "C~"
+"\072" "DECIMAL"
 "\043" "ELSE"
 "\012" "="
 "\102" "EVALUATE"
@@ -94,6 +97,7 @@
 "\042" "MOVE"
 "\062" "NEGATE"
 "\012" "["
+"\063" "[CHAR]"
 "\013" "\\"
 "\013" "]"
 "\002" /* TODEFTYPE */
@@ -118,35 +122,35 @@
 "\022" "U>"
 "\002" /* DIGITQ */
 "\032" "UM*"
+"\032" "XOR"
 "\002" /* TICKNAMES */
 "\002" /* PEXECUTE */
 "\002" /* PISQUOTE */
-"\002" /* LIT */
 "\002" /* DP */
 "\002" /* FFIQ */
 "\002" /* FFIDEFARITY */
 "\002" /* FFIDEFNAME */
 "\002" /* FFIDEFNAMELEN */
-"\002" /* PSQUOTE */
+"\002" /* LIT */
 "\002" /* FINDDEF */
+"\002" /* PSQUOTE */
 "\002" /* ZBRANCH */
 "\002" /* BRANCH */
-"\002" /* CHARLIT */
 "\002" /* FINDFFIDEF */
+"\002" /* CHARLIT */
 "\002" /* EXIT */
 "\002" /* IFETCH */
-"\002" /* IBRANCH */
 "\002" /* FINDPRIM */
+"\002" /* IBRANCH */
 "\002" /* ICFETCH */
 "\002" /* ICHARLIT */
 "\002" /* INITRP */
 "\002" /* IZBRANCH */
-"\002" /* PHALT */
 "\002" /* FINDWORD */
+"\002" /* PHALT */
 "\002" /* UDSLASHMOD */
-"\002" /* VM */
 "\002" /* FOUNDDEFQ */
-"\000"
+"\002" /* VM */
 "\000"
 "\000"
 "\000"

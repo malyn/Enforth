@@ -69,6 +69,14 @@
  :source ": BL ( --)  $20 ;"
  :pfa [:icharlit "' '" :exit]}
 
+{:token :bracketchar
+ :name "[CHAR]"
+ :args [[] [:char]]
+ :flags #{:immediate}
+ :source ": [CHAR] ( \"<spaces>name\" -- char )
+            CHAR  ['] CHARLIT COMPILE,  C, ; IMMEDIATE"
+ :pfa [:char :icharlit :charlit :compilecomma :ccomma :exit]}
+
 {:token :ccomma
  :name "C,"
  :args [[:char] []]
@@ -81,6 +89,11 @@
  :pfa [:icharlit "kEnforthCellSize" :umstar :drop :exit]}
 
 {:token :cfetch :name "C@"}
+
+{:token :char
+ :args [[] [:char]]
+ :source ": CHAR ( \"<spaces>name\" -- char )  BL PARSE-WORD DROP C@ ;"
+ :pfa [:bl :parseword :drop :cfetch :exit]}
 
 {:token :chars
  :args [[:n1] [:n2]]
@@ -134,6 +147,14 @@
          :minus :xtcomma
        :exit]}
 
+{:token :constant
+ :args [[:x] []]
+ :source ": CONSTANT ( x \"<spaces>name\" -- )
+            CREATE  kDefTypeCONSTANT CHANGE-LATEST-DEF-TYPE  , ;"
+ :pfa [:create :icharlit "kDefTypeCONSTANT" :changelatestdeftype
+       :comma
+       :exit]}
+
 {:token :count
  :args [[:caddr1] [:caddr2 :u]]
  :source ": COUNT ( c-addr1 -- c-addr2 u )  DUP C@  SWAP 1+ SWAP ;"
@@ -160,6 +181,11 @@
          :tuck :here :swap :move :allot
        :align
        :exit]}
+
+{:token :decimal
+ :args [[] []]
+ :source ": DECIMAL ( -- )  10 BASE ! ;"
+ :pfa [:icharlit 10 :base :store :exit]}
 
 {:token :depth}
 
@@ -565,6 +591,8 @@
  :pfa [:create :icharlit "kDefTypeVARIABLE" :changelatestdeftype
        :zero :comma
        :exit]}
+
+{:token :xor}
 
 {:token :zeroequals :name "0="}
 
