@@ -519,8 +519,8 @@
           : FIND-DELIM ( c-addr u c -- c-addr-delim -1 | c-addr-end 0)
             >R
             BEGIN ( ca u R:c)
-              OVER C@  R@  = ( ca u f R:c) IF R> 2DROP TRUE EXIT
-              ( ca u R:c) DUP 0= IF R> 2DROP FALSE EXIT
+              DUP 0= IF R> 2DROP FALSE EXIT
+              OVER C@ R@ = IF R> 2DROP TRUE EXIT
               1 /STRING
             AGAIN ;
           : PARSE-WORD ( c -- c-addr u)
@@ -541,10 +541,10 @@
        :rfrom
          ; FIND-DELIM
          :tor
-           :over :cfetch :rfetch :equals :izbranch 6
-             :rfrom :twodrop :true :ibranch 15
            :dup :zeroequals :izbranch 6
-             :rfrom :twodrop :false :ibranch 6
+             :rfrom :twodrop :false :ibranch 17
+           :over :cfetch :rfetch :equals :izbranch 6
+             :rfrom :twodrop :true :ibranch 6
            :icharlit 1 :slashstring :ibranch -24
        :over :source :drop :minus
        :swap :izbranch 2
