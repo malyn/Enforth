@@ -1,4 +1,5 @@
-* Create [Catch](https://github.com/philsquared/Catch)-based unit tests that run the contents of the anstests files.  We'll need to (manually) convert the anstests files into a .cpp file that calls `enforth_evaluate` for each line/test in the anstests file.
+* Make some sort of `enforth_assert` helper function in `enforthtest.cpp` that returns true or false if the test passed or failed.  Will probably need a modification to the tester words (maybe to put a flag on the stack or call ABORT in away that we can trap?).
+* Add remainder of `core.fr` to `enforthtest.cpp`.
 * Remove the need for `PIQDO`, `PILOOP`, and `PIPLUSLOOP` by modifying `DUMP` to use `BEGIN` and `REPEAT` instead of loops.
 * Start creating the `enforth_*_extern.h` files for various Arduino libs in order to validate the FFI code, workflow, etc.
   * Consider creating a namespace enum for externs so that we can rewrite the FFIDef addresses after a load.  The trampoline would then contain the 16-bit id of the extern (10 bits for namespace, 6 bits for function).

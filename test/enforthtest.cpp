@@ -69,20 +69,99 @@ static void enforthSimpleEmit(char ch)
 
 
 /* -------------------------------------
- * Globals.
- */
-
-static EnforthVM enforthVM;
-static unsigned char enforthDict[8192];
-
-
-/* -------------------------------------
  * Helper functions.
  */
 
+static void compile_tester(EnforthVM * const vm)
+{
+    /* Compile tester.fr, copyrighted as follows:
+     *
+     * (C) 1995 JOHNS HOPKINS UNIVERSITY / APPLIED PHYSICS LABORATORY
+     * MAY BE DISTRIBUTED FREELY AS LONG AS THIS COPYRIGHT NOTICE
+     * REMAINS. */
+    enforth_evaluate(vm, "HEX");
+
+    /* SET THE FOLLOWING FLAG TO TRUE FOR MORE VERBOSE OUTPUT; THIS MAY
+     * ALLOW YOU TO TELL WHICH TEST CAUSED YOUR SYSTEM TO HANG. */
+    enforth_evaluate(vm, "VARIABLE VERBOSE");
+    enforth_evaluate(vm, "    FALSE VERBOSE !");
+    /* enforth_evaluate(vm, "    TRUE VERBOSE !"); */
+
+    /* EMPTY STACK: HANDLES UNDERFLOWED STACK TOO. */
+    enforth_evaluate(vm, ": EMPTY-STACK");
+    enforth_evaluate(vm, "   DEPTH ?DUP IF DUP 0< IF NEGATE 0 DO 0 LOOP ELSE 0 DO DROP LOOP THEN THEN ;");
+
+    /* DISPLAY AN ERROR MESSAGE FOLLOWED BY THE LINE THAT HAD THE ERROR. */
+    enforth_evaluate(vm, ": ERROR");
+    enforth_evaluate(vm, "   TYPE SOURCE TYPE CR");
+    enforth_evaluate(vm, "   EMPTY-STACK");
+    /* Comment out the following line to continue after an error */
+    enforth_evaluate(vm, "   QUIT");
+    enforth_evaluate(vm, ";");
+
+    /* STACK RECORD */
+    enforth_evaluate(vm, "VARIABLE ACTUAL-DEPTH");
+    enforth_evaluate(vm, "CREATE ACTUAL-RESULTS 20 CELLS ALLOT");
+
+    /* SYNTACTIC SUGAR. */
+    enforth_evaluate(vm, ": T{ ;");
+
+    /* RECORD DEPTH AND CONTENT OF STACK. */
+    enforth_evaluate(vm, ": ->");
+    enforth_evaluate(vm, "   DEPTH DUP ACTUAL-DEPTH !");
+    enforth_evaluate(vm, "   ?DUP IF");
+    enforth_evaluate(vm, "      0 DO ACTUAL-RESULTS I CELLS + ! LOOP");
+    enforth_evaluate(vm, "   THEN ;");
+
+    /* COMPARE STACK (EXPECTED) CONTENTS WITH SAVED (ACTUAL) CONTENTS. */
+    enforth_evaluate(vm, ": }T");
+    enforth_evaluate(vm, "   DEPTH ACTUAL-DEPTH @ = IF");
+    enforth_evaluate(vm, "      DEPTH ?DUP IF");
+    enforth_evaluate(vm, "         0  DO");
+    enforth_evaluate(vm, "            ACTUAL-RESULTS I CELLS + @");
+    enforth_evaluate(vm, "            <> IF S\" INCORRECT RESULT: \" ERROR LEAVE THEN");
+    enforth_evaluate(vm, "         LOOP");
+    enforth_evaluate(vm, "      THEN");
+    enforth_evaluate(vm, "   ELSE");
+    enforth_evaluate(vm, "      S\" WRONG NUMBER OF RESULTS: \" ERROR");
+    enforth_evaluate(vm, "   THEN ;");
+
+    /* TALKING COMMENT. */
+    enforth_evaluate(vm, ": TESTING");
+    enforth_evaluate(vm, "  SOURCE VERBOSE @");
+    enforth_evaluate(vm, "   IF DUP >R TYPE CR R> >IN !");
+    enforth_evaluate(vm, "   ELSE >IN ! DROP [CHAR] * EMIT");
+    enforth_evaluate(vm, "   THEN ;");
+}
+
+static EnforthVM * const get_test_vm()
+{
+    /* Globals. */
+    static EnforthVM enforthVM;
+    static unsigned char enforthDict[8192];
+
+
+    /* Clear out the dictionary and VM structure. */
+    memset(&enforthVM, sizeof(enforthVM), 0);
+    memset(&enforthDict, sizeof(enforthDict), 0);
+
+    /* Initialize Enforth. */
+    enforth_init(
+            &enforthVM,
+            enforthDict, sizeof(enforthDict),
+            LAST_FFI,
+            enforthSimpleKeyQuestion, enforthSimpleKey, enforthSimpleEmit);
+
+    /* Compile the tester words. */
+    compile_tester(&enforthVM);
+
+    /* Return the VM. */
+    return &enforthVM;
+}
+
 static EnforthCell enforth_pop(EnforthVM * const vm)
 {
-    return vm->data_stack[31 - enforthVM.saved_sp.u--];
+    return vm->data_stack[31 - vm->saved_sp.u--];
 }
 
 
@@ -92,22 +171,74 @@ static EnforthCell enforth_pop(EnforthVM * const vm)
  */
 
 TEST_CASE( "DUP works", "[enforth]" ) {
-    /* Initialize Enforth. */
-    enforth_init(
-            &enforthVM,
-            enforthDict, sizeof(enforthDict),
-            LAST_FFI,
-            enforthSimpleKeyQuestion, enforthSimpleKey, enforthSimpleEmit);
+    /* Get the test VM. */
+    EnforthVM * const vm = get_test_vm();
 
     /* Evaluate DUP. */
-    enforth_evaluate(&enforthVM, "27 DUP");
+    enforth_evaluate(vm, "DECIMAL");
+    enforth_evaluate(vm, "27 DUP");
 
     /* Pop IP and RSP so that we can look at the stack itself. */
-    enforth_pop(&enforthVM); /* IP */
-    enforth_pop(&enforthVM); /* RSP */
+    enforth_pop(vm); /* IP */
+    enforth_pop(vm); /* RSP */
 
     /* Check the stack. */
-    REQUIRE( enforthVM.saved_sp.u == 2 );
-    REQUIRE( enforth_pop(&enforthVM).u == 27 );
-    REQUIRE( enforth_pop(&enforthVM).u == 27 );
+    REQUIRE( vm->saved_sp.u == 2 );
+    REQUIRE( enforth_pop(vm).u == 27 );
+    REQUIRE( enforth_pop(vm).u == 27 );
+}
+
+TEST_CASE( "TESTING CORE WORDS" ) {
+    /* Get the test VM. */
+    EnforthVM * const vm = get_test_vm();
+
+    /* Configure the environment. */
+    enforth_evaluate(vm, "CR");
+    enforth_evaluate(vm, "HEX");
+
+    SECTION( "TESTING BASIC ASSUMPTIONS" ) {
+        /* START WITH CLEAN SLATE */
+        enforth_evaluate(vm, "T{ -> }T");
+
+        /* TEST IF ANY BITS ARE SET; ANSWER IN BASE 1 */
+        enforth_evaluate(vm, "T{ : BITSSET? IF 0 0 ELSE 0 THEN ; -> }T");
+
+        /* ZERO IS ALL BITS CLEAR */
+        enforth_evaluate(vm, "T{  0 BITSSET? -> 0 }T");
+
+        /* OTHER NUMBERS HAVE AT LEAST ONE BIT */
+        enforth_evaluate(vm, "T{  1 BITSSET? -> 0 0 }T");
+        enforth_evaluate(vm, "T{ -1 BITSSET? -> 0 0 }T");
+    }
+
+    SECTION( "TESTING BOOLEANS: INVERT AND OR XOR" ) {
+        enforth_evaluate(vm, "T{ 0 0 AND -> 0 }T");
+        enforth_evaluate(vm, "T{ 0 1 AND -> 0 }T");
+        enforth_evaluate(vm, "T{ 1 0 AND -> 0 }T");
+        enforth_evaluate(vm, "T{ 1 1 AND -> 1 }T");
+
+        enforth_evaluate(vm, "T{ 0 INVERT 1 AND -> 1 }T");
+        enforth_evaluate(vm, "T{ 1 INVERT 1 AND -> 0 }T");
+
+        enforth_evaluate(vm, "0        CONSTANT 0S");
+        enforth_evaluate(vm, "0 INVERT CONSTANT 1S");
+
+        enforth_evaluate(vm, "T{ 0S INVERT -> 1S }T");
+        enforth_evaluate(vm, "T{ 1S INVERT -> 0S }T");
+
+        enforth_evaluate(vm, "T{ 0S 0S AND -> 0S }T");
+        enforth_evaluate(vm, "T{ 0S 1S AND -> 0S }T");
+        enforth_evaluate(vm, "T{ 1S 0S AND -> 0S }T");
+        enforth_evaluate(vm, "T{ 1S 1S AND -> 1S }T");
+
+        enforth_evaluate(vm, "T{ 0S 0S OR -> 0S }T");
+        enforth_evaluate(vm, "T{ 0S 1S OR -> 1S }T");
+        enforth_evaluate(vm, "T{ 1S 0S OR -> 1S }T");
+        enforth_evaluate(vm, "T{ 1S 1S OR -> 1S }T");
+
+        enforth_evaluate(vm, "T{ 0S 0S XOR -> 0S }T");
+        enforth_evaluate(vm, "T{ 0S 1S XOR -> 1S }T");
+        enforth_evaluate(vm, "T{ 1S 0S XOR -> 1S }T");
+        enforth_evaluate(vm, "T{ 1S 1S XOR -> 0S }T");
+    }
 }
