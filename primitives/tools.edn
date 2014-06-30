@@ -32,7 +32,7 @@
                :ibranch 14
              :dup
              ; VISIBLE?
-               :todeftype :charlit "kDefTypeCOLONHIDDEN" :notequals
+               :todeftype :icharlit "kDefTypeCOLONHIDDEN" :notequals
              :izbranch 7
                :dup :tonfa :over :nfalength :type :space
              :tolfa :xtfetch :ibranch -33
