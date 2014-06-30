@@ -1,3 +1,64 @@
+; DUMP [TOOLS] 15.6.1.1280 ( addr u -- )
+;
+; Display the contents of u consecutive addresses starting at addr. The
+; format of the display is implementation dependent.
+;
+; DUMP may be implemented using pictured numeric output words. Consequently,
+; its use may corrupt the transient region identified by #>.
+;
+; ---
+; Enforth Output Format (80-column screen represented by the box):
+; +--------------------------------------------------------------------------------+
+; |00000000  00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f  0123456789abcdef     |
+; |00000010  00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f  0123456789abcdef     |
+; |...                                                                             |
+; +--------------------------------------------------------------------------------+
+;
+; TODO Eliminate DO/LOOP and use BEGIN/REPEAT instead so that we can
+; remove the need for PIQDO, PILOOP, and PPLOOP.
+{:token :dump
+ :args [[:addr :u] []]
+ :source ": HEXCELL ( u --)  0 <# # # # # # # # # #> TYPE ;
+          : HEXCHAR ( c --)  0 <# # # #> TYPE ;
+          : EMITVALID ( c --)  DUP 32 < OVER 127 > OR  [CHAR] . AND OR  EMIT ;
+          : EMITVALID ( c --)  DUP 32 < OVER 127 > OR
+            IF DROP [CHAR] . THEN EMIT ;
+          : DUMPLINE ( addr u --)
+            OVER HEXCELL 2 SPACES                     -- address
+            DUP 0 DO OVER I + C@ HEXCHAR SPACE LOOP   -- hex vals
+            16 OVER - 3 * SPACES  SPACE               -- padding
+            0 DO DUP I + C@ EMITVALID LOOP  DROP;
+          : DUMP ( addr u --)
+            BASE @ >R  HEX
+            DUP 0 ?DO  CR  OVER I +  OVER I - 16 MIN  DUMPLINE  16 +LOOP
+            2DROP  R> BASE ! ;"
+ :pfa [:base :fetch :tor :hex
+       :dup :zero :piqdo 80
+         :cr :over :i :plus :over :i :minus :icharlit 16 :min
+         ; DUMPLINE
+           :over
+           ; HEXCELL
+             :zero :lessnumsign :numsign :numsign :numsign :numsign
+             :numsign :numsign :numsign :numsign :numsigngrtr :type
+           :icharlit 2 :spaces
+           :dup :zero :pdo
+             :over :i :plus :cfetch
+             ; HEXCHAR
+               :zero :lessnumsign :numsign :numsign :numsigngrtr :type
+             :space :piloop -12
+           :icharlit 16 :over :minus :icharlit 3 :star :spaces :space
+           :zero :pdo
+             :dup :i :plus :cfetch
+             ; EMITVALID
+               :dup :icharlit 32 :lessthan :over :icharlit 127 :greaterthan :or
+               :zbranch 4 :drop :icharlit "'.'" :emit
+             :piloop -20
+           :drop
+         :icharlit 16 :piplusloop -78
+       :twodrop
+       :rfrom :base :store
+       :exit]}
+
 {:token :words
  :args [[] []]
  :source ": VISIBLE? ( xt -- f ) >DEF-TYPE kDefTypeCOLONHIDDEN <> ;

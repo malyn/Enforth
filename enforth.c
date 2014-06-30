@@ -1419,6 +1419,14 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        MIN:
+        {
+            CHECK_STACK(2, 1);
+            tos.i = tos.i < restDataStack->i ? tos.i : restDataStack->i;
+            ++restDataStack;
+        }
+        continue;
+
         DOCOLON:
         PDOCOLON:
         {

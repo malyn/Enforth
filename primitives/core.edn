@@ -338,6 +338,8 @@
  :source ": [ ( --)  FALSE STATE ! ;"
  :pfa [:false :state :store :exit]}
 
+{:token :min :args [[:n1 :n2] [:n3]]}
+
 {:token :minus :name "-"}
 
 {:token :move}
@@ -515,6 +517,11 @@
  :source ": SPACE ( --)  BL EMIT ;"
  :pfa [:bl :emit :exit]}
 
+{:token :spaces
+ :args [[:n] []]
+ :source ": SPACES ( n -- )  BEGIN ?DUP WHILE SPACE 1- REPEAT ;"
+ :pfa [:qdup :izbranch 5 :space :oneminus :ibranch -6 :exit]}
+
 {:token :squote
  :name "S\""
  :args [[] []]
@@ -527,6 +534,12 @@
        :icharlit :psquote :compilecomma
        :dup :ccomma :here :over :allot :swap :move
        :exit]}
+
+{:token :star
+ :name "*"
+ :args [[:n1 :n2] [:n3]]
+ :source ": * ( n1|u1 n2|u2 -- n3|u3 )  UM* DROP ;"
+ :pfa [:umstar :drop :exit]}
 
 {:token :state
  :args [[] [:aaddr]]
