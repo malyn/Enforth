@@ -348,6 +348,15 @@
 
 {:token :mplus :name "M+"}
 
+{:token :mstar
+ :name "M*"
+ :args [[:n1 :n2] [:d]]
+ :source ": M* ( n1 n2 -- d )   2DUP XOR 0< >R  ABS SWAP ABS UM*  R> ?DNEGATE ;"
+ :pfa [:twodup :xor :zeroless :tor
+       :abs :swap :abs :umstar
+       :rfrom :qdnegate
+       :exit]}
+
 {:token :nip}
 
 {:token :negate}
@@ -546,6 +555,12 @@
 {:token :state
  :args [[] [:aaddr]]
  :pfa [:vm :icharlit "offsetof(EnforthVM, state)" :plus :exit]}
+
+{:token :stod
+ :name "S>D"
+ :args [[:n] [:d]]
+ :source ": S>D ( n -- d)   DUP 0< ; "
+ :pfa [:dup :zeroless :exit]}
 
 {:token :store :name "!"}
 

@@ -133,7 +133,7 @@ typedef enum EnforthToken
 
 /* Multiplier used to convert a ROM-based token into an offset into the
  * ROM-based definition table. */
-static const int kTokenMultiplier = 9;
+static const int kTokenMultiplier = 10;
 
 
 
@@ -1227,21 +1227,21 @@ DISPATCH_TOKEN:
         {
             CHECK_STACK(3, 2);
 #ifdef __AVR__
-            int16_t n = tos.i;
-            int16_t d1_msb = restDataStack++->i;
-            int16_t d1_lsb = restDataStack++->i;
-            int32_t ud1 = ((uint32_t)d1_msb << 16) | d1_lsb;
-            int32_t result = ud1 + n;
-            (--restDataStack)->i = (int16_t)result;
-            tos.i = (int16_t)(result >> 16);
+            uint16_t n = tos.u;
+            uint16_t d1_msb = restDataStack++->u;
+            uint16_t d1_lsb = restDataStack++->u;
+            uint32_t ud1 = ((uint32_t)d1_msb << 16) | d1_lsb;
+            uint32_t result = ud1 + n;
+            (--restDataStack)->u = (uint16_t)result;
+            tos.u = (uint16_t)(result >> 16);
 #else
-            int32_t n = tos.i;
-            int32_t d1_msb = restDataStack++->i;
-            int32_t d1_lsb = restDataStack++->i;
-            int64_t ud1 = ((uint64_t)d1_msb << 32) | d1_lsb;
-            int64_t result = ud1 + n;
-            (--restDataStack)->i = (int32_t)result;
-            tos.i = (int32_t)(result >> 32);
+            uint32_t n = tos.u;
+            uint32_t d1_msb = restDataStack++->u;
+            uint32_t d1_lsb = restDataStack++->u;
+            uint64_t ud1 = ((uint64_t)d1_msb << 32) | d1_lsb;
+            uint64_t result = ud1 + n;
+            (--restDataStack)->u = (uint32_t)result;
+            tos.u = (uint32_t)(result >> 32);
 #endif
         }
         continue;

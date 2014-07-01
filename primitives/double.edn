@@ -1,0 +1,4 @@
+{:token :dnegate
+ :args [[:d1] [:d2]]
+ :source ": DNEGATE ( d1 -- d2)   INVERT SWAP INVERT SWAP 1 M+ ;"
+ :pfa [:invert :swap :invert :swap :icharlit 1 :mplus :exit]}

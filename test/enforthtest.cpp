@@ -206,7 +206,6 @@ TEST_CASE( "TESTING CORE WORDS" ) {
     EnforthVM * const vm = get_test_vm();
 
     /* Configure the environment. */
-    enforth_evaluate(vm, "CR");
     enforth_evaluate(vm, "HEX");
 
     SECTION( "TESTING BASIC ASSUMPTIONS" ) {
@@ -410,5 +409,149 @@ TEST_CASE( "TESTING CORE WORDS" ) {
         REQUIRE( enforth_test(vm, "T{ 0 MIN-INT MAX -> 0 }T") );
         REQUIRE( enforth_test(vm, "T{ MAX-INT MIN-INT MAX -> MAX-INT }T") );
         REQUIRE( enforth_test(vm, "T{ MAX-INT 0 MAX -> MAX-INT }T") );
+    }
+
+    SECTION( "TESTING STACK OPS: 2DROP 2DUP 2OVER 2SWAP ?DUP DEPTH DROP DUP OVER ROT SWAP" ) {
+        REQUIRE( enforth_test(vm, "T{ 1 2 2DROP -> }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 2 2DUP -> 1 2 1 2 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 2 3 4 2OVER -> 1 2 3 4 1 2 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 2 3 4 2SWAP -> 3 4 1 2 }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 ?DUP -> 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 ?DUP -> 1 1 }T") );
+        REQUIRE( enforth_test(vm, "T{ -1 ?DUP -> -1 -1 }T") );
+        REQUIRE( enforth_test(vm, "T{ DEPTH -> 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 DEPTH -> 0 1 }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 1 DEPTH -> 0 1 2 }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 DROP -> }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 2 DROP -> 1 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 DUP -> 1 1 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 2 OVER -> 1 2 1 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 2 3 ROT -> 2 3 1 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 2 SWAP -> 2 1 }T") );
+    }
+
+    SECTION( "TESTING >R R> R@" ) {
+             enforth_evaluate(vm, "0 INVERT CONSTANT 1S");
+
+        REQUIRE( enforth_test(vm, "T{ : GR1 >R R> ; -> }T") );
+        REQUIRE( enforth_test(vm, "T{ : GR2 >R R@ R> DROP ; -> }T") );
+        REQUIRE( enforth_test(vm, "T{ 123 GR1 -> 123 }T") );
+        REQUIRE( enforth_test(vm, "T{ 123 GR2 -> 123 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1S GR1 -> 1S }T") );
+    }
+
+    SECTION( "TESTING ADD/SUBTRACT: + - 1+ 1- ABS NEGATE" ) {
+             enforth_evaluate(vm, "0 INVERT 1 RSHIFT INVERT CONSTANT MIN-INT");
+             enforth_evaluate(vm, "0 INVERT 1 RSHIFT        CONSTANT MID-UINT");
+             enforth_evaluate(vm, "0 INVERT 1 RSHIFT INVERT CONSTANT MID-UINT+1");
+
+        REQUIRE( enforth_test(vm, "T{ 0 5 + -> 5 }T") );
+        REQUIRE( enforth_test(vm, "T{ 5 0 + -> 5 }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 -5 + -> -5 }T") );
+        REQUIRE( enforth_test(vm, "T{ -5 0 + -> -5 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 2 + -> 3 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 -2 + -> -1 }T") );
+        REQUIRE( enforth_test(vm, "T{ -1 2 + -> 1 }T") );
+        REQUIRE( enforth_test(vm, "T{ -1 -2 + -> -3 }T") );
+        REQUIRE( enforth_test(vm, "T{ -1 1 + -> 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ MID-UINT 1 + -> MID-UINT+1 }T") );
+
+        REQUIRE( enforth_test(vm, "T{ 0 5 - -> -5 }T") );
+        REQUIRE( enforth_test(vm, "T{ 5 0 - -> 5 }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 -5 - -> 5 }T") );
+        REQUIRE( enforth_test(vm, "T{ -5 0 - -> -5 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 2 - -> -1 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 -2 - -> 3 }T") );
+        REQUIRE( enforth_test(vm, "T{ -1 2 - -> -3 }T") );
+        REQUIRE( enforth_test(vm, "T{ -1 -2 - -> 1 }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 1 - -> -1 }T") );
+        REQUIRE( enforth_test(vm, "T{ MID-UINT+1 1 - -> MID-UINT }T") );
+
+        REQUIRE( enforth_test(vm, "T{ 0 1+ -> 1 }T") );
+        REQUIRE( enforth_test(vm, "T{ -1 1+ -> 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 1+ -> 2 }T") );
+        REQUIRE( enforth_test(vm, "T{ MID-UINT 1+ -> MID-UINT+1 }T") );
+
+        REQUIRE( enforth_test(vm, "T{ 2 1- -> 1 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 1- -> 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 1- -> -1 }T") );
+        REQUIRE( enforth_test(vm, "T{ MID-UINT+1 1- -> MID-UINT }T") );
+
+        REQUIRE( enforth_test(vm, "T{ 0 NEGATE -> 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 NEGATE -> -1 }T") );
+        REQUIRE( enforth_test(vm, "T{ -1 NEGATE -> 1 }T") );
+        REQUIRE( enforth_test(vm, "T{ 2 NEGATE -> -2 }T") );
+        REQUIRE( enforth_test(vm, "T{ -2 NEGATE -> 2 }T") );
+
+        REQUIRE( enforth_test(vm, "T{ 0 ABS -> 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 ABS -> 1 }T") );
+        REQUIRE( enforth_test(vm, "T{ -1 ABS -> 1 }T") );
+        REQUIRE( enforth_test(vm, "T{ MIN-INT ABS -> MID-UINT+1 }T") );
+    }
+
+    SECTION( "TESTING MULTIPLY: S>D * M* UM*") {
+             enforth_evaluate(vm, "0 INVERT CONSTANT 1S");
+
+             enforth_evaluate(vm, "1S 1 RSHIFT INVERT CONSTANT MSB");
+
+             enforth_evaluate(vm, "0 INVERT                 CONSTANT MAX-UINT");
+             enforth_evaluate(vm, "0 INVERT 1 RSHIFT        CONSTANT MAX-INT");
+             enforth_evaluate(vm, "0 INVERT 1 RSHIFT INVERT CONSTANT MIN-INT");
+             enforth_evaluate(vm, "0 INVERT 1 RSHIFT        CONSTANT MID-UINT");
+             enforth_evaluate(vm, "0 INVERT 1 RSHIFT INVERT CONSTANT MID-UINT+1");
+
+        REQUIRE( enforth_test(vm, "T{ 0 S>D -> 0 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 S>D -> 1 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 2 S>D -> 2 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ -1 S>D -> -1 -1 }T") );
+        REQUIRE( enforth_test(vm, "T{ -2 S>D -> -2 -1 }T") );
+        REQUIRE( enforth_test(vm, "T{ MIN-INT S>D -> MIN-INT -1 }T") );
+        REQUIRE( enforth_test(vm, "T{ MAX-INT S>D -> MAX-INT 0 }T") );
+
+        REQUIRE( enforth_test(vm, "T{ 0 0 M* -> 0 S>D }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 1 M* -> 0 S>D }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 0 M* -> 0 S>D }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 2 M* -> 2 S>D }T") );
+        REQUIRE( enforth_test(vm, "T{ 2 1 M* -> 2 S>D }T") );
+        REQUIRE( enforth_test(vm, "T{ 3 3 M* -> 9 S>D }T") );
+        REQUIRE( enforth_test(vm, "T{ -3 3 M* -> -9 S>D }T") );
+        REQUIRE( enforth_test(vm, "T{ 3 -3 M* -> -9 S>D }T") );
+        REQUIRE( enforth_test(vm, "T{ -3 -3 M* -> 9 S>D }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 MIN-INT M* -> 0 S>D }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 MIN-INT M* -> MIN-INT S>D }T") );
+        REQUIRE( enforth_test(vm, "T{ 2 MIN-INT M* -> 0 1S }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 MAX-INT M* -> 0 S>D }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 MAX-INT M* -> MAX-INT S>D }T") );
+        REQUIRE( enforth_test(vm, "T{ 2 MAX-INT M* -> MAX-INT 1 LSHIFT 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ MIN-INT MIN-INT M* -> 0 MSB 1 RSHIFT }T") );
+        REQUIRE( enforth_test(vm, "T{ MAX-INT MIN-INT M* -> MSB MSB 2/ }T") );
+        REQUIRE( enforth_test(vm, "T{ MAX-INT MAX-INT M* -> 1 MSB 2/ INVERT }T") );
+
+        REQUIRE( enforth_test(vm, "T{ 0 0 * -> 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 1 * -> 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 0 * -> 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 2 * -> 2 }T") );
+        REQUIRE( enforth_test(vm, "T{ 2 1 * -> 2 }T") );
+        REQUIRE( enforth_test(vm, "T{ 3 3 * -> 9 }T") );
+        REQUIRE( enforth_test(vm, "T{ -3 3 * -> -9 }T") );
+        REQUIRE( enforth_test(vm, "T{ 3 -3 * -> -9 }T") );
+        REQUIRE( enforth_test(vm, "T{ -3 -3 * -> 9 }T") );
+
+        REQUIRE( enforth_test(vm, "T{ MID-UINT+1 1 RSHIFT 2 * -> MID-UINT+1 }T") );
+        REQUIRE( enforth_test(vm, "T{ MID-UINT+1 2 RSHIFT 4 * -> MID-UINT+1 }T") );
+        REQUIRE( enforth_test(vm, "T{ MID-UINT+1 1 RSHIFT MID-UINT+1 OR 2 * -> MID-UINT+1 }T") );
+
+        REQUIRE( enforth_test(vm, "T{ 0 0 UM* -> 0 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 1 UM* -> 0 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 0 UM* -> 0 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 2 UM* -> 2 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 2 1 UM* -> 2 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 3 3 UM* -> 9 0 }T") );
+
+        REQUIRE( enforth_test(vm, "T{ MID-UINT+1 1 RSHIFT 2 UM* -> MID-UINT+1 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ MID-UINT+1 2 UM* -> 0 1 }T") );
+        REQUIRE( enforth_test(vm, "T{ MID-UINT+1 4 UM* -> 0 2 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1S 2 UM* -> 1S 1 LSHIFT 1 }T") );
+        REQUIRE( enforth_test(vm, "T{ MAX-UINT MAX-UINT UM* -> 1 1 INVERT }T") );
     }
 }

@@ -665,6 +665,13 @@
 
 {:token :psquote :name "(S\")" :flags #{:headerless}}
 
+{:token :qdnegate
+ :name "?DNEGATE"
+ :args [[:d1 :n] [:d2]]
+ :flags #{:headerless}
+ :source ": ?DNEGATE ( d1 n -- d2)   0< IF DNEGATE THEN ;"
+ :pfa [:zeroless :zbranch 2 :dnegate :exit]}
+
 {:token :tib
  :args [[] [:caadr]]
  :flags #{:headerless}
