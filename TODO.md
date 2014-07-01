@@ -2,6 +2,7 @@
 * Remove the need for `PIQDO`, `PILOOP`, and `PIPLUSLOOP` by modifying `DUMP` to use `BEGIN` and `REPEAT` instead of loops.
 * Start creating the `enforth_*_extern.h` files for various Arduino libs in order to validate the FFI code, workflow, etc.
   * Consider creating a namespace enum for externs so that we can rewrite the FFIDef addresses after a load.  The trampoline would then contain the 16-bit id of the extern (10 bits for namespace, 6 bits for function).
+* PARSE-WORD needs to treat all control characters as space if given a space as the delimiter.
 * Improve the stack checking code.
   * First, the code is probably too aggressive and may not let us use the last stack item.
   * Second, we have the macro scattered everywhere, but it would be better if the stack sizes were declared in a separate table, organized by token, and then checked in a single place right before DISPATCH\_TOKEN.  Similar to the rest of these tables, the source auto-generator will make it easier to build this table.

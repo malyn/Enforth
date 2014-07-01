@@ -1051,6 +1051,13 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        ULESSTHAN:
+        {
+            CHECK_STACK(2, 1);
+            tos.i = restDataStack++->u < tos.u ? -1 : 0;
+        }
+        continue;
+
         AND:
         {
             CHECK_STACK(2, 1);
@@ -1257,6 +1264,20 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        TWOSTAR:
+        {
+            CHECK_STACK(1, 1);
+            tos.u = tos.u << 1;
+        }
+        continue;
+
+        TWOSLASH:
+        {
+            CHECK_STACK(1, 1);
+            tos.i = tos.i >> 1;
+        }
+        continue;
+
         RSHIFT:
         {
             CHECK_STACK(2, 1);
@@ -1454,6 +1475,14 @@ DISPATCH_TOKEN:
             {
                 ip += *(int8_t*)ip;
             }
+        }
+        continue;
+
+        MAX:
+        {
+            CHECK_STACK(2, 1);
+            tos.i = tos.i > restDataStack->i ? tos.i : restDataStack->i;
+            ++restDataStack;
         }
         continue;
 

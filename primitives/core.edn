@@ -338,6 +338,8 @@
  :source ": [ ( --)  FALSE STATE ! ;"
  :pfa [:false :state :store :exit]}
 
+{:token :max :args [[:n1 :n2] [:n3]]}
+
 {:token :min :args [[:n1 :n2] [:n3]]}
 
 {:token :minus :name "-"}
@@ -618,6 +620,14 @@
 
 {:token :twofetch :name "2@"}
 
+{:token :twoslash
+ :name "2/"
+ :args [[:x1] [:x2]]}
+
+{:token :twostar
+ :name "2*"
+ :args [[:x1] [:x2]]}
+
 {:token :twostore :name "2!"}
 
 {:token :twoswap :name "2SWAP"}
@@ -645,6 +655,8 @@
  :pfa [:zero :lessnumsign :numsigns :numsigngrtr :type :space :exit]}
 
 {:token :ugreaterthan :name "U>"}
+
+{:token :ulessthan :name "U<"}
 
 {:token :umstar :name "UM*"}
 
