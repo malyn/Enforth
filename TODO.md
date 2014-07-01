@@ -1,4 +1,3 @@
-* Make some sort of `enforth_assert` helper function in `enforthtest.cpp` that returns true or false if the test passed or failed.  Will probably need a modification to the tester words (maybe to put a flag on the stack or call ABORT in away that we can trap?).
 * Add remainder of `core.fr` to `enforthtest.cpp`.
 * Remove the need for `PIQDO`, `PILOOP`, and `PIPLUSLOOP` by modifying `DUMP` to use `BEGIN` and `REPEAT` instead of loops.
 * Start creating the `enforth_*_extern.h` files for various Arduino libs in order to validate the FFI code, workflow, etc.

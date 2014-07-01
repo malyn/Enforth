@@ -95,8 +95,7 @@ static void compile_tester(EnforthVM * const vm)
     enforth_evaluate(vm, ": ERROR");
     enforth_evaluate(vm, "   TYPE SOURCE TYPE CR");
     enforth_evaluate(vm, "   EMPTY-STACK");
-    /* Comment out the following line to continue after an error */
-    enforth_evaluate(vm, "   QUIT");
+    enforth_evaluate(vm, "   FALSE"); /* Test failed */
     enforth_evaluate(vm, ";");
 
     /* STACK RECORD */
@@ -122,6 +121,7 @@ static void compile_tester(EnforthVM * const vm)
     enforth_evaluate(vm, "            <> IF S\" INCORRECT RESULT: \" ERROR LEAVE THEN");
     enforth_evaluate(vm, "         LOOP");
     enforth_evaluate(vm, "      THEN");
+    enforth_evaluate(vm, "      TRUE"); /* Test was successful */
     enforth_evaluate(vm, "   ELSE");
     enforth_evaluate(vm, "      S\" WRONG NUMBER OF RESULTS: \" ERROR");
     enforth_evaluate(vm, "   THEN ;");
@@ -159,9 +159,40 @@ static EnforthVM * const get_test_vm()
     return &enforthVM;
 }
 
+static EnforthCell enforth_push(EnforthVM * const vm, const EnforthCell cell)
+{
+    vm->data_stack[31 - vm->saved_sp.u++] = cell;
+}
+
 static EnforthCell enforth_pop(EnforthVM * const vm)
 {
     return vm->data_stack[31 - vm->saved_sp.u--];
+}
+
+static bool enforth_test(EnforthVM * const vm, const char * const text)
+{
+    /* Run the test. */
+    enforth_evaluate(vm, text);
+
+    /* Check the stack. */
+    if (vm->saved_sp.u < 3)
+    {
+        return false;
+    }
+
+    /* Pop IP and RSP so that we can look at the stack itself. */
+    EnforthCell ip = enforth_pop(vm);
+    EnforthCell rsp = enforth_pop(vm);
+
+    /* Pop the test result flag. */
+    bool success = enforth_pop(vm).u == -1;
+
+    /* Push RSP and IP back onto the stack. */
+    enforth_push(vm, rsp);
+    enforth_push(vm, ip);
+
+    /* Return the test result flag. */
+    return success;
 }
 
 
@@ -169,24 +200,6 @@ static EnforthCell enforth_pop(EnforthVM * const vm)
 /* -------------------------------------
  * Basic tests.
  */
-
-TEST_CASE( "DUP works", "[enforth]" ) {
-    /* Get the test VM. */
-    EnforthVM * const vm = get_test_vm();
-
-    /* Evaluate DUP. */
-    enforth_evaluate(vm, "DECIMAL");
-    enforth_evaluate(vm, "27 DUP");
-
-    /* Pop IP and RSP so that we can look at the stack itself. */
-    enforth_pop(vm); /* IP */
-    enforth_pop(vm); /* RSP */
-
-    /* Check the stack. */
-    REQUIRE( vm->saved_sp.u == 2 );
-    REQUIRE( enforth_pop(vm).u == 27 );
-    REQUIRE( enforth_pop(vm).u == 27 );
-}
 
 TEST_CASE( "TESTING CORE WORDS" ) {
     /* Get the test VM. */
@@ -198,47 +211,47 @@ TEST_CASE( "TESTING CORE WORDS" ) {
 
     SECTION( "TESTING BASIC ASSUMPTIONS" ) {
         /* START WITH CLEAN SLATE */
-        enforth_evaluate(vm, "T{ -> }T");
+        REQUIRE( enforth_test(vm, "T{ -> }T") );
 
         /* TEST IF ANY BITS ARE SET; ANSWER IN BASE 1 */
-        enforth_evaluate(vm, "T{ : BITSSET? IF 0 0 ELSE 0 THEN ; -> }T");
+        REQUIRE( enforth_test(vm, "T{ : BITSSET? IF 0 0 ELSE 0 THEN ; -> }T") );
 
         /* ZERO IS ALL BITS CLEAR */
-        enforth_evaluate(vm, "T{  0 BITSSET? -> 0 }T");
+        REQUIRE( enforth_test(vm, "T{  0 BITSSET? -> 0 }T") );
 
         /* OTHER NUMBERS HAVE AT LEAST ONE BIT */
-        enforth_evaluate(vm, "T{  1 BITSSET? -> 0 0 }T");
-        enforth_evaluate(vm, "T{ -1 BITSSET? -> 0 0 }T");
+        REQUIRE( enforth_test(vm, "T{  1 BITSSET? -> 0 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ -1 BITSSET? -> 0 0 }T") );
     }
 
     SECTION( "TESTING BOOLEANS: INVERT AND OR XOR" ) {
-        enforth_evaluate(vm, "T{ 0 0 AND -> 0 }T");
-        enforth_evaluate(vm, "T{ 0 1 AND -> 0 }T");
-        enforth_evaluate(vm, "T{ 1 0 AND -> 0 }T");
-        enforth_evaluate(vm, "T{ 1 1 AND -> 1 }T");
+        REQUIRE( enforth_test(vm, "T{ 0 0 AND -> 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 1 AND -> 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 0 AND -> 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 1 AND -> 1 }T") );
 
-        enforth_evaluate(vm, "T{ 0 INVERT 1 AND -> 1 }T");
-        enforth_evaluate(vm, "T{ 1 INVERT 1 AND -> 0 }T");
+        REQUIRE( enforth_test(vm, "T{ 0 INVERT 1 AND -> 1 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 INVERT 1 AND -> 0 }T") );
 
-        enforth_evaluate(vm, "0        CONSTANT 0S");
-        enforth_evaluate(vm, "0 INVERT CONSTANT 1S");
+             enforth_evaluate(vm, "0        CONSTANT 0S");
+             enforth_evaluate(vm, "0 INVERT CONSTANT 1S");
 
-        enforth_evaluate(vm, "T{ 0S INVERT -> 1S }T");
-        enforth_evaluate(vm, "T{ 1S INVERT -> 0S }T");
+        REQUIRE( enforth_test(vm, "T{ 0S INVERT -> 1S }T") );
+        REQUIRE( enforth_test(vm, "T{ 1S INVERT -> 0S }T") );
 
-        enforth_evaluate(vm, "T{ 0S 0S AND -> 0S }T");
-        enforth_evaluate(vm, "T{ 0S 1S AND -> 0S }T");
-        enforth_evaluate(vm, "T{ 1S 0S AND -> 0S }T");
-        enforth_evaluate(vm, "T{ 1S 1S AND -> 1S }T");
+        REQUIRE( enforth_test(vm, "T{ 0S 0S AND -> 0S }T") );
+        REQUIRE( enforth_test(vm, "T{ 0S 1S AND -> 0S }T") );
+        REQUIRE( enforth_test(vm, "T{ 1S 0S AND -> 0S }T") );
+        REQUIRE( enforth_test(vm, "T{ 1S 1S AND -> 1S }T") );
 
-        enforth_evaluate(vm, "T{ 0S 0S OR -> 0S }T");
-        enforth_evaluate(vm, "T{ 0S 1S OR -> 1S }T");
-        enforth_evaluate(vm, "T{ 1S 0S OR -> 1S }T");
-        enforth_evaluate(vm, "T{ 1S 1S OR -> 1S }T");
+        REQUIRE( enforth_test(vm, "T{ 0S 0S OR -> 0S }T") );
+        REQUIRE( enforth_test(vm, "T{ 0S 1S OR -> 1S }T") );
+        REQUIRE( enforth_test(vm, "T{ 1S 0S OR -> 1S }T") );
+        REQUIRE( enforth_test(vm, "T{ 1S 1S OR -> 1S }T") );
 
-        enforth_evaluate(vm, "T{ 0S 0S XOR -> 0S }T");
-        enforth_evaluate(vm, "T{ 0S 1S XOR -> 1S }T");
-        enforth_evaluate(vm, "T{ 1S 0S XOR -> 1S }T");
-        enforth_evaluate(vm, "T{ 1S 1S XOR -> 0S }T");
+        REQUIRE( enforth_test(vm, "T{ 0S 0S XOR -> 0S }T") );
+        REQUIRE( enforth_test(vm, "T{ 0S 1S XOR -> 1S }T") );
+        REQUIRE( enforth_test(vm, "T{ 1S 0S XOR -> 1S }T") );
+        REQUIRE( enforth_test(vm, "T{ 1S 1S XOR -> 0S }T") );
     }
 }
