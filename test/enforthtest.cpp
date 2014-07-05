@@ -118,7 +118,7 @@ static void compile_tester(EnforthVM * const vm)
     enforth_evaluate(vm, "      DEPTH ?DUP IF");
     enforth_evaluate(vm, "         0  DO");
     enforth_evaluate(vm, "            ACTUAL-RESULTS I CELLS + @");
-    enforth_evaluate(vm, "            <> IF S\" INCORRECT RESULT: \" ERROR LEAVE THEN");
+    enforth_evaluate(vm, "            <> IF S\" INCORRECT RESULT: \" ERROR UNLOOP EXIT THEN");
     enforth_evaluate(vm, "         LOOP");
     enforth_evaluate(vm, "      THEN");
     enforth_evaluate(vm, "      TRUE"); /* Test was successful */
