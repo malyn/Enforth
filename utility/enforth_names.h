@@ -76,11 +76,14 @@
 "\043" "LOOP"
 "\022" "M*"
 "\042" "?DUP"
-"\042" "QUIT"
+"\103" "POSTPONE"
 "\012" "@"
 "\052" "ABORT"
-"\023" "S\""
+"\042" "QUIT"
 "\032" "ABS"
+"\032" "AND"
+"\023" "S\""
+"\022" "C!"
 "\032" "S>D"
 "\042" "SIGN"
 "\062" "SOURCE"
@@ -89,22 +92,22 @@
 "\052" "STATE"
 "\043" "THEN"
 "\042" "TYPE"
-"\032" "AND"
+"\032" "C+!"
 "\022" "U."
 "\062" "UNUSED"
-"\022" "C!"
-"\042" "USE:"
-"\032" "C+!"
 "\022" "C@"
+"\042" "USE:"
 "\052" "DEPTH"
-"\102" "VARIABLE"
-"\052" "WORDS"
 "\042" "DROP"
 "\032" "DUP"
+"\102" "VARIABLE"
+"\052" "WORDS"
 "\042" "EMIT"
 "\042" "EXIT"
 "\052" "FALSE"
 "\012" "I"
+"\062" "INVERT"
+"\032" "KEY"
 "\013" "["
 "\063" "[CHAR]"
 "\013" "\\"
@@ -115,82 +118,82 @@
 "\002" /* TOLFA */
 "\002" /* TONFA */
 "\002" /* TOTOKEN */
-"\062" "INVERT"
-"\032" "KEY"
+"\062" "LSHIFT"
+"\022" "M+"
 "\002" /* TOXT */
 "\002" /* TOCOMPILETOKEN */
-"\062" "LSHIFT"
+"\032" "MAX"
 "\002" /* QDNEGATE */
 "\002" /* CHANGELATESTDEFTYPE */
-"\022" "M+"
-"\002" /* COLD */
-"\032" "MAX"
 "\032" "MIN"
+"\002" /* COLD */
 "\042" "MOVE"
-"\002" /* DIGITQ */
 "\062" "NEGATE"
 "\032" "NIP"
+"\002" /* DIGITQ */
 "\022" "OR"
 "\042" "OVER"
+"\022" "R>"
+"\022" "R@"
 "\002" /* DP */
 "\002" /* ENDLOOP */
 "\002" /* FFIQ */
 "\002" /* FFIDEFARITY */
 "\002" /* FFIDEFNAME */
 "\002" /* FFIDEFNAMELEN */
-"\022" "R>"
-"\002" /* FINDDEF */
-"\022" "R@"
 "\032" "ROT"
+"\002" /* FINDDEF */
 "\062" "RSHIFT"
-"\002" /* FINDFFIDEF */
 "\042" "SWAP"
 "\042" "TRUE"
+"\002" /* FINDFFIDEF */
 "\042" "TUCK"
-"\002" /* FINDPRIM */
 "\022" "U<"
 "\022" "U>"
+"\002" /* FINDPRIM */
 "\032" "UM*"
 "\062" "UM/MOD"
-"\002" /* FINDWORD */
 "\062" "UNLOOP"
-"\002" /* FOUNDDEFQ */
 "\032" "XOR"
+"\002" /* FINDWORD */
 "\002" /* TICKNAMES */
+"\002" /* FOUNDDEFQ */
 "\002" /* PPLUSLOOP */
 "\002" /* PQDO */
 "\002" /* PDO */
-"\002" /* FOUNDFFIQ */
-"\002" /* FOUNDFFIDEFQ */
 "\002" /* PEXECUTE */
 "\002" /* PIPLUSLOOP */
-"\002" /* FOUNDPRIMQ */
+"\002" /* FOUNDFFIQ */
+"\002" /* FOUNDFFIDEFQ */
 "\002" /* PIQDO */
 "\002" /* PILOOP */
+"\002" /* FOUNDPRIMQ */
 "\002" /* PISQUOTE */
 "\002" /* LIT */
-"\002" /* HALT */
-"\002" /* HERETOCHAIN */
 "\002" /* PLOOP */
 "\002" /* PSQUOTE */
+"\002" /* HALT */
+"\002" /* HERETOCHAIN */
+"\002" /* ZBRANCH */
+"\002" /* BRANCH */
 "\002" /* HLD */
 "\002" /* HLDEND */
 "\002" /* INTERPRET */
-"\002" /* ZBRANCH */
-"\002" /* BRANCH */
 "\002" /* CHARLIT */
 "\002" /* IFETCH */
 "\002" /* IBRANCH */
-"\002" /* ITYPE */
 "\002" /* ICFETCH */
+"\002" /* ICHARLIT */
+"\002" /* ITYPE */
+"\002" /* INITRP */
 "\002" /* NAMELENGTH */
 "\002" /* NFALENGTH */
-"\002" /* ICHARLIT */
-"\002" /* NUMBERQ */
-"\002" /* INITRP */
 "\002" /* IZBRANCH */
+"\002" /* NUMBERQ */
 "\002" /* PHALT */
 "\002" /* VM */
+"\000"
+"\000"
 "\000"
 "\002" /* PARSEWORD */
 "\000"

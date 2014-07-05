@@ -429,6 +429,41 @@
 
 {:token :plusstore :name "+!"}
 
+; Postponing a non-immediate word requires the compiler to add code to
+; the current definition that compiles the postponed word into the
+; then-current definition when the current definition is executed.  In
+; other words, the current definition is probably a compiler directive
+; and we want the compilation behavior of the postponed word in that
+; compiler directive and not the execution behavior.
+;
+; The corollary to this is postponing an immediate word, which requires
+; the word to be compiled into the current definition (so that it
+; executes when that definition executes) instead of being executed
+; right now, which is the usual behavior of an immediate word.
+{:token :postpone
+ :args [[] []]
+ :flags #{:immediate}
+ :source ": POSTPONE ( \"<spaces>name\" --)
+            BL PARSE-WORD  FIND-WORD  ( 0 | xt 1 [imm] | xt -1 [non-imm])
+            ?DUP 0= IF TYPE  SPACE  [CHAR] ? EMIT  CR  ABORT THEN
+            0< IF  ['] LIT COMPILE,  ,  ['] COMPILE, COMPILE,
+               ELSE COMPILE, THEN ; IMMEDIATE"
+ :pfa [:bl :parseword :findword
+       :qdup :zeroequals :izbranch 8
+         :type :space :charlit "'?'" :emit :cr :abort
+       :zeroless :izbranch 10
+         ; We keep things simple and use LIT here even if the XT is a
+         ; token (and could therefore use CHARLIT).  POSTPONE is used
+         ; infrequently and optimizing for RAM size at the expense of
+         ; the extra IF/ELSE statement here doesn't seem worth the
+         ; complexity.
+         :icharlit :lit :compilecomma
+           :comma
+           :icharlit :compilecomma :compilecomma
+           :ibranch 2
+         :compilecomma
+       :exit]}
+
 {:token :qdo
  :name "?DO"
  :flags #{:immediate}
