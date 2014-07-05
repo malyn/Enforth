@@ -316,9 +316,10 @@
 
 {:token :literal
  :args [[:x] []]
+ :flags #{:immediate}
  :source ": LITERAL ( x --)
             DUP $FF INVERT AND 0= IF CHARLIT C, C,
-            ELSE LIT C, , THEN ;"
+            ELSE LIT C, , THEN ; IMMEDIATE"
  :pfa [:dup :icharlit 0xff :invert :and :zeroequals :izbranch 7
          :icharlit :charlit :ccomma :ccomma :ibranch 5
          :icharlit :lit :ccomma :comma
@@ -335,7 +336,8 @@
 {:token :ltbracket
  :name "["
  :args [[] []]
- :source ": [ ( --)  FALSE STATE ! ;"
+ :flags #{:immediate}
+ :source ": [ ( --)  FALSE STATE ! ; IMMEDIATE"
  :pfa [:false :state :store :exit]}
 
 {:token :max :args [[:n1 :n2] [:n3]]}
@@ -472,9 +474,8 @@
 
 {:token :rtbracket
  :name "]"
- :flags #{:immediate}
  :args [[] []]
- :source ": ] ( --)  TRUE STATE ! ; IMMEDIATE"
+ :source ": ] ( --)  TRUE STATE ! ;"
  :pfa [:true :state :store :exit]}
 
 {:token :rot}
