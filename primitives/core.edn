@@ -48,6 +48,13 @@
        :drop :nip :swap :minus
        :exit]}
 
+{:token :again
+ :args [[] []]
+ :flags #{:immediate}
+ :source ": AGAIN ( C: dest -- )
+            ['] branch COMPILE,  HERE - C, ; IMMEDIATE"
+ :pfa [:icharlit :branch :compilecomma :here :minus :ccomma :exit]}
+
 {:token :align
  :args [[] []]
  :source ": ALIGN ( -- )  ( do nothing ) ;"
@@ -63,6 +70,12 @@
 {:token :base
  :args [[] [:aaddr]]
  :pfa [:vm :icharlit "offsetof(EnforthVM, base)" :plus :exit]}
+
+{:token :begin
+ :args [[] []]
+ :flags #{:immediate}
+ :source ": BEGIN ( -- )  HERE ; IMMEDIATE"
+ :pfa [:here :exit]}
 
 {:token :bl
  :args [[] [:c]]
@@ -534,6 +547,12 @@
          :pisquote 3 "'o'" "'k'" "' '" :itype
          :ibranch -19]}
 
+{:token :repeat
+ :args [[] []]
+ :flags #{:immediate}
+ :source ": REPEAT ( -- )  POSTPONE AGAIN  POSTPONE THEN ; IMMEDIATE"
+ :pfa [:again :then :exit]}
+
 {:token :rfetch :name "R@"}
 
 {:token :rfrom :name "R>"}
@@ -796,6 +815,12 @@
  :pfa [:create :icharlit "kDefTypeVARIABLE" :changelatestdeftype
        :zero :comma
        :exit]}
+
+{:token :while
+ :args [[] []]
+ :flags #{:immediate}
+ :source ": WHILE ( -- )  POSTPONE IF  SWAP ; IMMEDIATE"
+ :pfa [:if :swap :exit]}
 
 {:token :xor}
 
