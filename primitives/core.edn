@@ -533,7 +533,7 @@
                ELSE COMPILE, THEN ; IMMEDIATE"
  :pfa [:bl :parseword :findword
        :qdup :zeroequals :izbranch 8
-         :type :space :charlit "'?'" :emit :cr :abort
+         :type :space :icharlit "'?'" :emit :cr :abort
        :zeroless :izbranch 10
          ; We keep things simple and use LIT here even if the XT is a
          ; token (and could therefore use CHARLIT).  POSTPONE is used
