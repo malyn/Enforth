@@ -60,6 +60,11 @@
  :source ": ALIGN ( -- )  ( do nothing ) ;"
  :pfa [:exit]}
 
+{:token :aligned
+ :args [[:addr] [:a-addr]]
+ :source ": ALIGNED ( addr -- a-addr )  ( do nothing ) ;"
+ :pfa [:exit]}
+
 {:token :allot
  :args [[:n] []]
  :source ": ALLOT ( n -- )  DP +! ;"
@@ -96,10 +101,16 @@
  :source ": C, ( char -- )  HERE C!  1 CHARS ALLOT ;"
  :pfa [:here :cstore :icharlit 1 :chars :allot :exit]}
 
+{:token :cellplus
+ :name "CELL+"
+ :args [[:a-addr1] [:a-addr2]]
+ :source ": CELL+ ( a-addr1 -- a-addr2 )  kEnforthCellSize + ;"
+ :pfa [:icharlit "kEnforthCellSize" :plus :exit]}
+
 {:token :cells
  :args [[:n1] [:n2]]
  :source ": CELLS ( n1 -- n2 )  kEnforthCellSize * ;"
- :pfa [:icharlit "kEnforthCellSize" :umstar :drop :exit]}
+ :pfa [:icharlit "kEnforthCellSize" :star :exit]}
 
 {:token :cfetch :name "C@"}
 
@@ -107,6 +118,12 @@
  :args [[] [:char]]
  :source ": CHAR ( \"<spaces>name\" -- char )  BL PARSE-WORD DROP C@ ;"
  :pfa [:bl :parseword :drop :cfetch :exit]}
+
+{:token :charplus
+ :name "CHAR+"
+ :args [[:c-addr1] [:c-addr2]]
+ :source ": CHAR+ ( c-addr1 -- c-addr2 )  1+ ;"
+ :pfa [:oneplus :exit]}
 
 {:token :chars
  :args [[:n1] [:n2]]

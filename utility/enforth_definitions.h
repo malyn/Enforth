@@ -70,6 +70,9 @@ ICHARLIT, BRANCH, COMPILECOMMA, HERE, MINUS, CCOMMA, EXIT, 0, 0, 0, 0,
 /* ALIGN */
 EXIT, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 
+/* ALIGNED */
+EXIT, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+
 /* ALLOT */
 DP, PLUSSTORE, EXIT, 0, 0, 0, 0, 0, 0, 0, 0,
 
@@ -85,11 +88,17 @@ ICHARLIT, ' ', EXIT, 0, 0, 0, 0, 0, 0, 0, 0,
 /* CCOMMA */
 HERE, CSTORE, ICHARLIT, 1, CHARS, ALLOT, EXIT, 0, 0, 0, 0,
 
+/* CELLPLUS */
+ICHARLIT, kEnforthCellSize, PLUS, EXIT, 0, 0, 0, 0, 0, 0, 0,
+
 /* CELLS */
-ICHARLIT, kEnforthCellSize, UMSTAR, DROP, EXIT, 0, 0, 0, 0, 0, 0,
+ICHARLIT, kEnforthCellSize, STAR, EXIT, 0, 0, 0, 0, 0, 0, 0,
 
 /* CHAR */
 BL, PARSEWORD, DROP, CFETCH, EXIT, 0, 0, 0, 0, 0, 0,
+
+/* CHARPLUS */
+ONEPLUS, EXIT, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 
 /* CHARS */
 EXIT, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

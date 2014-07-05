@@ -762,4 +762,78 @@ TEST_CASE( "TESTING CORE WORDS" ) {
         REQUIRE( enforth_test(vm, "T{ MAX-INT 2 MAX-INT */MOD -> MAX-INT 2 MAX-INT T*/MOD }T") );
         REQUIRE( enforth_test(vm, "T{ MIN-INT 2 MIN-INT */MOD -> MIN-INT 2 MIN-INT T*/MOD }T") );
     }
+
+    SECTION( "TESTING HERE , @ ! CELL+ CELLS C, C@ C! CHARS 2@ 2! ALIGN ALIGNED +! ALLOT") {
+             enforth_evaluate(vm, "0        CONSTANT 0S");
+             enforth_evaluate(vm, "0 INVERT CONSTANT 1S");
+             enforth_evaluate(vm, "0S CONSTANT <FALSE>");
+             enforth_evaluate(vm, "1S CONSTANT <TRUE>");
+             enforth_evaluate(vm, "1S 1 RSHIFT INVERT CONSTANT MSB");
+
+             enforth_evaluate(vm, "HERE 1 ALLOT");
+             enforth_evaluate(vm, "HERE");
+             enforth_evaluate(vm, "CONSTANT 2NDA");
+             enforth_evaluate(vm, "CONSTANT 1STA");
+        REQUIRE( enforth_test(vm, "T{ 1STA 2NDA U< -> <TRUE> }T") );
+        REQUIRE( enforth_test(vm, "T{ 1STA 1+ -> 2NDA }T") );
+        /* MISSING TEST: NEGATIVE ALLOT */
+
+             enforth_evaluate(vm, "HERE 1 ,");
+             enforth_evaluate(vm, "HERE 2 ,");
+             enforth_evaluate(vm, "CONSTANT 2ND");
+             enforth_evaluate(vm, "CONSTANT 1ST");
+        REQUIRE( enforth_test(vm, "T{ 1ST 2ND U< -> <TRUE> }T") );
+        REQUIRE( enforth_test(vm, "T{ 1ST CELL+ -> 2ND }T") );
+        REQUIRE( enforth_test(vm, "T{ 1ST 1 CELLS + -> 2ND }T") );
+        REQUIRE( enforth_test(vm, "T{ 1ST @ 2ND @ -> 1 2 }T") );
+        REQUIRE( enforth_test(vm, "T{ 5 1ST ! -> }T") );
+        REQUIRE( enforth_test(vm, "T{ 1ST @ 2ND @ -> 5 2 }T") );
+        REQUIRE( enforth_test(vm, "T{ 6 2ND ! -> }T") );
+        REQUIRE( enforth_test(vm, "T{ 1ST @ 2ND @ -> 5 6 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1ST 2@ -> 6 5 }T") );
+        REQUIRE( enforth_test(vm, "T{ 2 1 1ST 2! -> }T") );
+        REQUIRE( enforth_test(vm, "T{ 1ST 2@ -> 2 1 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1S 1ST !  1ST @ -> 1S }T") );
+
+             enforth_evaluate(vm, "HERE 1 C,");
+             enforth_evaluate(vm, "HERE 2 C,");
+             enforth_evaluate(vm, "CONSTANT 2NDC");
+             enforth_evaluate(vm, "CONSTANT 1STC");
+        REQUIRE( enforth_test(vm, "T{ 1STC 2NDC U< -> <TRUE> }T") );
+        REQUIRE( enforth_test(vm, "T{ 1STC CHAR+ -> 2NDC }T") );
+        REQUIRE( enforth_test(vm, "T{ 1STC 1 CHARS + -> 2NDC }T") );
+        REQUIRE( enforth_test(vm, "T{ 1STC C@ 2NDC C@ -> 1 2 }T") );
+        REQUIRE( enforth_test(vm, "T{ 3 1STC C! -> }T") );
+        REQUIRE( enforth_test(vm, "T{ 1STC C@ 2NDC C@ -> 3 2 }T") );
+        REQUIRE( enforth_test(vm, "T{ 4 2NDC C! -> }T") );
+        REQUIRE( enforth_test(vm, "T{ 1STC C@ 2NDC C@ -> 3 4 }T") );
+
+             enforth_evaluate(vm, "ALIGN 1 ALLOT HERE ALIGN HERE 3 CELLS ALLOT");
+             enforth_evaluate(vm, "CONSTANT A-ADDR  CONSTANT UA-ADDR");
+        REQUIRE( enforth_test(vm, "T{ UA-ADDR ALIGNED -> A-ADDR }T") );
+        REQUIRE( enforth_test(vm, "T{    1 A-ADDR C!  A-ADDR C@ ->    1 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1234 A-ADDR  !  A-ADDR  @ -> 1234 }T") );
+        REQUIRE( enforth_test(vm, "T{ 123 456 A-ADDR 2!  A-ADDR 2@ -> 123 456 }T") );
+        REQUIRE( enforth_test(vm, "T{ 2 A-ADDR CHAR+ C!  A-ADDR CHAR+ C@ -> 2 }T") );
+        REQUIRE( enforth_test(vm, "T{ 3 A-ADDR CELL+ C!  A-ADDR CELL+ C@ -> 3 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1234 A-ADDR CELL+ !  A-ADDR CELL+ @ -> 1234 }T") );
+        REQUIRE( enforth_test(vm, "T{ 123 456 A-ADDR CELL+ 2!  A-ADDR CELL+ 2@ -> 123 456 }T") );
+
+             enforth_evaluate(vm, ": BITS ( X -- U )");
+             enforth_evaluate(vm, "   0 SWAP BEGIN DUP WHILE DUP MSB AND IF >R 1+ R> THEN 2* REPEAT DROP ;");
+        /* CHARACTERS >= 1 AU, <= SIZE OF CELL, >= 8 BITS */
+        REQUIRE( enforth_test(vm, "T{ 1 CHARS 1 < -> <FALSE> }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 CHARS 1 CELLS > -> <FALSE> }T") );
+        /* TBD: HOW TO FIND NUMBER OF BITS? */
+
+        /* CELLS >= 1 AU, INTEGRAL MULTIPLE OF CHAR SIZE, >= 16 BITS */
+        REQUIRE( enforth_test(vm, "T{ 1 CELLS 1 < -> <FALSE> }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 CELLS 1 CHARS MOD -> 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 1S BITS 10 < -> <FALSE> }T") );
+
+        REQUIRE( enforth_test(vm, "T{ 0 1ST ! -> }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 1ST +! -> }T") );
+        REQUIRE( enforth_test(vm, "T{ 1ST @ -> 1 }T") );
+        REQUIRE( enforth_test(vm, "T{ -1 1ST +! 1ST @ -> 0 }T") );
+    }
 }
