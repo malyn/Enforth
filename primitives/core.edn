@@ -461,6 +461,13 @@
 
 {:token :over}
 
+{:token :paren
+ :name "("
+ :args [[] []]
+ :flags #{:immediate}
+ :source ": ( ( \"ccc<quote>\" -- )  [CHAR] ) PARSE-WORD 2DROP ; IMMEDIATE"
+ :pfa [:icharlit "')'" :parseword :twodrop :exit]}
+
 {:token :plus :name "+"}
 
 {:token :plusloop
