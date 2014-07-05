@@ -43,7 +43,6 @@ extern "C" {
  */
 
 /* ANSI C includes. */
-#include <stdlib.h>
 #include <inttypes.h>
 
 /* AVR includes. */

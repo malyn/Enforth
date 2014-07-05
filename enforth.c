@@ -36,6 +36,7 @@
  */
 
 /* ANSI C includes. */
+#include <stdlib.h>
 #if ENABLE_TRACING
 #include <stdio.h>
 #endif
@@ -973,7 +974,7 @@ DISPATCH_TOKEN:
         ABS:
         {
             CHECK_STACK(1, 1);
-            tos.i = abs(tos.i);
+            tos.u = abs(tos.i);
         }
         continue;
 
@@ -1005,30 +1006,29 @@ DISPATCH_TOKEN:
         continue;
 
         /* -------------------------------------------------------------
-         * UD/MOD [ENFORTH] "u-d-slash-mod" ( ud1 u1 -- n ud2 )
+         * UM/MOD [CORE] 6.1.2370 "u-m-slash-mod" ( ud u1 -- u2 u3 )
          *
-         * Divide ud1 by u1 giving the quotient ud2 and the remainder n. */
-        UDSLASHMOD:
+         * Divide ud by u1, giving the quotient u3 and the remainder u2.
+         * All values and arithmetic are unsigned.  An ambiguous
+         * condition exists if u1 is zero or if the quotient lies
+         * outside the range of a single-cell unsigned integer. */
+        UMSLASHMOD:
         {
-            CHECK_STACK(3, 3);
+            CHECK_STACK(3, 2);
 #ifdef __AVR__
             uint16_t u1 = tos.u;
-            uint16_t ud1_msb = restDataStack++->u;
-            uint16_t ud1_lsb = restDataStack++->u;
-            uint32_t ud1 = ((uint32_t)ud1_msb << 16) | ud1_lsb;
-            ldiv_t result = ldiv(ud1, u1);
-            (--restDataStack)->u = result.rem;
-            (--restDataStack)->u = result.quot;
-            tos.u = (uint16_t)(result.quot >> 16);
+            uint16_t ud_msb = restDataStack++->u;
+            uint16_t ud_lsb = restDataStack++->u;
+            uint32_t ud = ((uint32_t)ud_msb << 16) | ud_lsb;
+            (--restDataStack)->u = ud % u1;
+            tos.u = ud / u1;
 #else
             uint32_t u1 = tos.u;
-            uint32_t ud1_msb = restDataStack++->u;
-            uint32_t ud1_lsb = restDataStack++->u;
-            uint64_t ud1 = ((uint64_t)ud1_msb << 32) | ud1_lsb;
-            lldiv_t result = lldiv(ud1, u1);
-            (--restDataStack)->u = result.rem;
-            (--restDataStack)->u = result.quot;
-            tos.u = (uint32_t)(result.quot >> 32);
+            uint32_t ud_msb = restDataStack++->u;
+            uint32_t ud_lsb = restDataStack++->u;
+            uint64_t ud = ((uint64_t)ud_msb << 32) | ud_lsb;
+            (--restDataStack)->u = ud % u1;
+            tos.u = ud / u1;
 #endif
         }
         continue;

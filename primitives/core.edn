@@ -674,6 +674,10 @@
 
 {:token :ulessthan :name "U<"}
 
+{:token :umslashmod
+ :name "UM/MOD"
+ :args [[:ud :u1] [:u2 :u3]]}
+
 {:token :umstar :name "UM*"}
 
 {:token :unloop

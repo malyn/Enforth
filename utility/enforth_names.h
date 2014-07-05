@@ -71,7 +71,7 @@
 "\062" "LATEST"
 "\053" "LEAVE"
 "\012" ">"
-"\072" "LITERAL"
+"\073" "LITERAL"
 "\022" ">R"
 "\043" "LOOP"
 "\022" "M*"
@@ -105,10 +105,10 @@
 "\052" "FALSE"
 "\012" "I"
 "\062" "INVERT"
-"\012" "["
+"\013" "["
 "\063" "[CHAR]"
 "\013" "\\"
-"\013" "]"
+"\012" "]"
 "\002" /* TICKPREVLEAVE */
 "\002" /* TODEFTYPE */
 "\002" /* TOFFIDEF */
@@ -150,46 +150,46 @@
 "\002" /* FINDPRIM */
 "\022" "U>"
 "\032" "UM*"
+"\062" "UM/MOD"
 "\062" "UNLOOP"
-"\032" "XOR"
 "\002" /* FINDWORD */
-"\002" /* TICKNAMES */
+"\032" "XOR"
 "\002" /* FOUNDDEFQ */
+"\002" /* TICKNAMES */
 "\002" /* PPLUSLOOP */
 "\002" /* PQDO */
 "\002" /* PDO */
 "\002" /* PEXECUTE */
-"\002" /* PIPLUSLOOP */
 "\002" /* FOUNDFFIQ */
 "\002" /* FOUNDFFIDEFQ */
+"\002" /* PIPLUSLOOP */
 "\002" /* PIQDO */
-"\002" /* PILOOP */
 "\002" /* FOUNDPRIMQ */
+"\002" /* PILOOP */
 "\002" /* PISQUOTE */
 "\002" /* LIT */
 "\002" /* PLOOP */
-"\002" /* PSQUOTE */
 "\002" /* HALT */
 "\002" /* HERETOCHAIN */
+"\002" /* PSQUOTE */
 "\002" /* ZBRANCH */
-"\002" /* BRANCH */
 "\002" /* HLD */
 "\002" /* HLDEND */
 "\002" /* INTERPRET */
+"\002" /* BRANCH */
 "\002" /* CHARLIT */
 "\002" /* EXIT */
 "\002" /* IFETCH */
 "\002" /* IBRANCH */
-"\002" /* ICFETCH */
 "\002" /* ITYPE */
-"\002" /* ICHARLIT */
+"\002" /* ICFETCH */
 "\002" /* NAMELENGTH */
 "\002" /* NFALENGTH */
-"\002" /* INITRP */
+"\002" /* ICHARLIT */
 "\002" /* NUMBERQ */
+"\002" /* INITRP */
 "\002" /* IZBRANCH */
 "\002" /* PHALT */
-"\002" /* UDSLASHMOD */
 "\002" /* VM */
 "\000"
 "\002" /* PARSEWORD */
@@ -202,6 +202,7 @@
 "\002" /* TIB */
 "\002" /* TIBSIZE */
 "\002" /* TOKENQ */
+"\002" /* UDSLASHMOD */
 "\002" /* XTCOMMA */
 "\002" /* XTFETCH */
 "\002" /* XTFLAG */

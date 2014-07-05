@@ -793,7 +793,14 @@
  :name "2NIP"
  :args [[:x1 :x2 :x3 :x4] [:x3 :x4]]}
 
-{:token :udslashmod :flags #{:headerless}}
+{:token :udslashmod
+ :name "UD/MOD"
+ :args [[:ud1 :u1] [:n :ud2]]
+ :flags #{:headerless}
+ :source ": UD/MOD ( ud1 u1 -- n ud2 )   >R 0 R@ UM/MOD  R> SWAP >R UM/MOD R> ;"
+ :pfa [:tor :zero :rfetch :umslashmod
+       :rfrom :swap :tor :umslashmod :rfrom
+       :exit]}
 
 {:token :use
  :name "USE:"

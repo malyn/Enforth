@@ -36,6 +36,7 @@
  */
 
 /* ANSI C includes. */
+#include <stdlib.h>
 #include <stdio.h>
 
 /* Enforth includes. */
