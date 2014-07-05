@@ -250,6 +250,31 @@
  :source ": FIND ( c-addr -- c-addr 0 | xt 1 | xt -1 ) COUNT FIND-WORD ;"
  :pfa [:count :findword :exit]}
 
+{:token :fmslashmod
+ :name "FM/MOD"
+ :args [[:d1 :n1] [:n2 :n3]]
+ :source ": FM/MOD ( d1 n1 -- n2 n3)
+            DUP >R ( num den R:signrem) 2DUP XOR ( num den signquo R:signrem)
+            SWAP ABS DUP >R ( num signquo +den R:signrem +den)
+            SWAP >R >R DABS R> ( num +den R:signrem +den signquo)
+            UM/MOD ( rem quo R:..)
+            R> 0< IF NEGATE OVER 0<> IF 1- SWAP R> SWAP - SWAP
+                                     ELSE R> DROP THEN
+                  ELSE R> DROP THEN
+            R> 0< IF SWAP NEGATE SWAP THEN ;"
+ :pfa [:dup :tor :twodup :xor
+       :swap :abs :dup :tor
+       :swap :tor :tor :dabs :rfrom
+       :umslashmod
+       :rfrom :zeroless :izbranch 18
+         :negate :over :zeronotequals :izbranch 9
+           :oneminus :swap :rfrom :swap :minus :swap :ibranch 7
+           :rfrom :drop :ibranch 3
+         :rfrom :drop
+       :rfrom :zeroless :izbranch 4
+         :swap :negate :swap
+       :exit]}
+
 ;; EXECUTE [CORE] 6.1.1370 ( i*x xt -- j*x )
 ;;
 ;; Remove xt from the stack and perform the semantics identified by it.
@@ -348,6 +373,11 @@
 {:token :min :args [[:n1 :n2] [:n3]]}
 
 {:token :minus :name "-"}
+
+{:token :mod
+ :args [[:n1 :n2] [:n3]]
+ :source ": MOD ( n1 n2 -- n3 )  /MOD DROP ;"
+ :pfa [:slashmod :drop :exit]}
 
 {:token :move}
 
@@ -558,6 +588,32 @@
  :source ": SIGN ( n -- )   0< IF [CHAR] - HOLD THEN ;"
  :pfa [:zeroless :izbranch 4 :icharlit "'-'" :hold :exit]}
 
+{:token :slash
+ :name "/"
+ :args [[:n1 :n2] [:n3]]
+ :source ": / ( n1 n2 -- n3 )  /MOD NIP ;"
+ :pfa [:slashmod :nip :exit]}
+
+{:token :slashmod
+ :name "/MOD"
+ :args [[:n1 :n2] [:n2 :n4]]
+ :source ": /MOD ( n1 n2 -- n3 n4)   >R S>D R> SM/REM ;"
+ :pfa [:tor :stod :rfrom :smslashrem :exit]}
+
+{:token :smslashrem
+ :name "SM/REM"
+ :args [[:d1 :n2] [:n2 :n3]]
+ :source ": SM/REM ( d1 n1 -- n2 n3)
+            OVER >R  2DUP XOR >R  ( R:remsign quosign)
+            ABS >R DABS R>
+            UM/MOD ( +rem +quo)
+            R> ?NEGATE ( +rem +-quo)  SWAP R> ?NEGATE SWAP ( +-rem +-quo) ;"
+ :pfa [:over :tor :twodup :xor :tor
+       :abs :tor :dabs :rfrom
+       :umslashmod
+       :rfrom :qnegate :swap :rfrom :qnegate :swap
+       :exit]}
+
 {:token :source
  :args [[] [:caddr :u]]
  :pfa [:vm :icharlit "offsetof(EnforthVM, source_len)" :plus :twofetch :exit]}
@@ -590,6 +646,18 @@
  :args [[:n1 :n2] [:n3]]
  :source ": * ( n1|u1 n2|u2 -- n3|u3 )  UM* DROP ;"
  :pfa [:umstar :drop :exit]}
+
+{:token :starslash
+ :name "*/"
+ :args [[:n1 :n2 :n3] [:n4]]
+ :source ": */ ( n1 n2 n3 -- n4)   */MOD NIP ;"
+ :pfa [:starslashmod :nip :exit]}
+
+{:token :starslashmod
+ :name "*/MOD"
+ :args [[:n1 :n2 :n3] [:n4 :n5]]
+ :source ": */MOD ( n1 n2 n3 -- n4 n5)   >R M* R> SM/REM ;"
+ :pfa [:tor :mstar :rfrom :smslashrem :exit]}
 
 {:token :state
  :args [[] [:aaddr]]

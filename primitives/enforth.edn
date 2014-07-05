@@ -663,12 +663,20 @@
 
 {:token :psquote :name "(S\")" :flags #{:headerless}}
 
+;; TODO Move to double.edn as part of cleaning up this file.
 {:token :qdnegate
  :name "?DNEGATE"
  :args [[:d1 :n] [:d2]]
  :flags #{:headerless}
  :source ": ?DNEGATE ( d1 n -- d2)   0< IF DNEGATE THEN ;"
  :pfa [:zeroless :zbranch 2 :dnegate :exit]}
+
+{:token :qnegate
+ :name "?NEGATE"
+ :args [[:n1 :n2] [:n3]]
+ :flags #{:headerless}
+ :source ": ?NEGATE ( n1 n2 -- n3)   0< IF NEGATE THEN ;"
+ :pfa [:zeroless :izbranch 2 :negate :exit]}
 
 {:token :tib
  :args [[] [:caadr]]
@@ -790,6 +798,12 @@
 {:token :twonip
  :name "2NIP"
  :args [[:x1 :x2 :x3 :x4] [:x3 :x4]]}
+
+{:token :uddot
+ :name "UD."
+ :args [[:ud] []]
+ :source ": UD. ( ud -- )   <# #S #> TYPE SPACE ;"
+ :pfa [:lessnumsign :numsigns :numsigngrtr :type :space :exit]}
 
 {:token :udslashmod
  :name "UD/MOD"

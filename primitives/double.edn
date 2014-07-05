@@ -1,3 +1,8 @@
+{:token :dabs
+ :args [[:d] [:ud]]
+ :source ": DABS ( d -- ud )  DUP ?DNEGATE ;"
+ :pfa [:dup :qdnegate :exit]}
+
 {:token :dnegate
  :args [[:d1] [:d2]]
  :source ": DNEGATE ( d1 -- d2)   INVERT SWAP INVERT SWAP 1 M+ ;"

@@ -134,7 +134,7 @@ typedef enum EnforthToken
 
 /* Multiplier used to convert a ROM-based token into an offset into the
  * ROM-based definition table. */
-static const int kTokenMultiplier = 10;
+static const int kTokenMultiplier = 11;
 
 
 
