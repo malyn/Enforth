@@ -836,4 +836,51 @@ TEST_CASE( "TESTING CORE WORDS" ) {
         REQUIRE( enforth_test(vm, "T{ 1ST @ -> 1 }T") );
         REQUIRE( enforth_test(vm, "T{ -1 1ST +! 1ST @ -> 0 }T") );
     }
+
+    SECTION( "TESTING CHAR [CHAR] [ ] BL S\"" ) {
+        REQUIRE( enforth_test(vm, "T{ BL -> 20 }T") );
+        REQUIRE( enforth_test(vm, "T{ CHAR X -> 58 }T") );
+        REQUIRE( enforth_test(vm, "T{ CHAR HELLO -> 48 }T") );
+        REQUIRE( enforth_test(vm, "T{ : GC1 [CHAR] X ; -> }T") );
+        REQUIRE( enforth_test(vm, "T{ : GC2 [CHAR] HELLO ; -> }T") );
+        REQUIRE( enforth_test(vm, "T{ GC1 -> 58 }T") );
+        REQUIRE( enforth_test(vm, "T{ GC2 -> 48 }T") );
+        REQUIRE( enforth_test(vm, "T{ : GC3 [ GC1 ] LITERAL ; -> }T") );
+        REQUIRE( enforth_test(vm, "T{ GC3 -> 58 }T") );
+        REQUIRE( enforth_test(vm, "T{ : GC4 S\" XY\" ; -> }T") );
+        REQUIRE( enforth_test(vm, "T{ GC4 SWAP DROP -> 2 }T") );
+        REQUIRE( enforth_test(vm, "T{ GC4 DROP DUP C@ SWAP CHAR+ C@ -> 58 59 }T") );
+    }
+
+    SECTION( "TESTING ' ['] FIND EXECUTE IMMEDIATE COUNT LITERAL POSTPONE STATE") {
+             enforth_evaluate(vm, "0        CONSTANT 0S");
+             enforth_evaluate(vm, "0 INVERT CONSTANT 1S");
+             enforth_evaluate(vm, "0S CONSTANT <FALSE>");
+             enforth_evaluate(vm, "1S CONSTANT <TRUE>");
+
+        REQUIRE( enforth_test(vm, "T{ : GT1 123 ; -> }T") );
+        REQUIRE( enforth_test(vm, "T{ ' GT1 EXECUTE -> 123 }T") );
+        REQUIRE( enforth_test(vm, "T{ : GT2 ['] GT1 ; IMMEDIATE -> }T") );
+        REQUIRE( enforth_test(vm, "T{ GT2 EXECUTE -> 123 }T") );
+                 enforth_evaluate(vm, "HERE 3 C, CHAR G C, CHAR T C, CHAR 1 C, CONSTANT GT1STRING");
+                 enforth_evaluate(vm, "HERE 3 C, CHAR G C, CHAR T C, CHAR 2 C, CONSTANT GT2STRING");
+        REQUIRE( enforth_test(vm, "T{ GT1STRING FIND -> ' GT1 -1 }T") );
+        REQUIRE( enforth_test(vm, "T{ GT2STRING FIND -> ' GT2 1 }T") );
+        /* HOW TO SEARCH FOR NON-EXISTENT WORD? */
+        REQUIRE( enforth_test(vm, "T{ : GT3 GT2 LITERAL ; -> }T") );
+        REQUIRE( enforth_test(vm, "T{ GT3 -> ' GT1 }T") );
+        REQUIRE( enforth_test(vm, "T{ GT1STRING COUNT -> GT1STRING CHAR+ 3 }T") );
+
+        REQUIRE( enforth_test(vm, "T{ : GT4 POSTPONE GT1 ; IMMEDIATE -> }T") );
+        REQUIRE( enforth_test(vm, "T{ : GT5 GT4 ; -> }T") );
+        REQUIRE( enforth_test(vm, "T{ GT5 -> 123 }T") );
+        REQUIRE( enforth_test(vm, "T{ : GT6 345 ; IMMEDIATE -> }T") );
+        REQUIRE( enforth_test(vm, "T{ : GT7 POSTPONE GT6 ; -> }T") );
+        REQUIRE( enforth_test(vm, "T{ GT7 -> 345 }T") );
+
+        REQUIRE( enforth_test(vm, "T{ : GT8 STATE @ ; IMMEDIATE -> }T") );
+        REQUIRE( enforth_test(vm, "T{ GT8 -> 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ : GT9 GT8 LITERAL ; -> }T") );
+        REQUIRE( enforth_test(vm, "T{ GT9 0= -> <FALSE> }T") );
+    }
 }

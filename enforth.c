@@ -134,7 +134,7 @@ typedef enum EnforthToken
 
 /* Multiplier used to convert a ROM-based token into an offset into the
  * ROM-based definition table. */
-static const int kTokenMultiplier = 11;
+static const int kTokenMultiplier = 12;
 
 
 
@@ -936,16 +936,6 @@ DISPATCH_TOKEN:
             EnforthCell arg2 = *restDataStack++;
             EnforthCell arg1 = *restDataStack++;
             memcpy(arg2.ram, arg1.ram, arg3.u);
-            tos = *restDataStack++;
-        }
-        continue;
-
-        CPLUSSTORE:
-        {
-            CHECK_STACK(2, 0);
-            uint8_t c = *(uint8_t*)tos.ram;
-            c += (restDataStack++)->u & 0xff;
-            *(uint8_t*)tos.ram = c;
             tos = *restDataStack++;
         }
         continue;

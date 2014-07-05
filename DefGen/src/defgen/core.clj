@@ -5,7 +5,7 @@
             [me.raynes.fs :as fs])
   (:gen-class))
 
-(def token-multiplier 11)
+(def token-multiplier 12)
 
 (defn id-to-token
   [id]

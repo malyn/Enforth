@@ -47,8 +47,6 @@
 
 {:token :charlit :flags #{:headerless}}
 
-{:token :cplusstore :name "C+!"}
-
 ;; DIGIT? [Enforth] "digit-question" ( char -- u -1 | 0 )
 ;;
 ;; Attempts to convert char to a numeric value using the current BASE.

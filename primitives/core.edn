@@ -95,6 +95,17 @@
             CHAR  ['] CHARLIT COMPILE,  C, ; IMMEDIATE"
  :pfa [:char :icharlit :charlit :compilecomma :ccomma :exit]}
 
+{:token :brackettick
+ :name "[']"
+ :args [[] []]
+ :flags #{:immediate}
+ :source ": ['] ( \"<spaces>name\" -- )  '  ['] LIT COMPILE,  , ; IMMEDIATE"
+ ; We keep things simple and use LIT here even if the XT is a token (and
+ ; could therefore use CHARLIT).  ['] is used infrequently and
+ ; optimizing for RAM size at the expense of the extra IF/ELSE statement
+ ; here doesn't seem worth the complexity.
+ :pfa [:tick :icharlit :lit :compilecomma :comma :exit]}
+
 {:token :ccomma
  :name "C,"
  :args [[:char] []]
@@ -339,6 +350,11 @@
  :flags #{:immediate}
  :source ": IF ( C: -- orig )  ['] 0branch COMPILE,  HERE  0 C, ; IMMEDIATE"
  :pfa [:icharlit :zbranch :compilecomma :here :zero :ccomma :exit]}
+
+{:token :immediate
+ :args [[] []]
+ :source ": IMMEDIATE ( -- )  kDefTypeCOLONIMMEDIATE CHANGE-LATEST-DEF-TYPE ;"
+ :pfa [:icharlit "kDefTypeCOLONIMMEDIATE" :changelatestdeftype :exit]}
 
 {:token :invert}
 
@@ -720,6 +736,17 @@
  :flags #{:immediate}
  :source ": THEN ( C: orig -- )  HERE OVER -  SWAP C! ; IMMEDIATE"
  :pfa [:here :over :minus :swap :cstore :exit]}
+
+{:token :tick
+ :name "'"
+ :args [[] [:xt]]
+ :source ": ' ( \"<spaces>name\" -- xt)
+            BL PARSE-WORD  FIND-WORD
+            0= IF TYPE  SPACE  [CHAR] ? EMIT  CR  ABORT THEN ;"
+ :pfa [:bl :parseword :findword
+       :zeroequals :izbranch 8
+         :type :space :icharlit "'?'" :emit :cr :abort
+       :exit]}
 
 {:token :tobody
  :name ">BODY"
