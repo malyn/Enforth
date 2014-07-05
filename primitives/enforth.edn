@@ -94,8 +94,6 @@
        :tickprevleave :fetch :heretochain
        :exit]}
 
-{:token :exit :flags #{:headerless}}
-
 {:token :ffiq
  :name "FFI?"
  :args [[:xt] [:f]]

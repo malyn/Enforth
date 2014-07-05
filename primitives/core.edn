@@ -230,6 +230,9 @@
  :source ": EVALUATE ( i*x c-addr u -- j*x )  INTERPRET ;"
  :pfa [:interpret :exit]}
 
+{:token :exit
+ :args [[] []]}
+
 {:token :false}
 
 {:token :fetch :name "@"}

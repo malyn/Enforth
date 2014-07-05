@@ -102,9 +102,9 @@
 "\042" "DROP"
 "\032" "DUP"
 "\042" "EMIT"
+"\042" "EXIT"
 "\052" "FALSE"
 "\012" "I"
-"\062" "INVERT"
 "\013" "["
 "\063" "[CHAR]"
 "\013" "\\"
@@ -115,70 +115,70 @@
 "\002" /* TOLFA */
 "\002" /* TONFA */
 "\002" /* TOTOKEN */
+"\062" "INVERT"
 "\032" "KEY"
-"\062" "LSHIFT"
 "\002" /* TOXT */
 "\002" /* TOCOMPILETOKEN */
-"\022" "M+"
+"\062" "LSHIFT"
 "\002" /* QDNEGATE */
 "\002" /* CHANGELATESTDEFTYPE */
-"\032" "MAX"
+"\022" "M+"
 "\002" /* COLD */
+"\032" "MAX"
 "\032" "MIN"
 "\042" "MOVE"
-"\062" "NEGATE"
 "\002" /* DIGITQ */
+"\062" "NEGATE"
 "\032" "NIP"
 "\022" "OR"
 "\042" "OVER"
-"\022" "R>"
 "\002" /* DP */
 "\002" /* ENDLOOP */
 "\002" /* FFIQ */
 "\002" /* FFIDEFARITY */
 "\002" /* FFIDEFNAME */
 "\002" /* FFIDEFNAMELEN */
-"\022" "R@"
+"\022" "R>"
 "\002" /* FINDDEF */
+"\022" "R@"
 "\032" "ROT"
 "\062" "RSHIFT"
-"\042" "SWAP"
 "\002" /* FINDFFIDEF */
+"\042" "SWAP"
 "\042" "TRUE"
 "\042" "TUCK"
-"\022" "U<"
 "\002" /* FINDPRIM */
+"\022" "U<"
 "\022" "U>"
 "\032" "UM*"
 "\062" "UM/MOD"
-"\062" "UNLOOP"
 "\002" /* FINDWORD */
-"\032" "XOR"
+"\062" "UNLOOP"
 "\002" /* FOUNDDEFQ */
+"\032" "XOR"
 "\002" /* TICKNAMES */
 "\002" /* PPLUSLOOP */
 "\002" /* PQDO */
 "\002" /* PDO */
-"\002" /* PEXECUTE */
 "\002" /* FOUNDFFIQ */
 "\002" /* FOUNDFFIDEFQ */
+"\002" /* PEXECUTE */
 "\002" /* PIPLUSLOOP */
-"\002" /* PIQDO */
 "\002" /* FOUNDPRIMQ */
+"\002" /* PIQDO */
 "\002" /* PILOOP */
 "\002" /* PISQUOTE */
 "\002" /* LIT */
-"\002" /* PLOOP */
 "\002" /* HALT */
 "\002" /* HERETOCHAIN */
+"\002" /* PLOOP */
 "\002" /* PSQUOTE */
-"\002" /* ZBRANCH */
 "\002" /* HLD */
 "\002" /* HLDEND */
 "\002" /* INTERPRET */
+"\002" /* ZBRANCH */
 "\002" /* BRANCH */
 "\002" /* CHARLIT */
-"\002" /* EXIT */
 "\002" /* IFETCH */
 "\002" /* IBRANCH */
 "\002" /* ITYPE */
