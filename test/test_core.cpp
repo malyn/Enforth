@@ -764,7 +764,8 @@ TEST_CASE( "TESTING CORE WORDS" ) {
         // REQUIRE( enforth_test(vm, "T{ 5 GI4 -> 5 6 }T") );
         // REQUIRE( enforth_test(vm, "T{ 6 GI4 -> 6 7 }T") );
 
-        REQUIRE( enforth_test(vm, "T{ : GI5 BEGIN DUP 2 > WHILE DUP 5 < WHILE DUP 1+ REPEAT 123 ELSE 345 THEN ; -> }T") );
+             enforth_evaluate(vm, "T{ : GI5 BEGIN DUP 2 > WHILE DUP 5 < WHILE DUP");
+        REQUIRE( enforth_test(vm, "      1+ REPEAT 123 ELSE 345 THEN ; -> }T") );
         REQUIRE( enforth_test(vm, "T{ 1 GI5 -> 1 345 }T") );
         REQUIRE( enforth_test(vm, "T{ 2 GI5 -> 2 345 }T") );
         REQUIRE( enforth_test(vm, "T{ 3 GI5 -> 3 4 5 123 }T") );
