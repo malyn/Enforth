@@ -35,25 +35,16 @@
  * Includes.
  */
 
-/* ANSI C includes. */
-#include <stdio.h>
-
-/* Enforth includes. */
-#include "enforth.h"
-
-/* Test includes. */
-#include "enforthtesthelper.h"
-
 /* Catch includes. */
-#define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
 
 
 /* -------------------------------------
- * Harness-provided functions.
+ * Harness-provided types and functions.
  */
 
+typedef void EnforthVM;
 extern "C" EnforthVM * const get_test_vm();
 extern "C" void enforth_evaluate(EnforthVM * const vm, const char * const text);
 extern "C" bool enforth_test(EnforthVM * const vm, const char * const text);
@@ -61,87 +52,18 @@ extern "C" bool enforth_test(EnforthVM * const vm, const char * const text);
 
 
 /* -------------------------------------
- * Enforth I/O primitives.
+ * Additional (Enforth) tests.
  */
 
-static int enforthSimpleKeyQuestion(void)
-{
-    return -1;
-}
+TEST_CASE( "Additional (Enforth) Tests" ) {
+    /* Get the test VM. */
+    EnforthVM * const vm = get_test_vm();
 
-static char enforthSimpleKey(void)
-{
-    return getchar();
-}
-
-static void enforthSimpleEmit(char ch)
-{
-    putchar(ch);
-}
-
-
-
-/* -------------------------------------
- * Test harness functions.
- */
-
-EnforthVM * const get_test_vm()
-{
-    /* Globals. */
-    static EnforthVM enforthVM;
-    static unsigned char enforthDict[8192];
-
-
-    /* Clear out the dictionary and VM structure. */
-    memset(&enforthVM, sizeof(enforthVM), 0);
-    memset(&enforthDict, sizeof(enforthDict), 0);
-
-    /* Initialize Enforth. */
-    enforth_init(
-            &enforthVM,
-            enforthDict, sizeof(enforthDict),
-            LAST_FFI,
-            enforthSimpleKeyQuestion, enforthSimpleKey, enforthSimpleEmit);
-
-    /* Compile the tester words. */
-    compile_tester(&enforthVM);
-
-    /* Return the VM. */
-    return &enforthVM;
-}
-
-static EnforthCell enforth_push(EnforthVM * const vm, const EnforthCell cell)
-{
-    vm->data_stack[31 - vm->saved_sp.u++] = cell;
-}
-
-static EnforthCell enforth_pop(EnforthVM * const vm)
-{
-    return vm->data_stack[31 - vm->saved_sp.u--];
-}
-
-bool enforth_test(EnforthVM * const vm, const char * const text)
-{
-    /* Run the test. */
-    enforth_evaluate(vm, text);
-
-    /* Check the stack. */
-    if (vm->saved_sp.u < 3)
-    {
-        return false;
+    SECTION( "Additional +LOOP Tests" ) {
+        /* The basic core tests do not confirm that +LOOP behaves
+         * correctly if a positive increment lands right on the loop
+         * terminator. */
+        REQUIRE( enforth_test(vm, "T{ : GD2 DO I 1 +LOOP ; -> }T") );
+        REQUIRE( enforth_test(vm, "T{ 4 0 GD2 -> 0 1 2 3 }T") );
     }
-
-    /* Pop IP and RSP so that we can look at the stack itself. */
-    EnforthCell ip = enforth_pop(vm);
-    EnforthCell rsp = enforth_pop(vm);
-
-    /* Pop the test result flag. */
-    bool success = enforth_pop(vm).u == -1;
-
-    /* Push RSP and IP back onto the stack. */
-    enforth_push(vm, rsp);
-    enforth_push(vm, ip);
-
-    /* Return the test result flag. */
-    return success;
 }

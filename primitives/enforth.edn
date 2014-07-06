@@ -811,6 +811,8 @@
        :rfrom :swap :tor :umslashmod :rfrom
        :exit]}
 
+;; TODO Why does this abort if given an empty USE: declaration?  It
+;; should generate an error or something.
 {:token :use
  :name "USE:"
  :args [[] []]
