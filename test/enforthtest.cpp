@@ -106,6 +106,9 @@ EnforthVM * const get_test_vm()
     /* Compile the tester words. */
     compile_tester(&enforthVM);
 
+    /* Enable verbose mode. */
+    enforth_evaluate(&enforthVM, "TRUE VERBOSE !");
+
     /* Return the VM. */
     return &enforthVM;
 }

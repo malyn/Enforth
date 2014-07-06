@@ -55,15 +55,12 @@ extern "C" bool enforth_test(EnforthVM * const vm, const char * const text);
  * Additional (Enforth) tests.
  */
 
-TEST_CASE( "Additional (Enforth) Tests" ) {
-    /* Get the test VM. */
+TEST_CASE( "Additional +LOOP Tests" ) {
     EnforthVM * const vm = get_test_vm();
+    enforth_evaluate(vm, "TESTING +LOOP (Enforth)");
 
-    SECTION( "Additional +LOOP Tests" ) {
-        /* The basic core tests do not confirm that +LOOP behaves
-         * correctly if a positive increment lands right on the loop
-         * terminator. */
-        REQUIRE( enforth_test(vm, "T{ : GD2 DO I 1 +LOOP ; -> }T") );
-        REQUIRE( enforth_test(vm, "T{ 4 0 GD2 -> 0 1 2 3 }T") );
-    }
+    /* The basic core tests do not confirm that +LOOP behaves correctly
+     * if a positive increment lands right on the loop terminator. */
+    REQUIRE( enforth_test(vm, "T{ : GD2 DO I 1 +LOOP ; -> }T") );
+    REQUIRE( enforth_test(vm, "T{ 4 0 GD2 -> 0 1 2 3 }T") );
 }

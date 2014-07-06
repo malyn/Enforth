@@ -107,7 +107,7 @@ void compile_tester(EnforthVM * const vm)
     enforth_evaluate(vm, ": TESTING");
     enforth_evaluate(vm, "  SOURCE VERBOSE @");
     enforth_evaluate(vm, "   IF DUP >R TYPE CR R> >IN !");
-    enforth_evaluate(vm, "   ELSE >IN ! DROP [CHAR] * EMIT");
+    enforth_evaluate(vm, "   ELSE >IN ! DROP");
     enforth_evaluate(vm, "   THEN ;");
 }
 
