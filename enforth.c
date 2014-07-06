@@ -1010,8 +1010,18 @@ DISPATCH_TOKEN:
             uint16_t ud_msb = restDataStack++->u;
             uint16_t ud_lsb = restDataStack++->u;
             uint32_t ud = ((uint32_t)ud_msb << 16) | ud_lsb;
-            (--restDataStack)->u = ud % u1;
-            tos.u = ud / u1;
+
+            // FIXME Doesn't work on Arduino; maybe a compiler
+            // difference?  Meanwhile, ldiv seems to work in the vast
+            // majority of cases; only extreme situations ((65535 *
+            // 65535) / 65535) return the incorrect results.
+            //
+            // (--restDataStack)->u = ud % u1;
+            // tos.u = ud / u1;
+
+            ldiv_t result = ldiv(ud, u1);
+            (--restDataStack)->u = result.rem;
+            tos.u = result.quot;
 #else
             uint32_t u1 = tos.u;
             uint32_t ud_msb = restDataStack++->u;

@@ -1,5 +1,6 @@
 * Add remainder of `core.fr` to `enforthtest.cpp`.
   * There are a number of tests that are not possible until we resolve the no-more-tokens TODO item.  I would recommend that we just put all of the tests in there though (although with some commented out), just in case some thing that has already been implemented is broken.  Then we can uncomment the remaining tests as the other words are added.
+* Find a way to run `enforthtest` against the Arduino.  Maybe create a variant of `enforthtest` that opens up the Arduino serial port and sends each test one at a time to the interpreter.
 * Remove the need for `PIQDO`, `PILOOP`, and `PIPLUSLOOP` by modifying `DUMP` to use `BEGIN` and `REPEAT` instead of loops.
   * This is low-hanging fruit and needs to be done anyway.
 * We're out of tokens and the token multiplier has gotten out of control: x12 resulting in 871 bytes of padding (50% of the 1,745 of non-padding bytes!).  There are still a handful of additional words that need to be defined (maybe a dozen?) and ideally we would leave space for other things.
