@@ -961,6 +961,267 @@ TEST_CASE( "TESTING CORE WORDS" ) {
         // REQUIRE( enforth_test(vm, "T{ 2 GD6 -> 3 }T") );
         // REQUIRE( enforth_test(vm, "T{ 3 GD6 -> 4 1 2 }T") );
     }
+
+    SECTION( "TESTING DEFINING WORDS: : ; CONSTANT VARIABLE CREATE DOES> >BODY") {
+        REQUIRE( enforth_test(vm, "T{ 123 CONSTANT X123 -> }T") );
+        REQUIRE( enforth_test(vm, "T{ X123 -> 123 }T") );
+        REQUIRE( enforth_test(vm, "T{ : EQU CONSTANT ; -> }T") );
+        REQUIRE( enforth_test(vm, "T{ X123 EQU Y123 -> }T") );
+        REQUIRE( enforth_test(vm, "T{ Y123 -> 123 }T") );
+
+        REQUIRE( enforth_test(vm, "T{ VARIABLE V1 -> }T") );
+        REQUIRE( enforth_test(vm, "T{ 123 V1 ! -> }T") );
+        REQUIRE( enforth_test(vm, "T{ V1 @ -> 123 }T") );
+
+        REQUIRE( enforth_test(vm, "T{ : NOP : POSTPONE ; ; -> }T") );
+        REQUIRE( enforth_test(vm, "T{ NOP NOP1 NOP NOP2 -> }T") );
+        REQUIRE( enforth_test(vm, "T{ NOP1 -> }T") );
+        REQUIRE( enforth_test(vm, "T{ NOP2 -> }T") );
+
+        // TODO Enable this once have DOES>.
+        // REQUIRE( enforth_test(vm, "T{ : DOES1 DOES> @ 1 + ; -> }T") );
+        // REQUIRE( enforth_test(vm, "T{ : DOES2 DOES> @ 2 + ; -> }T") );
+        REQUIRE( enforth_test(vm, "T{ CREATE CR1 -> }T") );
+        REQUIRE( enforth_test(vm, "T{ CR1 -> HERE }T") );
+        REQUIRE( enforth_test(vm, "T{ ' CR1 >BODY -> HERE }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 , -> }T") );
+        // REQUIRE( enforth_test(vm, "T{ CR1 @ -> 1 }T") );
+        // REQUIRE( enforth_test(vm, "T{ DOES1 -> }T") );
+        // REQUIRE( enforth_test(vm, "T{ CR1 -> 2 }T") );
+        // REQUIRE( enforth_test(vm, "T{ DOES2 -> }T") );
+        // REQUIRE( enforth_test(vm, "T{ CR1 -> 3 }T") );
+
+        // REQUIRE( enforth_test(vm, "T{ : WEIRD: CREATE DOES> 1 + DOES> 2 + ; -> }T") );
+        // REQUIRE( enforth_test(vm, "T{ WEIRD: W1 -> }T") );
+        // REQUIRE( enforth_test(vm, "T{ ' W1 >BODY -> HERE }T") );
+        // REQUIRE( enforth_test(vm, "T{ W1 -> HERE 1 + }T") );
+        // REQUIRE( enforth_test(vm, "T{ W1 -> HERE 2 + }T") );
+    }
+
+    // TODO Enable this once we have Input Control Blocks.
+    // SECTION( "TESTING EVALUATE") {
+    //          enforth_evaluate(vm, ": GE1 S\" 123\" ; IMMEDIATE");
+    //          enforth_evaluate(vm, ": GE2 S\" 123 1+\" ; IMMEDIATE");
+    //          enforth_evaluate(vm, ": GE3 S\" : GE4 345 ;\" ;");
+    //          enforth_evaluate(vm, ": GE5 EVALUATE ; IMMEDIATE");
+
+    //     REQUIRE( enforth_test(vm, "T{ GE1 EVALUATE -> 123 }T") );
+    //     REQUIRE( enforth_test(vm, "T{ GE2 EVALUATE -> 124 }T") );
+    //     REQUIRE( enforth_test(vm, "T{ GE3 EVALUATE -> }T") );
+    //     REQUIRE( enforth_test(vm, "T{ GE4 -> 345 }T") );
+
+    //     REQUIRE( enforth_test(vm, "T{ : GE6 GE1 GE5 ; -> }T") );
+    //     REQUIRE( enforth_test(vm, "T{ GE6 -> 123 }T") );
+    //     REQUIRE( enforth_test(vm, "T{ : GE7 GE2 GE5 ; -> }T") );
+    //     REQUIRE( enforth_test(vm, "T{ GE7 -> 124 }T") );
+    // }
+
+    SECTION( "TESTING SOURCE >IN WORD") {
+        // TODO Enable this once have EVALUATE.
+        //      enforth_evaluate(vm, ": GS1 S\" SOURCE\" 2DUP EVALUATE");
+        //      enforth_evaluate(vm, "       >R SWAP >R = R> R> = ;");
+        // REQUIRE( enforth_test(vm, "T{ GS1 -> <TRUE> <TRUE> }T") );
+
+             enforth_evaluate(vm, "VARIABLE SCANS");
+             enforth_evaluate(vm, ": RESCAN?  -1 SCANS +! SCANS @ IF 0 >IN ! THEN ;");
+
+             enforth_evaluate(vm, "T{ 2 SCANS !");
+             enforth_evaluate(vm, "345 RESCAN?");
+        REQUIRE( enforth_test(vm, "-> 345 345 }T") );
+
+        // TODO Enable this once have EVALUATE.
+        //      enforth_evalute(vm, ": GS2  5 SCANS ! S\" 123 RESCAN?\" EVALUATE ;");
+        // REQUIRE( enforth_test(vm, "T{ GS2 -> 123 123 123 123 123 }T") );
+
+        // These tests are disabled; Enforth doesn't support WORD due to
+        // its use of a transient area for storing a counted string.
+        //         enforth_evaluate(vm, ": GS3 WORD COUNT SWAP C@ ;");
+        // REQUIRE( enforth_test(vm, "T{ BL GS3 HELLO -> 5 CHAR H }T") );
+        // REQUIRE( enforth_test(vm, "T{ CHAR \" GS3 GOODBYE\" -> 7 CHAR G }T") );
+        //      enforth_evaluate(vm, "T{ BL GS3");
+        // REQUIRE( enforth_test(vm, "DROP -> 0 }T") );
+
+             enforth_evaluate(vm, ": GS4 SOURCE >IN ! DROP ;");
+             enforth_evaluate(vm, "T{ GS4 123 456");
+        REQUIRE( enforth_test(vm, "-> }T") );
+    }
+
+    SECTION( "TESTING <# # #S #> HOLD SIGN BASE >NUMBER HEX DECIMAL" ) {
+             enforth_evaluate(vm, "0        CONSTANT 0S");
+             enforth_evaluate(vm, "0 INVERT CONSTANT 1S");
+             enforth_evaluate(vm, "0S CONSTANT <FALSE>");
+             enforth_evaluate(vm, "1S CONSTANT <TRUE>");
+             enforth_evaluate(vm, "0 INVERT                 CONSTANT MAX-UINT");
+
+             enforth_evaluate(vm, ": S=");
+             enforth_evaluate(vm, "   >R SWAP R@ = IF");
+             enforth_evaluate(vm, "      R> ?DUP IF");
+             enforth_evaluate(vm, "         0 DO");
+             enforth_evaluate(vm, "            OVER C@ OVER C@ - IF 2DROP <FALSE> UNLOOP EXIT THEN");
+             enforth_evaluate(vm, "            SWAP CHAR+ SWAP CHAR+");
+             enforth_evaluate(vm, "         LOOP");
+             enforth_evaluate(vm, "      THEN");
+             enforth_evaluate(vm, "      2DROP <TRUE>");
+             enforth_evaluate(vm, "   ELSE");
+             enforth_evaluate(vm, "      R> DROP 2DROP <FALSE>");
+             enforth_evaluate(vm, "   THEN ;");
+
+             enforth_evaluate(vm, ": GP1  <# 41 HOLD 42 HOLD 0 0 #> S\" BA\" S= ;");
+        REQUIRE( enforth_test(vm, "T{ GP1 -> <TRUE> }T") );
+
+             enforth_evaluate(vm, ": GP2  <# -1 SIGN 0 SIGN -1 SIGN 0 0 #> S\" --\" S= ;");
+        REQUIRE( enforth_test(vm, "T{ GP2 -> <TRUE> }T") );
+
+             enforth_evaluate(vm, ": GP3  <# 1 0 # # #> S\" 01\" S= ;");
+        REQUIRE( enforth_test(vm, "T{ GP3 -> <TRUE> }T") );
+
+             enforth_evaluate(vm, ": GP4  <# 1 0 #S #> S\" 1\" S= ;");
+        REQUIRE( enforth_test(vm, "T{ GP4 -> <TRUE> }T") );
+
+             enforth_evaluate(vm, "24 CONSTANT MAX-BASE");
+             enforth_evaluate(vm, ": COUNT-BITS");
+             enforth_evaluate(vm, "   0 0 INVERT BEGIN DUP WHILE >R 1+ R> 2* REPEAT DROP ;");
+             enforth_evaluate(vm, "COUNT-BITS 2* CONSTANT #BITS-UD");
+
+             enforth_evaluate(vm, ": GP5");
+             enforth_evaluate(vm, "   BASE @ <TRUE>");
+             enforth_evaluate(vm, "   MAX-BASE 1+ 2 DO");
+             enforth_evaluate(vm, "      I BASE !");
+             enforth_evaluate(vm, "      I 0 <# #S #> S\" 10\" S= AND");
+             enforth_evaluate(vm, "   LOOP");
+             enforth_evaluate(vm, "   SWAP BASE ! ;");
+        REQUIRE( enforth_test(vm, "T{ GP5 -> <TRUE> }T") );
+
+             enforth_evaluate(vm, ": GP6");
+             enforth_evaluate(vm, "   BASE @ >R  2 BASE !");
+             enforth_evaluate(vm, "   MAX-UINT MAX-UINT <# #S #>");
+             enforth_evaluate(vm, "   R> BASE !");
+             enforth_evaluate(vm, "   DUP #BITS-UD = SWAP");
+             enforth_evaluate(vm, "   0 DO");
+             enforth_evaluate(vm, "      OVER C@ [CHAR] 1 = AND");
+             enforth_evaluate(vm, "      >R CHAR+ R>");
+             enforth_evaluate(vm, "   LOOP SWAP DROP ;");
+        REQUIRE( enforth_test(vm, "T{ GP6 -> <TRUE> }T") );
+
+             enforth_evaluate(vm, ": GP7");
+             enforth_evaluate(vm, "   BASE @ >R    MAX-BASE BASE !");
+             enforth_evaluate(vm, "   <TRUE>");
+             enforth_evaluate(vm, "   A 0 DO");
+             enforth_evaluate(vm, "      I 0 <# #S #>");
+             enforth_evaluate(vm, "      1 = SWAP C@ I 30 + = AND AND");
+             enforth_evaluate(vm, "   LOOP");
+             enforth_evaluate(vm, "   MAX-BASE A DO");
+             enforth_evaluate(vm, "      I 0 <# #S #>");
+             enforth_evaluate(vm, "      1 = SWAP C@ 41 I A - + = AND AND");
+             enforth_evaluate(vm, "   LOOP");
+             enforth_evaluate(vm, "   R> BASE ! ;");
+        REQUIRE( enforth_test(vm, "T{ GP7 -> <TRUE> }T") );
+
+        /* >NUMBER TESTS */
+             enforth_evaluate(vm, "CREATE GN-BUF 0 C,");
+             enforth_evaluate(vm, ": GN-STRING     GN-BUF 1 ;");
+             enforth_evaluate(vm, ": GN-CONSUMED   GN-BUF CHAR+ 0 ;");
+        // Modified for Enforth to use PARSE-WORD instead of WORD.
+        //   enforth_evaluate(vm, ": GN'           [CHAR] ' WORD CHAR+ C@ GN-BUF C!  GN-STRING ;");
+             enforth_evaluate(vm, ": GN'           [CHAR] ' PARSE-WORD DROP C@ GN-BUF C!  GN-STRING ;");
+
+        REQUIRE( enforth_test(vm, "T{ 0 0 GN' 0' >NUMBER -> 0 0 GN-CONSUMED }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 0 GN' 1' >NUMBER -> 1 0 GN-CONSUMED }T") );
+        REQUIRE( enforth_test(vm, "T{ 1 0 GN' 1' >NUMBER -> BASE @ 1+ 0 GN-CONSUMED }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 0 GN' -' >NUMBER -> 0 0 GN-STRING }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 0 GN' +' >NUMBER -> 0 0 GN-STRING }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 0 GN' .' >NUMBER -> 0 0 GN-STRING }T") );
+
+             enforth_evaluate(vm, ": >NUMBER-BASED");
+             enforth_evaluate(vm, "   BASE @ >R BASE ! >NUMBER R> BASE ! ;");
+
+        REQUIRE( enforth_test(vm, "T{ 0 0 GN' 2' 10 >NUMBER-BASED -> 2 0 GN-CONSUMED }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 0 GN' 2'  2 >NUMBER-BASED -> 0 0 GN-STRING }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 0 GN' F' 10 >NUMBER-BASED -> F 0 GN-CONSUMED }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 0 GN' G' 10 >NUMBER-BASED -> 0 0 GN-STRING }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 0 GN' G' MAX-BASE >NUMBER-BASED -> 10 0 GN-CONSUMED }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 0 GN' Z' MAX-BASE >NUMBER-BASED -> 23 0 GN-CONSUMED }T") );
+
+             enforth_evaluate(vm, ": GN1");
+             enforth_evaluate(vm, "   BASE @ >R BASE !");
+             enforth_evaluate(vm, "   <# #S #>");
+             enforth_evaluate(vm, "   0 0 2SWAP >NUMBER SWAP DROP");
+             enforth_evaluate(vm, "   R> BASE ! ;");
+        REQUIRE( enforth_test(vm, "T{ 0 0 2 GN1 -> 0 0 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ MAX-UINT 0 2 GN1 -> MAX-UINT 0 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ MAX-UINT DUP 2 GN1 -> MAX-UINT DUP 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ 0 0 MAX-BASE GN1 -> 0 0 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ MAX-UINT 0 MAX-BASE GN1 -> MAX-UINT 0 0 }T") );
+        REQUIRE( enforth_test(vm, "T{ MAX-UINT DUP MAX-BASE GN1 -> MAX-UINT DUP 0 }T") );
+
+             enforth_evaluate(vm, ": GN2");
+             enforth_evaluate(vm, "   BASE @ >R  HEX BASE @  DECIMAL BASE @  R> BASE ! ;");
+        REQUIRE( enforth_test(vm, "T{ GN2 -> 10 A }T") );
+    }
+
+    // TODO Enable this once have FILL.
+    // SECTION( "TESTING FILL MOVE" ) {
+    //          enforth_evaluate(vm, "CREATE FBUF 00 C, 00 C, 00 C,");
+    //          enforth_evaluate(vm, "CREATE SBUF 12 C, 34 C, 56 C,");
+    //          enforth_evaluate(vm, ": SEEBUF FBUF C@  FBUF CHAR+ C@  FBUF CHAR+ CHAR+ C@ ;");
+
+    //     REQUIRE( enforth_test(vm, "T{ FBUF 0 20 FILL -> }T") );
+    //     REQUIRE( enforth_test(vm, "T{ SEEBUF -> 00 00 00 }T") );
+
+    //     REQUIRE( enforth_test(vm, "T{ FBUF 1 20 FILL -> }T") );
+    //     REQUIRE( enforth_test(vm, "T{ SEEBUF -> 20 00 00 }T") );
+
+    //     REQUIRE( enforth_test(vm, "T{ FBUF 3 20 FILL -> }T") );
+    //     REQUIRE( enforth_test(vm, "T{ SEEBUF -> 20 20 20 }T") );
+
+    //     REQUIRE( enforth_test(vm, "T{ FBUF FBUF 3 CHARS MOVE -> }T") );
+    //     REQUIRE( enforth_test(vm, "T{ SEEBUF -> 20 20 20 }T") );
+
+    //     REQUIRE( enforth_test(vm, "T{ SBUF FBUF 0 CHARS MOVE -> }T") );
+    //     REQUIRE( enforth_test(vm, "T{ SEEBUF -> 20 20 20 }T") );
+
+    //     REQUIRE( enforth_test(vm, "T{ SBUF FBUF 1 CHARS MOVE -> }T") );
+    //     REQUIRE( enforth_test(vm, "T{ SEEBUF -> 12 20 20 }T") );
+
+    //     REQUIRE( enforth_test(vm, "T{ SBUF FBUF 3 CHARS MOVE -> }T") );
+    //     REQUIRE( enforth_test(vm, "T{ SEEBUF -> 12 34 56 }T") );
+
+    //     REQUIRE( enforth_test(vm, "T{ FBUF FBUF CHAR+ 2 CHARS MOVE -> }T") );
+    //     REQUIRE( enforth_test(vm, "T{ SEEBUF -> 12 12 34 }T") );
+
+    //     REQUIRE( enforth_test(vm, "T{ FBUF CHAR+ FBUF 2 CHARS MOVE -> }T") );
+    //     REQUIRE( enforth_test(vm, "T{ SEEBUF -> 12 34 34 }T") );
+    // }
+
+    SECTION( "TESTING OUTPUT: . .\" CR EMIT SPACE SPACES TYPE U.") {
+    // TODO Enable the descriptive text once have .".
+             enforth_evaluate(vm, ": OUTPUT-TEST");
+             // enforth_evaluate(vm, "   .\" YOU SHOULD SEE THE STANDARD GRAPHIC CHARACTERS:\" CR");
+             enforth_evaluate(vm, "   41 BL DO I EMIT LOOP CR");
+             enforth_evaluate(vm, "   61 41 DO I EMIT LOOP CR");
+             enforth_evaluate(vm, "   7F 61 DO I EMIT LOOP CR");
+             // enforth_evaluate(vm, "   .\" YOU SHOULD SEE 0-9 SEPARATED BY A SPACE:\" CR");
+             enforth_evaluate(vm, "   9 1+ 0 DO I . LOOP CR");
+             // enforth_evaluate(vm, "   .\" YOU SHOULD SEE 0-9 (WITH NO SPACES):\" CR");
+             enforth_evaluate(vm, "   [CHAR] 9 1+ [CHAR] 0 DO I 0 SPACES EMIT LOOP CR");
+             // enforth_evaluate(vm, "   .\" YOU SHOULD SEE A-G SEPARATED BY A SPACE:\" CR");
+             enforth_evaluate(vm, "   [CHAR] G 1+ [CHAR] A DO I EMIT SPACE LOOP CR");
+             // enforth_evaluate(vm, "   .\" YOU SHOULD SEE 0-5 SEPARATED BY TWO SPACES:\" CR");
+             enforth_evaluate(vm, "   5 1+ 0 DO I [CHAR] 0 + EMIT 2 SPACES LOOP CR");
+             // enforth_evaluate(vm, "   .\" YOU SHOULD SEE TWO SEPARATE LINES:\" CR");
+             enforth_evaluate(vm, "   S\" LINE 1\" TYPE CR S\" LINE 2\" TYPE CR");
+             // enforth_evaluate(vm, "   .\" YOU SHOULD SEE THE NUMBER RANGES OF SIGNED AND UNSIGNED NUMBERS:\" CR");
+             // enforth_evaluate(vm, "   .\"   SIGNED: \" MIN-INT . MAX-INT . CR");
+             // enforth_evaluate(vm, "   .\" UNSIGNED: \" 0 U. MAX-UINT U. CR");
+             enforth_evaluate(vm, ";");
+        REQUIRE( enforth_test(vm, "T{ OUTPUT-TEST -> }T") );
+    }
+
+    SECTION( "TESTING DICTIONARY SEARCH RULES" ) {
+        REQUIRE( enforth_test(vm, "T{ : GDX   123 ; : GDX   GDX 234 ; -> }T") );
+
+        REQUIRE( enforth_test(vm, "T{ GDX -> 123 234 }T") );
+    }
 }
 
 

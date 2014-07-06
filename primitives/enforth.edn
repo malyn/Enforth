@@ -567,7 +567,6 @@
 {:token :parseword
  :name "PARSE-WORD"
  :args [[:c] [:caddr :u]]
- :flags #{:headerless}
  :source ": SKIP-DELIM ( c-addr1 u1 c -- c-addr2 u2)
             >R  BEGIN  OVER C@  R@ =  ( ca u f R:c) OVER  AND WHILE
                1 /STRING REPEAT  R> DROP ;
