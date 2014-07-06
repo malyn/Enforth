@@ -275,6 +275,106 @@ static int OpenEnforthConnection(const char * const path)
 	return fd;
 }
 
+/* Reads from the serial connection until the "ok " prompt is found. */
+static void ReadToOkPrompt(int fd)
+{
+	/* Drain the port watching for an "ok ". */
+	enum { waitingForO, waitingForK, waitingForSpace } okState = waitingForO;
+	for (;;)
+	{
+		/* Configure the select sets. */
+		fd_set rset;
+		FD_ZERO(&rset);
+		FD_SET(fd, &rset);
+
+		struct timeval tv;
+		tv.tv_sec = 5;
+		tv.tv_usec = 0;
+
+		int count = select(fd + 1, &rset, NULL, NULL, &tv);
+		if (count == -1)
+		{
+			perror("select failed");
+			exit(1);
+		}
+		else if (count == 0)
+		{
+			/* Timeout; something went wrong in the test. */
+			printf("!!! Timeout !!!\n");
+			exit(1);
+		}
+
+		/* Read any characters that are available and run them through
+		 * our "ok " state machine. */
+		if (FD_ISSET(fd, &rset))
+		{
+			for (;;)
+			{
+				char ch;
+				int rc = read(fd, &ch, 1);
+				//printf("... Read returned %d; c='%c' (%d) ...\n",
+				//		rc,
+				//		ch != 0 ? ch : ' ',
+				//		(int)ch);
+
+				if (rc == -1)
+				{
+					if (errno == EAGAIN)
+					{
+						break;
+					}
+					else
+					{
+						perror("read failed");
+						exit(1);
+					}
+				}
+				else if (rc == 0)
+				{
+					/* No more bytes available right now. */
+					break;
+				}
+
+				putchar(ch);
+
+				switch (okState)
+				{
+					case waitingForO:
+						if (ch == 'o')
+						{
+							okState = waitingForK;
+						}
+						break;
+
+					case waitingForK:
+						if (ch == 'k')
+						{
+							okState = waitingForSpace;
+						}
+						else
+						{
+							okState = waitingForO;
+						}
+						break;
+
+					case waitingForSpace:
+						if (ch == ' ')
+						{
+							/* We're done. */
+							// printf("... Saw \"ok \"; we're done ... \n");
+							return;
+						}
+						else
+						{
+							okState = waitingForO;
+						}
+						break;
+				}
+			}
+		}
+	}
+}
+
 /* Sends text to Enforth and then reads everything until <CR><LF>.  Note
  * that a leading "ok " may still be sticking around from the prevous
  * command. */
@@ -468,6 +568,9 @@ bool enforth_test(EnforthVM * const vm, const char * const text)
     /* Run the test. */
     enforth_evaluate(vm, text);
 
+	/* Read to the "ok " prompt. */
+	ReadToOkPrompt(*vm);
+
 	/* Print out, read and return the flag. */
 	/* 1+ because we are probably in HEX mode and so -1 will show up as
 	 * FFFF, whereas 0 always ends in 0. */
@@ -479,15 +582,15 @@ bool enforth_test(EnforthVM * const vm, const char * const text)
 		exit(1);
 	}
 
-	/* Response should be "ok 1 + . 0|1 <CR><LF>" */
-	if (strlen(response) != 12)
+	/* Response should be "1 + . 0|1 <CR><LF>" */
+	if (strlen(response) != 9)
 	{
 		printf("!!! Unexpected response: '%s' (len=%d) !!!\n",
 				response, strlen(response));
 		exit(1);
 	}
 
-	return response[8] == '0';
+	return response[5] == '0';
 }
 
 
