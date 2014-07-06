@@ -1463,9 +1463,9 @@ DISPATCH_TOKEN:
             CHECK_STACK(1, 0);
 
             returnTop[0].i += tos.i;
-            tos = *restDataStack++;
 
-            if (returnTop[0].i >= returnTop[1].i)
+            if (((tos.i >= 0) && (returnTop[0].i >= returnTop[1].i))
+                    || ((tos.i < 0) && (returnTop[0].i < returnTop[1].i)))
             {
                 ++returnTop;
                 ++returnTop;
@@ -1475,6 +1475,8 @@ DISPATCH_TOKEN:
             {
                 ip += *(int8_t*)ip;
             }
+
+            tos = *restDataStack++;
         }
         continue;
 
