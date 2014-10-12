@@ -1,6 +1,9 @@
-.PHONY: test sertest
+.PHONY: clean test sertest
 
 all: test/enforthsimple test/enforthtest test/enforthserialtest
+
+clean:
+	rm -f utility/enforth_definitions.h utility/enforth_jumptable.h utility/enforth_names.h utility/enforth_tokens.h test/enforthtest.exe test/enforthserialtest.exe test/enforthsimple.exe
 
 test: test/enforthtest
 	test/enforthtest --abort
