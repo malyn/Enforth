@@ -34,17 +34,6 @@
  :source ": C~ ( c1 c2 -- f )  >UPPER SWAP >UPPER = ;"
  :pfa [:toupper :swap :toupper :equals :exit]}
 
-{:token :changelatestdeftype
- :name "CHANGE-LATEST-DEF-TYPE"
- :args [[:u] []]
- :flags #{:headerless}
- :source ": CHANGE-LATEST-DEF-TYPE ( u --)
-            LATEST @ >LFA 2 +  C@ %11111000 AND  OR
-            LATEST @ >LFA 2 +  C!"
- :pfa [:latest :fetch :tolfa :oneplus :oneplus :cfetch :icharlit 0xF8 :and
-       :or :latest :fetch :tolfa :oneplus :oneplus :cstore
-       :exit]}
-
 {:token :charlit :flags #{:headerless}}
 
 ;; DIGIT? [Enforth] "digit-question" ( char -- u -1 | 0 )
@@ -92,12 +81,17 @@
        :tickprevleave :fetch :heretochain
        :exit]}
 
-{:token :ffiq
+#_{:token :ffiq
  :name "FFI?"
  :args [[:xt] [:f]]
  :flags #{:headerless}
  :source ": FFI? ( xt -- f)  >DEF-TYPE kDefTypeFFI = ;"
  :pfa [:todeftype :icharlit "kDefTypeFFI" :equals :exit]}
+{:token :ffiq
+ :name "FFI?"
+ :args [[:xt] [:f]]
+ :flags #{:headerless}
+ :pfa [:drop :false :exit]}
 
 {:token :ffidefarity
  :name "FFIDEF-ARITY"
@@ -145,7 +139,7 @@
  :name "FIND-DEF"
  :args [[:caddr :u] [[0] [:xt 1] [:xt -1]]]
  :flags #{:headerless}
- :source ": IMMEDIATE-DEF? ( xt -- f ) >DEF-TYPE kDefTypeCOLONIMMEDIATE = ;
+ :source ": IMMEDIATE-DEF? ( xt -- f )  >LFA 2 + C@ %10000000 AND 0<> ;
           : FIND-DEF ( c-addr u -- 0 | xt 1 | xt -1 )
           2>R  LATEST @
           BEGIN
@@ -156,14 +150,14 @@
             >LFA XT@
           REPEAT ( R:ca u) 2R> 2DROP FALSE ;"
  :pfa [:twotor :latest :fetch
-       :qdup :izbranch 23
-         :dup :tworfetch :rot :founddefq :izbranch 13
+       :qdup :izbranch 27
+         :dup :tworfetch :rot :founddefq :izbranch 17
            :dup
            ; IMMEDIATE-DEF?
-             :todeftype :icharlit "kDefTypeCOLONIMMEDIATE" :equals
+             :tolfa :oneplus :oneplus :cfetch :icharlit 0x80 :and :zeronotequals
            :icharlit 2 :and :oneminus :tworfrom :twodrop :exit
          :tolfa :xtfetch
-         :ibranch -24
+         :ibranch -28
        :tworfrom :twodrop :false
        :exit]}
 
@@ -198,7 +192,7 @@
  :name "FIND-PRIM"
  :args [[:caddr :u] [[0] [:xt 1] [:xt -1]]]
  :flags #{:headerless}
- :source ": IMMEDIATE-PRIM? ( addr -- f ) IC@ $7 AND kDefTypeCOLONIMMEDIATE = ;
+ :source ": IMMEDIATE-PRIM? ( addr -- f ) IC@ %10000000 AND 0<> ;
           : FIND-PRIM ( c-addr u -- 0 | xt 1 | xt -1 )
             2>R  0 'NAMES
             BEGIN
@@ -210,16 +204,15 @@
               ROT 1+ ( na na' t+1) ROT DROP SWAP ( t+1 na')
             REPEAT ( token na R:ca u) 2DROP 2R> 2DROP FALSE ;"
  :pfa [:twotor :zero :ticknames
-       :dup :icfetch :icharlit 0xff :notequals :izbranch 29
-         :dup :tworfetch :rot :foundprimq :izbranch 16
+       :dup :icfetch :icharlit 0xff :notequals :izbranch 27
+         :dup :tworfetch :rot :foundprimq :izbranch 14
            :drop
            ; IMMEDIATE-PRIM?
-             :icfetch :icharlit 0x07 :and
-             :icharlit "kDefTypeCOLONIMMEDIATE" :equals
+             :icfetch :icharlit 0x80 :and :zeronotequals
            :icharlit 2 :and :oneminus
            :tworfrom :twodrop :exit
          :rot :oneplus :rot :drop :swap
-         :ibranch -34
+         :ibranch -32
        :twodrop :tworfrom :twodrop :false
        :exit]}
 
@@ -255,7 +248,7 @@
  :name "FOUND-DEF?"
  :args [[:caddr :u :xt] [:f]]
  :flags #{:headerless}
- :source ": HIDDEN? ( xt -- f ) >DEF-TYPE kDefTypeCOLONHIDDEN = ;
+ :source ": HIDDEN? ( xt -- f ) >LFA 2 + C@ %01000000 AND 0<> ;
           : STRING~ ( c-addr1 c-addr2 u -- f )
             BEGIN
               ?DUP
@@ -271,7 +264,7 @@
             >NFA ( ca u ca') SWAP STRING~ ;"
  :pfa [:dup
        ; HIDDEN
-         :todeftype :icharlit "kDefTypeCOLONHIDDEN" :equals
+         :tolfa :oneplus :oneplus :cfetch :icharlit 0x40 :and :zeronotequals
        :izbranch 5
          :drop :twodrop :false :exit
        :twodup :namelength :notequals :izbranch 5
@@ -322,7 +315,7 @@
  :name "FOUND-PRIM?"
  :args [[:caddr :u :offset1] [:offset2 :f]]
  :flags #{:headerless}
- :source ": PRIM-NAMELEN ( addr -- u )  IC@ 3 RSHIFT ;
+ :source ": PRIM-NAMELEN ( addr -- u )  IC@ $3F AND ;
           : TRAVERSE-PRIM-NAME ( addr1 -- addr2 )  DUP PRIM-NAME-LENGTH + 1+ ;
           : FOUND-PRIM? ( c-addr u addr1 -- addr2 f )
             DUP TRAVERSE-PRIM-NAME >R ( ca u addr1 R:addr2)
@@ -337,12 +330,12 @@
        ; TRAVERSE-PRIM-NAME
          :dup
          ; PRIM-NAMELEN
-           :icfetch :icharlit 3 :rshift
+           :icfetch :icharlit 0x3F :and
          :plus :oneplus
        :tor
        :dup
        ; PRIM-NAME-LENGTH
-         :icfetch :icharlit 3 :rshift
+         :icfetch :icharlit 0x3F :and
        :rot :notequals :izbranch 5
            :twodrop :rfrom :false :exit
        :oneplus
@@ -401,6 +394,18 @@
            :minus :ibranch 3
            :drop :zero
          :ibranch -21
+       :exit]}
+
+{:token :hide
+ :args [[] []]
+ :flags #{:headerless}
+ :source ": HIDE ( --)
+            LATEST @ >LFA 2 +
+            ( addr) DUP C@ %01000000 OR ( addr val)
+            ( addr val) SWAP C!"
+ :pfa [:latest :fetch :tolfa :oneplus :oneplus
+       :dup :cfetch :icharlit 0x40 :or
+       :swap :cstore
        :exit]}
 
 {:token :hld
@@ -500,8 +505,8 @@
  :name "NAME-LENGTH"
  :args [[:xt] [:u]]
  :flags #{:headerless}
- :source ": NAME-LENGTH ( xt -- ru)  >LFA 2 + C@ 3 RSHIFT ;"
- :pfa [:tolfa :oneplus :oneplus :cfetch :icharlit 3 :rshift :exit]}
+ :source ": NAME-LENGTH ( xt -- ru)  >LFA 2 + C@ $3F AND ;"
+ :pfa [:tolfa :oneplus :oneplus :cfetch :icharlit 0x3F :and :exit]}
 
 ;; Length of the NFA field, not necessarily the name itself (because FFI
 ;; trampolines have a zero-length NFA since the name is stored in ROM in
@@ -511,10 +516,10 @@
  :args [[:xt] [:u]]
  :flags #{:headerless}
  :source ": NFA-LENGTH ( xt -- ru)
-            DUP FFI? IF DROP 0 ELSE >LFA 2 + C@ 3 RSHIFT THEN ;"
+            DUP FFI? IF DROP 0 ELSE NAME-LENGTH THEN ;"
  :pfa [:dup :ffiq :izbranch 5
-         :drop :zero :ibranch 8
-         :tolfa :oneplus :oneplus :cfetch :icharlit 3 :rshift
+         :drop :zero :ibranch 2
+         :namelength
        :exit]}
 
 ;; NUMBER? [ENFORTH] "number-question" ( c-addr u -- c-addr u 0 | n -1 )
@@ -675,6 +680,18 @@
  :source ": ?NEGATE ( n1 n2 -- n3)   0< IF NEGATE THEN ;"
  :pfa [:zeroless :izbranch 2 :negate :exit]}
 
+{:token :reveal
+ :args [[] []]
+ :flags #{:headerless}
+ :source ": REVEAL ( --)
+            LATEST @ >LFA 2 +
+            ( addr) DUP C@ %10111111 AND ( addr val)
+            ( addr val) SWAP C!"
+ :pfa [:latest :fetch :tolfa :oneplus :oneplus
+       :dup :cfetch :icharlit 0xBF :and
+       :swap :cstore
+       :exit]}
+
 {:token :tib
  :args [[] [:caadr]]
  :flags #{:headerless}
@@ -698,12 +715,12 @@
 
 ;; xt must refer to a compiled (not primitive) definition or FFI
 ;; trampoline.
-{:token :todeftype
- :name ">DEF-TYPE"
- :args [[:xt] [:u]]
+{:token :tocfa
+ :name ">CFA"
+ :args [[:xt] [:addr]]
  :flags #{:headerless}
- :source ": >DEF-TYPE ( xt -- u)  >LFA 2 + C@ $7 AND ;"
- :pfa [:tolfa :oneplus :oneplus :cfetch :icharlit 0x07 :and :exit]}
+ :source ": >CFA ( xt -- addr)  DUP NFA-LENGTH  SWAP >LFA 2 + 1+  + ;"
+ :pfa [:dup :nfalength :swap :tolfa :oneplus :oneplus :oneplus :plus :exit]}
 
 {:token :toffidef
  :name ">FFIDEF"
@@ -749,11 +766,11 @@
  :source ": >TOKEN ( xt -- token)
             DUP TOKEN? IF EXIT THEN
             DUP FFI? IF >FFIDEF FFIDEF-ARITY FFI-EXECUTION-TOKEN-BASE +
-            ELSE >DEF-TYPE EXECUTION-TOKEN-BASE + THEN ;"
+            ELSE >CFA C@ THEN ;"
  :pfa [:dup :tokenq :izbranch 2 :exit
        :dup :ffiq :izbranch 8
-         :toffidef :ffidefarity :icharlit 0xf8 :plus :ibranch 5
-         :todeftype :icharlit 0xf0 :plus
+         :toffidef :ffidefarity :icharlit 0xf8 :plus :ibranch 3
+         :tocfa :cfetch
        :exit]}
 
 {:token :toupper
@@ -799,7 +816,7 @@
 
 ;; TODO Why does this abort if given an empty USE: declaration?  It
 ;; should generate an error or something.
-{:token :use
+#_{:token :use
  :name "USE:"
  :args [[] []]
  :source ": USE: ( \"<spaces>name\" -- )

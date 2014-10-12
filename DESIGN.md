@@ -81,6 +81,69 @@ An XT can point to one of two things: a ROM-based primitive or a user-defined wo
 
 XTs are used by `EXECUTE` and `COMPILE,`, which must be able to determine the type of XT -- primitive or user-defined -- and then invoke the appropriate `DO*` primitive If the XT references a user-defined word.  This creates additional work for `EXECUTE` and `COMPILE,`, but the benefit to Enforth is that the inner interpreter only ever needs to deal with tokens and so its register usage can be optimized for that operation.
 
+## Update
+
+**I believe that this will change once we go to the new model?**  *i.e.,* XTs are XTs, regardless of where they show up.  This change occurs because of the fact that XTs now point indirectly to a code word (via the jumptable), a ROM-based primitive ($C000-prefixed value) or a user-defined word in RAM ($8000-prefixed value).  Previously, every 8-bit token in the definition was always a pointer into the jumptable.  Stack XTs, on the other hand, could refer either to a jumptable entry (clear high bit) or a user-defined word (high bit offset from the start of the dictionary).  The old mechanism required the `P*` words as well as the different variants of `EXECUTE` and the `>TOKEN` and `>[TOKEN]`.  All of that should go away now and unify XTs everywhere.
+
+Note that this doesn't change the way that the return stack works.  The return stack contains instruction pointers and we still need to differentiate between ROM-based pointers and RAM-based pointers on Harvard architectures.  There, the high bit indicates ROM vs. RAM and has nothing to do with the type of XT (since these are not XTs, but IPs).
+
+Additionally note that stack-based XTs are converted into VM tokens, which are the entry in the jump table for what is effectively the CFA for that word.  This is the reason that calling a user definition requires three bytes: one byte for the "CFA" token and two bytes for the definition offset.  In the new model we can store the CFA token in the definition (just like a "real" Forth definition with a CFA field) and then the compiled XT is just the definition offset.
+
+As mentioned above and in `TODO.md`, this should eliminate the need for ever putting tokens on the stack and for the two variants of to-token and `EXECUTE`.
+
+An additional change here is noted in `TODO.md`, which is that "`NEXT`", which in our case is the small bit of code at the beginning of the `for` loop that dereferences and advances the IP, needs to set `W` to the PFA address of the definition that is being called (unless this is a code primitive, of course) before dispatching the XT.  This change is subtle, because the code does set `W`, *but it sets it by reading the XT from the IP*.  That is not the same as what we are saying here, which is that `W` needs to be set to the executing CFA, which is in the target word and not the word that made the call.  This value will not be set for Code Primitives, but when calling a Definition the address interpreter will need to store the CFA address into W as part of reading the CFA.
+
+The format of the dictionary has to change as well.  Currently we use the following layout: LFA, 3-bit CFA token + 5-bit length, NFA, PFA.  That works because we run the CFA token through a lookup table in order to get the actual CFA that is being executed.  The new model requires an actual CFA field, and the ability to quickly skip from that field to the PFA at runtime.  This means that we need a layout like the following: LFA, flags, NFA, CFA, PFA.  `>BODY` *et al* already know how to skip over the NFA at compile time.  Smudged and immediate definitions become a problem as well, because we can no longer use the CFA token to indicate those things.  Instead, we'll need to go with the immediate+smudged+NFAlen thing that is standard to other Forths.  We could go with reverse-names like MFORTH...  Maybe later.
+
+Why can't we use a tokenized CFA in the new model?  We could, but then we would have to -- at runtime and on every execution of the word -- read that token, convert it to the actual VM token, then jump to that VM token.  Putting a real VM token into the CFA (just like how a direct-threaded Forth has an assembly language `JMP` instruction in the CFA) means that we can just load the CFA and jump right to that token (which is an indirect-threaded Forth, because we have an address in the CFA and not the actual `JMP` instruction).  *Basically Enforth is now an indirect-threaded Forth on top of a virtual machine.*
+
+The ROM Definition Block looks different now as well.  Previously it was just a huge concatenation of definitions without any separation between definitions.  That worked because we could calculate the offset to a definition given the token for that definition.  We can no longer do that and now need a different way of looking up ROM definitions by name.  `enforth_names.h` will only be for Code Primitives.  We will go with a standard dictionary format for the ROM Definition Block so that it looks identical to the RAM-based User Definition header.  User definitions can then chain through to the ROM block just like MFORTH.  Note that we will need to differentiate between RAM and ROM LFAs and can use the high bit for that.
+
+*In general, we are saying that pointers (*not* XTs) can refer to RAM or ROM and the high bit decides which one.  This is true of values on the return stack as well as LFA pointers.  We could potentially make this a general concept that works with @, !, etc.  Not sure about that though; feels like I-prefixed words might be better/clearer/more deterministic.*
+
+### XT Formats
+
+Code Primitive (7-bit entry in the ROM jumptable):
+
+    +----+----+
+    |0xxx|xxxx|
+    +----+----+
+
+ROM Definition (11-bit offset from the start of the ROM definition block):
+
+    +----+----+----+----+
+    |1100|0xxx|xxxx|xxxx|
+    +----+----+----+----+
+
+User Definition (14-bit offset from the start of the dictionary):
+
+    +----+----+----+----+
+    |10xx|xxxx|xxxx|xxxx|
+    +----+----+----+----+
+
+### New DefGen Logic
+
+This is basically a two-pass assembler.
+
+1. Load all primitive definitions.
+2. Sort Code Primitives first by hidden flag, then alphabetically.
+3. Build Code Primitive jump table.
+4. Sort ROM Definitions alphabetically.
+5. Calculate the size of each ROM Definition: keywords that point to Code Primitives have a length of 1, keywords that point to other ROM Definitions have a length of 2.  ROM Definitions also have a header: LFA (2 byte offset from the start of the ROM Definition Block), name (1+length; 1 is imm+smudge+6bit length), and CFA (1).
+6. Determine start addresses of each ROM Definition.
+7. Compile the ROM Definition Block by going through the sorted ROM Definition list and outputting each definition now that we have the address of all of the other definitions.
+
+### Plan
+
+1. Change the user dictionary layout: from "LFA, 5-bit length + 3-bit CFA type, NFA, PFA" to "LFA, PS+6bit-namelen, NFA, CFA, PFA".  Needs to happen for Code Primitives (in DefGen) as well.
+  * This works, along with all interactive interpretation and even some kinds of compilation.  What does not work is a compiling a call to another user definition.  Those are being written out as deftype+LFA, which doesn't work.  Compiling calls to ROM definitions still works, because those look like tokens.
+  * We can probably fix this by just fixing how user definitions are compiled (since ROM definitions look like tokens and tokens are working fine).  Note that this is a short-term fix, since `W` is still being read from the IP when in fact it needs to be set as part of reading the instruction itself.  In other words, we're going to patch up the current code by reading the contents of the CFA field from the user definition and then writing that and the PFA to the instruction stream, just like how the code previously worked.  Eventually we will need to change the address interpreter to not expect the CFA+PFA and instead to just see the XT ($8000-prefixed address of the CFA).
+  * Apparently eliminates `>[TOKEN]`, which feels like a surprise.  `>TOKEN` used to return the paren variant of the CFA DO\* token and so compilation had to convert that into the standard (non-paren) variant.  That is no longer needed, because we just always return the CFA variant and that variant works everywhere.  I think that we didn't ever need the paren variant, since the only thing that did was *not* set `W`, but the extra call to set `W` doesn't seem to matter.  I wonder if this fails in some sort of weird way when chaining back and forth between words?  Apparently not, because all of the tests pass!  I really didn't expect that.  I think that the whole `>[TOKEN]` thing was never required.  Yep, it was never required.  See change 88db6e6 for more information.
+2. Modify DefGen to write out the same header layout for ROM Definitions and to stop writing out ROM Definitions out to the names file.  Note that we still have to write the `DOCOLONROM` entries in to the lookup table since ultimately we are still using lookup-based dispatch.  We'll still fit ROM Definitions into the multiplier-based table.  Modify the lookup functions to find ROM Definitions using the same lookup mechanism that we use for user definitions instead of the lookup table.  We'll still need to calculate VM tokens as output from the lookup process though since that is what `FIND-PRIM` currently returns.  Thankfully we can just use division to convert the ROM Definition PFA into a VM token.
+3. Modify `EXECUTE`, `(EXECUTE)`, `FIND-PRIM`, `>TOKEN`, `,XT`, etc. to write and use $C000-prefixed XTs for calling ROM definitions.
+4. Modify DefGen to implement the full set of new logic, which at this point basically just means that it no longer pads the definitions or stores the `DOCOLONROM` thing in the lookup table; the lookup table should only contain 7-bit Code Primitives now; `FIND-PRIM` *et al* need to be modified appropriately.
+
+
 # Relocation
 
 Enforth programs are created interactively.  The program manifests itself as a dictionary image.  The dictionary image can be copied verbatim into EEPROM for turnkey applications and is then copied back into RAM to execute the turnkey application.

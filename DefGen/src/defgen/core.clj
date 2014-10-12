@@ -115,11 +115,11 @@
                              [token-value
                               (if headerless?
                                 (format "\"\\%03o\" /* %s */",
-                                        (if immediate? 0x03 0x02)
+                                        (if immediate? 0x80 0x00)
                                         token-name)
                                 (format "\"\\%03o\" \"%s\""
-                                        (bit-or (if immediate? 0x03 0x02)
-                                                (bit-shift-left (count name) 3))
+                                        (bit-or (if immediate? 0x80 0x00)
+                                                (count name))
                                         (escape-c-string name)))])
                            defs))
                 possible-empty-names (into {} (map #(vector % "\"\\000\"")

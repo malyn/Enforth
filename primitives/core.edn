@@ -166,8 +166,9 @@
  :name ":"
  :args [[] []]
  :source ": : ( \"<spaces>name\" -- )
-            CREATE  kDefTypeCOLONHIDDEN CHANGE-LATEST-DEF-TYPE  ] ;"
- :pfa [:create :icharlit "kDefTypeCOLONHIDDEN" :changelatestdeftype
+            CREATE  HIDE  -1 ALLOT ['] DOCOLON C,  ]"
+ :pfa [:create :hide
+       :zero :oneminus :allot :icharlit "DOCOLON" :ccomma
        :rtbracket
        :exit]}
 
@@ -177,6 +178,9 @@
  :source ": , ( x -- )  HERE !  1 CELLS ALLOT ;"
  :pfa [:here :store :icharlit 1 :cells :allot :exit]}
 
+; FIXME This needs to be changed as part of the overall refactoring.
+; Either we should compile a Code Primitive token, or we should compile
+; a prefixed ($8000 for RAM Definition or $C000 for Code Definition) XT.
 {:token :compilecomma
  :name "COMPILE,"
  :args [[:xt] []]
@@ -191,8 +195,8 @@
 {:token :constant
  :args [[:x] []]
  :source ": CONSTANT ( x \"<spaces>name\" -- )
-            CREATE  kDefTypeCONSTANT CHANGE-LATEST-DEF-TYPE  , ;"
- :pfa [:create :icharlit "kDefTypeCONSTANT" :changelatestdeftype
+            CREATE  -1 ALLOT ['] DOCONSTANT C,  , ;"
+ :pfa [:create :zero :oneminus :allot :icharlit "DOCONSTANT" :ccomma
        :comma
        :exit]}
 
@@ -214,12 +218,13 @@
           : CREATE ( \"<spaces>name\" -- )
             BL PARSE-WORD DUP 0= IF ABORT THEN ( ca u)
             HERE >XT  LATEST @ XT,  LATEST ! ( ca u)
-            DUP 3 LSHIFT kDefTypeCREATE OR C,  ( ca u) S,  ALIGN ;"
+            DUP C,  S,  ['] DOCREATE C,  ALIGN ;"
  :pfa [:bl :parseword :dup :zeroequals :izbranch 2 :abort
        :here :toxt :latest :fetch :xtcomma :latest :store
-       :dup :icharlit 3 :lshift :icharlit "kDefTypeCREATE" :or :ccomma
+       :dup :ccomma
        ; S,
          :tuck :here :swap :move :allot
+       :icharlit "DOCREATE" :ccomma
        :align
        :exit]}
 
@@ -354,8 +359,14 @@
 
 {:token :immediate
  :args [[] []]
- :source ": IMMEDIATE ( -- )  kDefTypeCOLONIMMEDIATE CHANGE-LATEST-DEF-TYPE ;"
- :pfa [:icharlit "kDefTypeCOLONIMMEDIATE" :changelatestdeftype :exit]}
+ :source ": IMMEDIATE ( --)
+            LATEST @ >LFA 2 +
+            ( addr) DUP C@ %10000000 OR ( addr val)
+            ( addr val) SWAP C!"
+ :pfa [:latest :fetch :tolfa :oneplus :oneplus
+       :dup :cfetch :icharlit 0x80 :or
+       :swap :cstore
+       :exit]}
 
 {:token :invert}
 
@@ -628,10 +639,10 @@
  :flags #{:immediate}
  :source ": ; ( --)
             ['] EXIT COMPILE,
-            kDefTypeCOLON CHANGE-LATEST-DEF-TYPE
+            REVEAL
             [ ; IMMEDIATE"
  :pfa [:icharlit :exit :compilecomma
-       :icharlit "kDefTypeCOLON" :changelatestdeftype
+       :reveal
        :ltbracket :exit]}
 
 ;; SIGN [CORE] 6.1.2210 ( n -- )
@@ -755,11 +766,11 @@
  :source ": >BODY ( xt -- a-addr)
             DUP TOKEN? IF DROP 0 EXIT THEN
             DUP NFA-LENGTH ( xt u)
-            SWAP >LFA 2 + ( lfa) 1+ ( flags) + ( nfa) ;"
+            SWAP >LFA 2 + ( lfa) 1+ ( flags) + ( nfa) 1+ ( cfa) ;"
  :pfa [:dup :tokenq :izbranch 4
          :drop :zero :exit
        :dup :nfalength
-       :swap :tolfa :oneplus :oneplus :oneplus :plus
+       :swap :tolfa :oneplus :oneplus :oneplus :plus :oneplus
        ;; TODO Add :align if we start aligning the PFA.
        :exit]}
 
@@ -863,8 +874,8 @@
 {:token :variable
  :args [[] []]
  :source ": VARIABLE ( \"<spaces>name\" -- )
-            CREATE  kDefTypeVARIABLE CHANGE-LATEST-DEF-TYPE  0 , ;"
- :pfa [:create :icharlit "kDefTypeVARIABLE" :changelatestdeftype
+            CREATE  -1 ALLOT ['] DOVARIABLE C,  0 , ;"
+ :pfa [:create :zero :oneminus :allot :icharlit "DOVARIABLE" :ccomma
        :zero :comma
        :exit]}
 

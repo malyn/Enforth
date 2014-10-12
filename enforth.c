@@ -58,20 +58,8 @@
 
 
 /* -------------------------------------
- * Enforth definition types and tokens.
+ * Enforth tokens.
  */
-
-enum EnforthDefinitionType
-{
-    kDefTypeFFI = 0,
-    kDefTypeCOLONHIDDEN,
-    kDefTypeCOLON,
-    kDefTypeCOLONIMMEDIATE,
-    kDefTypeCONSTANT,
-    kDefTypeCREATE,
-    kDefTypeDOES,
-    kDefTypeVARIABLE,
-};
 
 typedef enum EnforthToken
 {
@@ -83,13 +71,7 @@ typedef enum EnforthToken
      * the token list and Address Interpreter jump table, in other
      * words), but we do list them here in order to make it easier to
      * turn raw tokens into enum values in the debugger. */
-    /* Don't need to map kDefTypeFFI because that will be mapped to one
-     * of the arity-specific values. */
-    /* Don't need to map kDefTYPECOLONHIDDEN because those definitions
-     * can never be executed (except by RECURSE, which knows to compile
-     * in a DOCOLON). */
     DOCOLON = 0xf2,
-    DOCOLONIMMEDIATE,
     DOCONSTANT,
     DOCREATE,
     DODOES,
@@ -299,12 +281,12 @@ void enforth_resume(EnforthVM * const vm)
         0, /* Not needed */
         0, /* Not needed */
         &&DOCOLON,
-        &&DOCOLON, /* Immediate word */
-
         &&DOCONSTANT,
+
         &&DOCREATE,
         0, /* &&DODOES, */
         &&DOVARIABLE,
+        0, /* Not needed */
 
         /* $F8 - $FF */
         &&DOFFI0,
@@ -331,6 +313,12 @@ void enforth_resume(EnforthVM * const vm)
     /* The inner interpreter. */
     for (;;)
     {
+        /* Get the next instruction, which could be one or two bytes
+         * depending on if this is a Code Primitive (one byte) or a
+         * Definition (two bytes).  The W ("Word") pointer needs to be
+         * set if this is a Definition. */
+        /* FIXME Implement this */
+
         /* Get the next token and dispatch to the label. */
         uint8_t token;
 
@@ -345,7 +333,14 @@ void enforth_resume(EnforthVM * const vm)
             token = *ip++;
         }
 
+        /* The W ("Word") pointer needs to be set to the CFA of the
+         * definition if this instruction targets a definition. */
+        /* FIXME Implement this.  Note that we need to differentiate
+         * between RAM and ROM definitions and set the program memory
+         * flag appropriately. */
+
         /* Set the W pointer if necessary. */
+        /* FIXME This gets removed once we set the W pointer above. */
         if (token >= DOCOLON)
         {
             /* The IP is pointing at the dictionary-relative offset of
@@ -368,10 +363,10 @@ DISPATCH_TOKEN:
             const char * curDef = kDefinitionNames;
             for (i = 0; i < token; i++)
             {
-                curDef += 1 + ((((unsigned int)*curDef) & 0xff) >> 3);
+                curDef += 1 + (((unsigned int)*curDef) & 0x3f);
             }
 
-            for (i = 1; i <= ((((unsigned int)*curDef) & 0xff) >> 3); i++)
+            for (i = 1; i <= (((unsigned int)*curDef) & 0x3f); i++)
             {
                 printf("%c", *(curDef + i));
             }
@@ -1510,10 +1505,10 @@ DISPATCH_TOKEN:
             const char * curDef = kDefinitionNames;
             for (i = 0; i < token; i++)
             {
-                curDef += 1 + ((((unsigned int)*curDef) & 0xff) >> 3);
+                curDef += 1 + (((unsigned int)*curDef) & 0x3f);
             }
 
-            for (i = 1; i <= ((((unsigned int)*curDef) & 0xff) >> 3); i++)
+            for (i = 1; i <= (((unsigned int)*curDef) & 0x3f); i++)
             {
                 printf("%c", *(curDef + i));
             }

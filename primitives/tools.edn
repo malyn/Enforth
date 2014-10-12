@@ -60,7 +60,7 @@
 
 {:token :words
  :args [[] []]
- :source ": VISIBLE? ( xt -- f ) >DEF-TYPE kDefTypeCOLONHIDDEN <> ;
+ :source ": VISIBLE? ( xt -- f ) >LFA 2 + C@ %01000000 AND 0= ;
           : DEF-WORDS ( -- )
             LATEST @
             BEGIN
@@ -86,22 +86,22 @@
           : WORDS ( -- )  DEF-WORDS PRIM-WORDS ;"
  :pfa [; DEF-WORDS
          :latest :fetch
-         :qdup :izbranch 32
+         :qdup :izbranch 36
            :dup :ffiq :izbranch 11
              :dup :toffidef :dup :ffidefname :swap :ffidefnamelen :itype :space
-               :ibranch 14
+               :ibranch 18
              :dup
              ; VISIBLE?
-               :todeftype :icharlit "kDefTypeCOLONHIDDEN" :notequals
+               :tolfa :oneplus :oneplus :cfetch :icharlit 0x40 :and :zeroequals
              :izbranch 7
                :dup :tonfa :over :nfalength :type :space
-             :tolfa :xtfetch :ibranch -33
+             :tolfa :xtfetch :ibranch -37
        ; PRIM-WORDS
          :ticknames
          :dup :icfetch :icharlit 0xff :notequals :izbranch 23
            :dup
            ; PRIM-NAMELEN
-             :icfetch :icharlit 3 :rshift
+             :icfetch :icharlit 0x3F :and
            :tuck
            :over :plus :oneplus :swap :oneplus :rot
            :qdup :izbranch 5
