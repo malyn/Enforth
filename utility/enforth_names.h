@@ -143,7 +143,6 @@
 "\002" /* TOTOKEN */
 "\042" "MOVE"
 "\002" /* TOXT */
-"\002" /* TOCOMPILETOKEN */
 "\002" /* QDNEGATE */
 "\002" /* QNEGATE */
 "\002" /* CHANGELATESTDEFTYPE */

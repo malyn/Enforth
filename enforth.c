@@ -77,38 +77,17 @@ typedef enum EnforthToken
 {
 #include "enforth_tokens.h"
 
-    /* Tokens 0xe0-0xef are reserved for jump labels to the "CFA"
-     * primitives *after* the point where W (the Word Pointer) has
-     * already been set.  This allows words like EXECUTE to jump to a
-     * CFA without having to use a switch statement to convert
-     * definition types to tokens.  The token names themselves do not
-     * need to be defined because they are never referenced (we're just
-     * reserving space in the token list and Address Interpreter jump
-     * table, in other words), but we do list them here in order to make
-     * it easier to turn raw tokens into enum values in the debugger. */
+    /* Tokens 0xf0-0xff are reserved for jump labels to the "CFA"
+     * primitives.  The token names themselves do not need to be defined
+     * because they are never referenced (we're just reserving space in
+     * the token list and Address Interpreter jump table, in other
+     * words), but we do list them here in order to make it easier to
+     * turn raw tokens into enum values in the debugger. */
     /* Don't need to map kDefTypeFFI because that will be mapped to one
      * of the arity-specific values. */
     /* Don't need to map kDefTYPECOLONHIDDEN because those definitions
      * can never be executed (except by RECURSE, which knows to compile
      * in a DOCOLON). */
-    PDOCOLON = 0xe2,
-    PDOCOLONIMMEDIATE,
-    PDOCONSTANT,
-    PDOCREATE,
-    PDODOES,
-    PDOVARIABLE,
-
-    PDOFFI0 = 0xe8,
-    PDOFFI1,
-    PDOFFI2,
-    PDOFFI3,
-    PDOFFI4,
-    PDOFFI5,
-    PDOFFI6,
-    PDOFFI7,
-
-    /* Just like the above, these tokens are never used in code and this
-     * list of enum values is only used to simplify debugging. */
     DOCOLON = 0xf2,
     DOCOLONIMMEDIATE,
     DOCONSTANT,
@@ -316,28 +295,6 @@ void enforth_resume(EnforthVM * const vm)
     static const void * const primitive_table[256] PROGMEM = {
 #include "enforth_jumptable.h"
 
-        /* $E0 - $E7 */
-        0, /* Not needed */
-        0, /* Not needed */
-        &&PDOCOLON,
-        &&PDOCOLON, /* Immediate word */
-
-        &&PDOCONSTANT,
-        &&PDOCREATE,
-        0, /* &&PDODOES, */
-        &&PDOVARIABLE,
-
-        /* $E8 - $EF */
-        &&PDOFFI0,
-        &&PDOFFI1,
-        &&PDOFFI2,
-        0, /* &&PDOFFI3, */
-
-        0, /* &&PDOFFI4, */
-        0, /* &&PDOFFI5, */
-        0, /* &&PDOFFI6, */
-        0, /* &&PDOFFI7, */
-
         /* $F0 - $F7 */
         0, /* Not needed */
         0, /* Not needed */
@@ -453,7 +410,6 @@ DISPATCH_TOKEN:
         }
 
         DOFFI0:
-        PDOFFI0:
         {
             CHECK_STACK(0, 1);
 
@@ -468,7 +424,6 @@ DISPATCH_TOKEN:
         continue;
 
         DOFFI1:
-        PDOFFI1:
         {
             CHECK_STACK(1, 1);
 
@@ -482,7 +437,6 @@ DISPATCH_TOKEN:
         continue;
 
         DOFFI2:
-        PDOFFI2:
         {
             CHECK_STACK(2, 1);
             TwoArgFFI fn = (TwoArgFFI)pgm_read_word(&(*(EnforthFFIDef**)w)->fn);
@@ -1497,7 +1451,6 @@ DISPATCH_TOKEN:
         continue;
 
         DOCOLON:
-        PDOCOLON:
         {
             /* IP points to the next word in the PFA and that is the
              * location to which we should return once this new word has
@@ -1524,9 +1477,7 @@ DISPATCH_TOKEN:
         continue;
 
         DOCREATE:
-        PDOCREATE:
         DOVARIABLE:
-        PDOVARIABLE:
         {
             /* W points at the PFA of this word; push that location onto
              * the stack. */
@@ -1536,7 +1487,6 @@ DISPATCH_TOKEN:
         continue;
 
         DOCONSTANT:
-        PDOCONSTANT:
         {
             /* W points at the PFA of this word; push the address in
              * that location onto the stack. */

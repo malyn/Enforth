@@ -79,7 +79,7 @@
                        prim-defs-token-values)
         code-defs (map #(assoc %1 :token-value %2)
                        (filter #(-> % :primitive-type (= :code)) prims)
-                       (difference (apply sorted-set (range 0xE0))
+                       (difference (apply sorted-set (range 0xF0))
                                    (set prim-defs-token-values)))]
     (sort-by :token-value (concat prim-defs code-defs))))
 
@@ -158,7 +158,7 @@
                            (filter #(-> % :primitive-type (= :definition)))
                            (map (fn [{:keys [token-value]}]
                                   [token-value "DOCOLONROM"]))))
-                possible-unused-tokens (into {} (map #(vector % nil) (range 0xE0)))
+                possible-unused-tokens (into {} (map #(vector % nil) (range 0xF0)))
                 all-tokens (sort-by key (merge
                                           possible-unused-tokens
                                           def-tokens

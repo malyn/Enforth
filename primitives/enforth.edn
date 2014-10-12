@@ -696,20 +696,6 @@
  :flags #{:headerless}
  :pfa [:vm :icharlit "offsetof(EnforthVM, prev_leave)" :plus :exit]}
 
-;; >[TOKEN] [ENFORTH] "to-compile-token" ( xt -- token )
-;;
-;; Return the compilation token for the given XT, which may refer to a
-;; token, user definition, or FFI trampoline.
-{:token :tocompiletoken
- :name ">[TOKEN]"
- :args [[:xt] [:token]]
- :flags #{:headerless}
- :source ": >[TOKEN] ( xt -- token)
-            >TOKEN  DUP EXECUTION-TOKEN-BASE 1- > IF 0x10 + THEN ;"
- :pfa [:totoken :dup :icharlit "0xe0 - 1" :greaterthan :izbranch 4
-         :icharlit 0x10 :plus
-       :exit]}
-
 ;; xt must refer to a compiled (not primitive) definition or FFI
 ;; trampoline.
 {:token :todeftype
@@ -766,8 +752,8 @@
             ELSE >DEF-TYPE EXECUTION-TOKEN-BASE + THEN ;"
  :pfa [:dup :tokenq :izbranch 2 :exit
        :dup :ffiq :izbranch 8
-         :toffidef :ffidefarity :icharlit 0xe8 :plus :ibranch 5
-         :todeftype :icharlit 0xe0 :plus
+         :toffidef :ffidefarity :icharlit 0xf8 :plus :ibranch 5
+         :todeftype :icharlit 0xf0 :plus
        :exit]}
 
 {:token :toupper

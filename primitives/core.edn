@@ -180,8 +180,8 @@
 {:token :compilecomma
  :name "COMPILE,"
  :args [[:xt] []]
- :source ": COMPILE, ( xt --)  DUP >[TOKEN] C,  >BODY ?DUP IF 'DICT - XT, THEN ;"
- :pfa [:dup :tocompiletoken :ccomma
+ :source ": COMPILE, ( xt --)  DUP >TOKEN C,  >BODY ?DUP IF 'DICT - XT, THEN ;"
+ :pfa [:dup :totoken :ccomma
        :tobody :qdup :izbranch 8
          ; TICKDICT
            :vm :icharlit "offsetof(EnforthVM, dictionary)" :plus :fetch
