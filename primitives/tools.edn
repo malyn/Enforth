@@ -101,7 +101,7 @@
          :dup :icfetch :icharlit 0xff :notequals :izbranch 23
            :dup
            ; PRIM-NAMELEN
-             :icfetch :icharlit 0x3F :and
+             :icfetch :icharlit 0x1F :and
            :tuck
            :over :plus :oneplus :swap :oneplus :rot
            :qdup :izbranch 5

@@ -81,17 +81,12 @@
        :tickprevleave :fetch :heretochain
        :exit]}
 
-#_{:token :ffiq
- :name "FFI?"
- :args [[:xt] [:f]]
- :flags #{:headerless}
- :source ": FFI? ( xt -- f)  >DEF-TYPE kDefTypeFFI = ;"
- :pfa [:todeftype :icharlit "kDefTypeFFI" :equals :exit]}
 {:token :ffiq
  :name "FFI?"
  :args [[:xt] [:f]]
  :flags #{:headerless}
- :pfa [:drop :false :exit]}
+ :source ": FFI? ( xt -- f)  >LFA 2 + C@ %0010000 AND 0<> ;"
+ :pfa [:tolfa :oneplus :oneplus :cfetch :icharlit 0x20 :and :zeronotequals :exit]}
 
 {:token :ffidefarity
  :name "FFIDEF-ARITY"
@@ -315,7 +310,7 @@
  :name "FOUND-PRIM?"
  :args [[:caddr :u :offset1] [:offset2 :f]]
  :flags #{:headerless}
- :source ": PRIM-NAMELEN ( addr -- u )  IC@ $3F AND ;
+ :source ": PRIM-NAMELEN ( addr -- u )  IC@ $1F AND ;
           : TRAVERSE-PRIM-NAME ( addr1 -- addr2 )  DUP PRIM-NAME-LENGTH + 1+ ;
           : FOUND-PRIM? ( c-addr u addr1 -- addr2 f )
             DUP TRAVERSE-PRIM-NAME >R ( ca u addr1 R:addr2)
@@ -330,12 +325,12 @@
        ; TRAVERSE-PRIM-NAME
          :dup
          ; PRIM-NAMELEN
-           :icfetch :icharlit 0x3F :and
+           :icfetch :icharlit 0x1F :and
          :plus :oneplus
        :tor
        :dup
        ; PRIM-NAME-LENGTH
-         :icfetch :icharlit 0x3F :and
+         :icfetch :icharlit 0x1F :and
        :rot :notequals :izbranch 5
            :twodrop :rfrom :false :exit
        :oneplus
@@ -505,8 +500,8 @@
  :name "NAME-LENGTH"
  :args [[:xt] [:u]]
  :flags #{:headerless}
- :source ": NAME-LENGTH ( xt -- ru)  >LFA 2 + C@ $3F AND ;"
- :pfa [:tolfa :oneplus :oneplus :cfetch :icharlit 0x3F :and :exit]}
+ :source ": NAME-LENGTH ( xt -- ru)  >LFA 2 + C@ $1F AND ;"
+ :pfa [:tolfa :oneplus :oneplus :cfetch :icharlit 0x1F :and :exit]}
 
 ;; Length of the NFA field, not necessarily the name itself (because FFI
 ;; trampolines have a zero-length NFA since the name is stored in ROM in
@@ -816,7 +811,12 @@
 
 ;; TODO Why does this abort if given an empty USE: declaration?  It
 ;; should generate an error or something.
-#_{:token :use
+;; TODO: DOFFI0 needs to have "+ arity" put in.  We don't actually need
+;; that yet though, because we still write out the token in the user
+;; definition.  Eventually, though, the user definition will point to
+;; the CFA of the FFI trampoline and then we'll need the right arity in
+;; the trampoline.
+{:token :use
  :name "USE:"
  :args [[] []]
  :source ": USE: ( \"<spaces>name\" -- )
@@ -824,13 +824,13 @@
             2DUP FIND-FFIDEF ( ca u 0 | ca u addr -1)
             0= IF TYPE  SPACE  [CHAR] ? EMIT  CR  ABORT THEN ( ca u addr)
             HERE >XT  LATEST @ XT,  LATEST ! ( ca u addr)
-            SWAP 3 LSHIFT kDefTypeFFI OR C,  ( ca addr)
+            SWAP  %00100000 OR C,  ['] DOFFI0 ( TODO + arity) C,  ( ca addr)
             ALIGN ,  DROP ;"
  :pfa [:bl :parseword :dup :zeroequals :izbranch 2 :abort
        :twodup :findffidef :zeroequals :izbranch 8
          :type :space :icharlit "'?'" :emit :cr :abort
        :here :toxt :latest :fetch :xtcomma :latest :store
-       :swap :icharlit 3 :lshift :icharlit "kDefTypeFFI" :or :ccomma
+       :swap :icharlit 0x20 :or :ccomma :icharlit "DOFFI0" :ccomma
        :align :comma :drop
        :exit]}
 

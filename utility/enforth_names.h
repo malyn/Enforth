@@ -119,14 +119,18 @@
 "\003" "UD."
 "\006" "UNUSED"
 "\005" "FALSE"
-"\010" "VARIABLE"
-"\205" "WHILE"
-"\005" "WORDS"
+"\004" "USE:"
 "\001" "I"
 "\006" "INVERT"
 "\003" "KEY"
+"\010" "VARIABLE"
+"\205" "WHILE"
+"\005" "WORDS"
 "\006" "LSHIFT"
 "\002" "M+"
+"\003" "MAX"
+"\003" "MIN"
+"\004" "MOVE"
 "\201" "["
 "\203" "[']"
 "\206" "[CHAR]"
@@ -138,18 +142,18 @@
 "\000" /* TOLFA */
 "\000" /* TONFA */
 "\000" /* TOTOKEN */
-"\003" "MAX"
+"\006" "NEGATE"
 "\000" /* TOXT */
 "\000" /* QDNEGATE */
 "\000" /* QNEGATE */
 "\000" /* COLD */
-"\003" "MIN"
-"\004" "MOVE"
-"\006" "NEGATE"
-"\000" /* DIGITQ */
 "\003" "NIP"
 "\002" "OR"
 "\004" "OVER"
+"\000" /* DIGITQ */
+"\002" "R>"
+"\002" "R@"
+"\003" "ROT"
 "\000" /* DP */
 "\000" /* ENDLOOP */
 "\000" /* EVALUATE */
@@ -158,53 +162,53 @@
 "\000" /* FFIDEFNAME */
 "\000" /* FFIDEFNAMELEN */
 "\000" /* FINDDEF */
-"\002" "R>"
-"\002" "R@"
-"\000" /* FINDFFIDEF */
-"\003" "ROT"
 "\006" "RSHIFT"
-"\000" /* FINDPRIM */
 "\004" "SWAP"
+"\000" /* FINDFFIDEF */
 "\004" "TRUE"
 "\004" "TUCK"
-"\000" /* FINDWORD */
+"\000" /* FINDPRIM */
 "\002" "U<"
-"\000" /* FOUNDDEFQ */
 "\002" "U>"
 "\003" "UM*"
+"\000" /* FINDWORD */
 "\006" "UM/MOD"
+"\000" /* FOUNDDEFQ */
 "\006" "UNLOOP"
-"\000" /* FOUNDFFIQ */
-"\000" /* FOUNDFFIDEFQ */
 "\003" "XOR"
 "\000" /* TICKNAMES */
-"\000" /* FOUNDPRIMQ */
 "\000" /* PPLUSLOOP */
+"\000" /* FOUNDFFIQ */
+"\000" /* FOUNDFFIDEFQ */
 "\000" /* PQDO */
 "\000" /* PDO */
+"\000" /* FOUNDPRIMQ */
+"\000" /* PEXECUTE */
+"\000" /* PIPLUSLOOP */
+"\000" /* PIQDO */
 "\000" /* HALT */
 "\000" /* HERETOCHAIN */
-"\000" /* PEXECUTE */
+"\000" /* PILOOP */
 "\000" /* HIDE */
-"\000" /* PIPLUSLOOP */
+"\000" /* PISQUOTE */
 "\000" /* HLD */
 "\000" /* HLDEND */
 "\000" /* INTERPRET */
-"\000" /* PIQDO */
-"\000" /* PILOOP */
-"\000" /* PISQUOTE */
 "\000" /* LIT */
-"\000" /* ITYPE */
 "\000" /* PLOOP */
+"\000" /* PSQUOTE */
+"\000" /* ZBRANCH */
+"\000" /* ITYPE */
+"\000" /* BRANCH */
 "\000" /* NAMELENGTH */
 "\000" /* NFALENGTH */
 "\000" /* NUMBERQ */
-"\000" /* PSQUOTE */
-"\000" /* ZBRANCH */
-"\000" /* BRANCH */
 "\000" /* CHARLIT */
-"\000" /* REVEAL */
 "\000" /* IFETCH */
+"\000" /* IBRANCH */
+"\000" /* ICFETCH */
+"\000" /* REVEAL */
+"\000" /* ICHARLIT */
 "\000" /* TIB */
 "\000" /* TIBSIZE */
 "\000" /* TOKENQ */
@@ -214,9 +218,6 @@
 "\000" /* XTFLAG */
 "\000" /* XTMASK */
 "\000"
-"\000" /* IBRANCH */
-"\000" /* ICFETCH */
-"\000" /* ICHARLIT */
 "\000" /* INITRP */
 "\000" /* IZBRANCH */
 "\000" /* PHALT */

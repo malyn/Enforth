@@ -64,3 +64,14 @@ TEST_CASE( "Additional +LOOP Tests" ) {
     REQUIRE( enforth_test(vm, "T{ : GD2 DO I 1 +LOOP ; -> }T") );
     REQUIRE( enforth_test(vm, "T{ 4 0 GD2 -> 0 1 2 3 }T") );
 }
+
+TEST_CASE( "FFI Tests" ) {
+    EnforthVM * const vm = get_test_vm();
+    enforth_evaluate(vm, "TESTING FFI (Enforth)");
+
+    REQUIRE( enforth_test(vm, "T{ USE: twoseven -> }T") );
+    REQUIRE( enforth_test(vm, "T{ USE: dubnum -> }T") );
+
+    REQUIRE( enforth_test(vm, "T{ twoseven -> 1B }T") );
+    REQUIRE( enforth_test(vm, "T{ twoseven dubnum -> 36 }T") );
+}

@@ -61,6 +61,31 @@ extern "C" bool enforth_test(EnforthVM * const vm, const char * const text);
 
 
 /* -------------------------------------
+ * FFI definitions for tests.
+ */
+
+static int twoSeven()
+{
+    return 27;
+}
+
+static int doubleNumber(int num)
+{
+    return num + num;
+}
+
+/* Externs */
+ENFORTH_EXTERN(twoseven, twoSeven, 0)
+#undef LAST_FFI
+#define LAST_FFI GET_LAST_FFI(twoseven)
+
+ENFORTH_EXTERN(dubnum, doubleNumber, 1)
+#undef LAST_FFI
+#define LAST_FFI GET_LAST_FFI(dubnum)
+
+
+
+/* -------------------------------------
  * Enforth I/O primitives.
  */
 
