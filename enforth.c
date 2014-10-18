@@ -65,19 +65,22 @@ typedef enum EnforthToken
 {
 #include "enforth_tokens.h"
 
-    /* Tokens 0xf0-0xff are reserved for jump labels to the "CFA"
+    /* Tokens 0x70-0x7f are reserved for jump labels to the "CFA"
      * primitives.  The token names themselves do not need to be defined
      * because they are never referenced (we're just reserving space in
      * the token list and Address Interpreter jump table, in other
      * words), but we do list them here in order to make it easier to
      * turn raw tokens into enum values in the debugger. */
-    DOCOLON = 0xf2,
+    DOCOLON = 0x70,
+    DOCOLONROM,
     DOCONSTANT,
     DOCREATE,
     DODOES,
     DOVARIABLE,
+    /* Unused */
+    /* Unused */
 
-    DOFFI0 = 0xf8,
+    DOFFI0 = 0x78,
     DOFFI1,
     DOFFI2,
     DOFFI3,
@@ -86,16 +89,6 @@ typedef enum EnforthToken
     DOFFI6,
     DOFFI7,
 } EnforthToken;
-
-
-
-/* -------------------------------------
- * Enforth constants.
- */
-
-/* Multiplier used to convert a ROM-based token into an offset into the
- * ROM-based definition table. */
-static const int kTokenMultiplier = 12;
 
 
 
@@ -188,9 +181,9 @@ void enforth_reset(EnforthVM * const vm)
 
     /* Set the IP to the beginning of COLD. */
 #ifdef __AVR__
-    uint8_t* ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ((EnforthToken)COLD * kTokenMultiplier)));
+    uint8_t* ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ROMDEF_PFA_COLD));
 #else
-    uint8_t* ip = (uint8_t*)definitions + ((EnforthToken)COLD * kTokenMultiplier);
+    uint8_t* ip = (uint8_t*)definitions + ROMDEF_PFA_COLD;
 #endif
 
     /* Push RSP and IP to the stack. */
@@ -206,19 +199,19 @@ void enforth_evaluate(EnforthVM * const vm, const char * const text)
     /* Clear the return stack. */
     EnforthCell * rsp = (EnforthCell*)&vm->return_stack[31];
 
-    /* Push the XT for HALT onto the return stack so that we exit the
-     * interpreter after EVALUATE is done. */
+    /* Push the address of HALT onto the return stack so that we exit
+     * the interpreter after EVALUATE is done. */
 #ifdef __AVR__
-    (--rsp)->ram = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ((EnforthToken)HALT * kTokenMultiplier)));
+    (--rsp)->ram = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ROMDEF_PFA_HALT));
 #else
-    (--rsp)->ram = (uint8_t*)definitions + ((EnforthToken)HALT * kTokenMultiplier);
+    (--rsp)->ram = (uint8_t*)definitions + ROMDEF_PFA_HALT;
 #endif
 
     /* Set the IP to the beginning of EVALUATE. */
 #ifdef __AVR__
-    uint8_t* ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ((EnforthToken)EVALUATE * kTokenMultiplier)));
+    uint8_t* ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ROMDEF_PFA_EVALUATE));
 #else
-    uint8_t* ip = (uint8_t*)definitions + ((EnforthToken)EVALUATE * kTokenMultiplier);
+    uint8_t* ip = (uint8_t*)definitions + ROMDEF_PFA_EVALUATE;
 #endif
 
     /* Restore the stack pointer. */
@@ -247,6 +240,7 @@ void enforth_evaluate(EnforthVM * const vm, const char * const text)
 void enforth_resume(EnforthVM * const vm)
 {
     register uint8_t *ip;
+    register uint16_t xt;
     register EnforthCell tos;
     register EnforthCell *restDataStack; /* Points at the second item on the stack. */
     register uint8_t *w;
@@ -274,21 +268,21 @@ void enforth_resume(EnforthVM * const vm)
 #define CHECK_STACK(numArgs, numResults)
 #endif
 
-    static const void * const primitive_table[256] PROGMEM = {
+    static const void * const primitive_table[128] PROGMEM = {
 #include "enforth_jumptable.h"
 
-        /* $F0 - $F7 */
-        0, /* Not needed */
-        0, /* Not needed */
+        /* $70 - $77 */
         &&DOCOLON,
+        &&DOCOLONROM,
         &&DOCONSTANT,
-
         &&DOCREATE,
+
         0, /* &&DODOES, */
         &&DOVARIABLE,
-        0, /* Not needed */
+        0, /* Unused */
+        0, /* Unused */
 
-        /* $F8 - $FF */
+        /* $78 - $7F */
         &&DOFFI0,
         &&DOFFI1,
         &&DOFFI2,
@@ -317,9 +311,6 @@ void enforth_resume(EnforthVM * const vm)
          * depending on if this is a Code Primitive (one byte) or a
          * Definition (two bytes).  The W ("Word") pointer needs to be
          * set if this is a Definition. */
-        /* FIXME Implement this */
-
-        /* Get the next token and dispatch to the label. */
         uint8_t token;
 
 #ifdef __AVR__
@@ -333,22 +324,47 @@ void enforth_resume(EnforthVM * const vm)
             token = *ip++;
         }
 
-        /* The W ("Word") pointer needs to be set to the CFA of the
-         * definition if this instruction targets a definition. */
-        /* FIXME Implement this.  Note that we need to differentiate
-         * between RAM and ROM definitions and set the program memory
-         * flag appropriately. */
-
-        /* Set the W pointer if necessary. */
-        /* FIXME This gets removed once we set the W pointer above. */
-        if (token >= DOCOLON)
+        /* Is this actually a token (< 128)?  If so, dispatch the
+         * token. */
+        if (token < 128)
         {
-            /* The IP is pointing at the dictionary-relative offset of
-             * the PFA of the target definition.  Convert that to a
-             * pointer and store it in W. */
-            w = (uint8_t*)(vm->dictionary.ram + *(uint16_t*)ip);
-            ip += 2;
+            goto DISPATCH_TOKEN;
         }
+
+        /* Not a token, which means that this is a two-byte XT that
+         * points at the CFA of the word to be called. */
+        xt = token << 8;
+
+#ifdef __AVR__
+        if (inProgramSpace)
+        {
+            xt |= pgm_read_byte(ip++);
+        }
+        else
+#endif
+        {
+            xt |= *ip++;
+        }
+
+        /* Convert the XT into a Word Pointer depending on the type of
+         * XT (ROM definition or user definition) and then read the CFA. */
+        if (xt & 0xC000) /* ROM Definition: 0xCxxx */
+        {
+            w = (uint8_t*)((uint8_t*)definitions + (xt & 0x3FFF));
+#ifdef __AVR__
+            token = pgm_read_byte(w++);
+#else
+            token = *w++;
+#endif
+        }
+        else /* User Definition: 0x8xxx */
+        {
+            w = (uint8_t*)(vm->dictionary.ram + (xt & 0x3FFF));
+            token = *w++;
+        }
+
+        /* W now points at the PFA; fall through to dispatch the CFA
+         * token. */
 
 DISPATCH_TOKEN:
 #if ENABLE_TRACING == 2
@@ -360,15 +376,19 @@ DISPATCH_TOKEN:
             }
 
             printf(" [%02x] ", token);
-            const char * curDef = kDefinitionNames;
-            for (i = 0; i < token; i++)
-            {
-                curDef += 1 + (((unsigned int)*curDef) & 0x3f);
-            }
 
-            for (i = 1; i <= (((unsigned int)*curDef) & 0x3f); i++)
+            if (token < 0x70) /* No names for DO* tokens */
             {
-                printf("%c", *(curDef + i));
+                const char * curDef = kDefinitionNames;
+                for (i = 0; i < token; i++)
+                {
+                    curDef += 1 + (((unsigned int)*curDef) & 0x1f);
+                }
+
+                for (i = 1; i <= (((unsigned int)*curDef) & 0x1f); i++)
+                {
+                    printf("%c", *(curDef + i));
+                }
             }
 
             for (i = 0; i < &vm->data_stack[32] - restDataStack - 1; i++)
@@ -597,8 +617,13 @@ DISPATCH_TOKEN:
             tos.i = 0;
             restDataStack = (EnforthCell*)&vm->data_stack[32];
             vm->base = 10;
-            token = QUIT;
-            goto DISPATCH_TOKEN;
+
+            /* Set the IP to the beginning of QUIT */
+#ifdef __AVR__
+            ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ROMDEF_PFA_QUIT));
+#else
+            ip = (uint8_t*)definitions + ROMDEF_PFA_QUIT;
+#endif
         }
         continue;
 
@@ -1501,17 +1526,24 @@ DISPATCH_TOKEN:
                 printf(">");
             }
 
+            /* FIXME ROM Definitions no longer show up in the names
+             * table, which means that this code needs to be changed to
+             * pull the name out of the NFA field of the ROM Definition
+             * itself.  We'll just output the PFA's offset for now. */
+/*
             printf(" [%02x] ", token);
             const char * curDef = kDefinitionNames;
             for (i = 0; i < token; i++)
             {
-                curDef += 1 + (((unsigned int)*curDef) & 0x3f);
+                curDef += 1 + (((unsigned int)*curDef) & 0x1f);
             }
 
-            for (i = 1; i <= (((unsigned int)*curDef) & 0x3f); i++)
+            for (i = 1; i <= (((unsigned int)*curDef) & 0x1f); i++)
             {
                 printf("%c", *(curDef + i));
             }
+*/
+            printf(" [xt] PFA=%d", (xt & 0x3FFF) + 1 /* PFA */);
 
             for (i = 0; i < &vm->data_stack[32] - restDataStack - 1; i++)
             {
@@ -1525,21 +1557,26 @@ DISPATCH_TOKEN:
 
             printf("\n");
 #endif
-            /* Push IP to the return stack, marking IP as
-             * in-program-space as necessary. */
+            /* IP points to the next word in the PFA and that is the
+             * location to which we should return once this new word has
+             * executed. */
 #ifdef __AVR__
             if (inProgramSpace)
             {
+                /* Set the high bit on the return address so that we
+                 * know that this address is in ROM. */
                 ip = (uint8_t*)((unsigned int)ip | 0x8000);
             }
 #endif
             (--returnTop)->ram = ip;
 
-            /* Calculate the offset of the definition and set the IP to
-             * the absolute address. */
-            int definitionOffset = token * kTokenMultiplier;
-            ip = (uint8_t*)definitions + definitionOffset;
+            /* Now set the IP to the PFA of the word that is being
+             * called and continue execution inside of that word. */
+            ip = w;
+
 #ifdef __AVR__
+            /* We are obviously now in program space since, by design,
+             * DOCOLONROM is only ever used for ROM definitions. */
             inProgramSpace = -1;
 #endif
         }
@@ -1606,9 +1643,9 @@ void enforth_go(EnforthVM * const vm)
 
     /* Set the IP to the beginning of COLD. */
 #ifdef __AVR__
-    uint8_t* ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ((EnforthToken)COLD * kTokenMultiplier)));
+    uint8_t* ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ROMDEF_PFA_COLD));
 #else
-    uint8_t* ip = (uint8_t*)definitions + ((EnforthToken)COLD * kTokenMultiplier);
+    uint8_t* ip = (uint8_t*)definitions + ROMDEF_PFA_COLD;
 #endif
 
     /* Push RSP and IP to the stack. */

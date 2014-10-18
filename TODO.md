@@ -27,6 +27,10 @@
         * We could actually use an $800-prefixed XT for ROM definitions and then uses bits 12-14 for specifying the FFI arity of FFI trampolines.  FFI trampolines would then just be a raw function pointer compiled in to the dictionary.
       * Note that this approach ties a compiled program (in EEPROM, for example) much more closely to the Enforth build -- we can't change the length of a ROM definition, for example.  That feels like a minor issue anyway; I doubt that most people are going to make changes to Enforth; most (all?) extensibility points will be through FFI definitions.
       * **We thought about this before and threw it out.**  We need to figure out why.
+* Fix tracing; it still thinks that we have everything in kDefinitionNames (when in fact things like DOCOLONROM, DOCOLON, etc. need to read the NFA).
+* XTs are MSB-first, but LFAs (and literals, I think?) are LSB-first; should we make all of that MSB first?
+* Modify DefGen to read code primitive EDN data from `/****`-prefixed comments in the `enforth.c` file.  Then rename the `primitives` directory to `definitions` and have it only include ROM definitions.
+* Refactor the DefGen code to make it easier to load in the definitions and then traverse them for analysis purposes.  First analysis: output a GraphViz file that shows the calling patterns between all of the words.
 * Start creating the `enforth_*_extern.h` files for various Arduino libs in order to validate the FFI code, workflow, etc.
   * Consider creating a namespace enum for externs so that we can rewrite the FFIDef addresses after a load.  The trampoline would then contain the 16-bit id of the extern (10 bits for namespace, 6 bits for function).
 * PARSE-WORD needs to treat all control characters as space if given a space as the delimiter.
