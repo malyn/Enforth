@@ -58,6 +58,8 @@
        :rfrom :base :store
        :exit]}
 
+;; FIXME: PRIM-WORDS is now just CODEPRIM-WORDS and we need to add
+;; ROMDEF-WORDS.
 {:token :words
  :args [[] []]
  :source ": VISIBLE? ( xt -- f ) >LFA 2 + C@ %01000000 AND 0= ;

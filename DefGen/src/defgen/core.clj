@@ -309,7 +309,8 @@
     (println (str "#define ROMDEF_PFA_" token-name) (+ offset header-size))
     (print (s/join ", " body))
     (println ",")
-    (println)))
+    (println))
+  (println (str "#define ROMDEF_LAST " (->> rom-defs last :offset))))
 
 ;; TODO: Use subgraph syntax "ROT -> { OVER DUP SWAP WHATEVER }
 ;; TODO: Eliminate EXIT, IZBRANCH, ZBRANCH, etc.

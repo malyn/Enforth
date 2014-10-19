@@ -765,10 +765,11 @@
  :args [[:xt] [:a-addr]]
  :source ": >BODY ( xt -- a-addr)
             DUP TOKEN? IF DROP 0 EXIT THEN
+            DUP ROMDEF? IF ROM>CFA 1+ EXIT THEN
             DUP NFA-LENGTH ( xt u)
             SWAP >LFA 2 + ( lfa) 1+ ( flags) + ( nfa) 1+ ( cfa) ;"
- :pfa [:dup :tokenq :izbranch 4
-         :drop :zero :exit
+ :pfa [:dup :tokenq :izbranch 4 :drop :zero :exit
+       :dup :romdefq :izbranch 4 :romtocfa :oneplus :exit
        :dup :nfalength
        :swap :tolfa :oneplus :oneplus :oneplus :plus :oneplus
        ;; TODO Add :align if we start aligning the PFA.

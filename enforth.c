@@ -240,7 +240,6 @@ void enforth_evaluate(EnforthVM * const vm, const char * const text)
 void enforth_resume(EnforthVM * const vm)
 {
     register uint8_t *ip;
-    register uint16_t xt;
     register EnforthCell tos;
     register EnforthCell *restDataStack; /* Points at the second item on the stack. */
     register uint8_t *w;
@@ -330,37 +329,41 @@ void enforth_resume(EnforthVM * const vm)
         {
             goto DISPATCH_TOKEN;
         }
-
-        /* Not a token, which means that this is a two-byte XT that
-         * points at the CFA of the word to be called. */
-        xt = token << 8;
-
-#ifdef __AVR__
-        if (inProgramSpace)
-        {
-            xt |= pgm_read_byte(ip++);
-        }
         else
-#endif
         {
-            xt |= *ip++;
-        }
 
-        /* Convert the XT into a Word Pointer depending on the type of
-         * XT (ROM definition or user definition) and then read the CFA. */
-        if (xt & 0xC000) /* ROM Definition: 0xCxxx */
-        {
-            w = (uint8_t*)((uint8_t*)definitions + (xt & 0x3FFF));
+            /* Not a token, which means that this is a two-byte XT that
+             * points at the CFA of the word to be called. */
+            uint16_t xt = token << 8;
+
 #ifdef __AVR__
-            token = pgm_read_byte(w++);
-#else
-            token = *w++;
+            if (inProgramSpace)
+            {
+                xt |= pgm_read_byte(ip++);
+            }
+            else
 #endif
-        }
-        else /* User Definition: 0x8xxx */
-        {
-            w = (uint8_t*)(vm->dictionary.ram + (xt & 0x3FFF));
-            token = *w++;
+            {
+                xt |= *ip++;
+            }
+
+            /* Convert the XT into a Word Pointer depending on the type
+             * of XT (ROM definition or user definition) and then read
+             * the CFA. */
+            if (xt & 0xC000) /* ROM Definition: 0xCxxx */
+            {
+                w = (uint8_t*)((uint8_t*)definitions + (xt & 0x3FFF));
+#ifdef __AVR__
+                token = pgm_read_byte(w++);
+#else
+                token = *w++;
+#endif
+            }
+            else /* User Definition: 0x8xxx */
+            {
+                w = (uint8_t*)(vm->dictionary.ram + (xt & 0x3FFF));
+                token = *w++;
+            }
         }
 
         /* W now points at the PFA; fall through to dispatch the CFA
@@ -1144,6 +1147,22 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        TICKROMDEF:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos.ram = (uint8_t*)definitions;
+        }
+        continue;
+
+        LASTROMDEF:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos.u = ROMDEF_LAST;
+        }
+        continue;
+
         LESSTHAN:
         {
             CHECK_STACK(2, 1);
@@ -1543,7 +1562,7 @@ DISPATCH_TOKEN:
                 printf("%c", *(curDef + i));
             }
 */
-            printf(" [xt] PFA=%d", (xt & 0x3FFF) + 1 /* PFA */);
+            printf(" [xt] PFA=%d", (uint16_t)(w - (uint8_t*)definitions));
 
             for (i = 0; i < &vm->data_stack[32] - restDataStack - 1; i++)
             {
