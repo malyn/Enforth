@@ -215,7 +215,7 @@
                          token
                          constant)))
 
-          (#{:ibranch :izbranch} token)
+          (#{:ibranch :izbranch :piqdo :piloop :piplusloop} token)
           (let [branch-target (nth in-pfa (inc offset))
                 branch-span (extract-branch-span in-pfa
                                                  (inc offset)
