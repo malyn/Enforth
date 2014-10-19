@@ -1555,7 +1555,7 @@ DISPATCH_TOKEN:
              * hidden (smudged) or refer to an FFI Definition, so those
              * bits (the second and third) will always be zero in a ROM
              * Definition flag+NFA byte. */
-            const char * curDef = w - 2; /* Skip over CFA. */
+            const char * curDef = (const char *)w - 2; /* Skip over CFA. */
 
             /* Is this field 0x00 or 0x80?  If so, this is a hidden (or
              * hidden immediate) definition; output the XT instead of
@@ -1592,6 +1592,7 @@ DISPATCH_TOKEN:
             }
 
             printf("\n");
+            fflush(stdout);
 #endif
             /* IP points to the next word in the PFA and that is the
              * location to which we should return once this new word has
