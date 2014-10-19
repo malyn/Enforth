@@ -145,12 +145,16 @@
     (code-prim-ids token) 1
     :else                 2))
 
+(defn calc-token-list-size
+  [code-prim-ids token-list]
+  (apply + (map #(token-byte-size code-prim-ids %) token-list)))
+
 (defn calc-pfa-size
   [code-prims {:keys [pfa] :as rom-def}]
   (let [code-prim-ids (->> code-prims
                            (map #(vector (:id %) %))
                            (into {}))
-        pfa-size (apply + (map #(token-byte-size code-prim-ids %) pfa))]
+        pfa-size (calc-token-list-size code-prim-ids pfa)]
     (assoc rom-def ::pfa-size pfa-size)))
 
 (defn calc-offsets
@@ -187,22 +191,12 @@
   [(bit-and (bit-shift-right offset 8) 0xff)
    (bit-and offset 0xff)])
 
-(defn token-count-to-byte-count
-  "Count `token-count` tokens forward (for positive counts) or backward (for negative counts) from `offset` in `token-list`, accumulating the byte size of each token along the way (ROM Definition XTs are two bytes, everything else is one byte)."
-  [code-prim-ids token-count offset token-list]
-    (let [advance-remaining #(if (pos? token-count) (dec %) (inc %))
-          advance-offset #(if (pos? token-count) (inc %) (dec %))
-          advance-byte-count #(if (pos? token-count) (+ %1 %2) (- %1 %2))]
-    (loop [token-count-remaining token-count
-           offset offset
-           byte-count 0]
-      (if (zero? token-count-remaining)
-        byte-count
-        (recur (advance-remaining token-count-remaining)
-               (advance-offset offset)
-               (advance-byte-count byte-count
-                                   (token-byte-size code-prim-ids
-                                                    (nth token-list offset))))))))
+(defn extract-branch-span
+  "Returns branch-span elements of the PFA vector starting at offset.  branch-span may be negative, in which case the span will start at offset minus branch-span and continue to, but not include, offset."
+  [pfa offset branch-span]
+  (let [start-offset (min offset (+ offset branch-span))
+        end-offset (max offset (+ offset branch-span))]
+    (subvec pfa start-offset end-offset)))
 
 (defn adjust-branch-targets
   "Branch targets are based on the number of elements in the PFA, but when written out they need to be based on the number of bytes in the PFA (which can change if other ROM Definitions are being referenced, since those use two-byte XTs instead of one-byte tokens."
@@ -222,14 +216,19 @@
                          constant)))
 
           (#{:ibranch :izbranch} token)
-          (let [branch-target (nth in-pfa (inc offset))]
+          (let [branch-target (nth in-pfa (inc offset))
+                branch-span (extract-branch-span in-pfa
+                                                 (inc offset)
+                                                 branch-target)
+                branch-byte-size (calc-token-list-size code-prim-ids
+                                                       branch-span)
+                new-branch-target (if (pos? branch-target)
+                                    branch-byte-size
+                                    (* -1 branch-byte-size))]
             (recur (inc (inc offset))
                    (conj out-pfa
                          token
-                         (token-count-to-byte-count code-prim-ids
-                                                    branch-target
-                                                    offset
-                                                    in-pfa))))
+                         new-branch-target)))
 
           :else
           (recur (inc offset)
