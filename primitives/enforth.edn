@@ -215,7 +215,7 @@
  :name "FIND-ROMDEF"
  :args [[:caddr :u] [[0] [:xt 1] [:xt -1]]]
  :flags #{:headerless}
- :source ": IMMEDIATE-ROMDEF? ( xt -- f )  >LFA 2 + IC@ %10000000 AND 0<> ;
+ :source ": IMMEDIATE-ROMDEF? ( xt -- f )  ROM>LFA 2 + IC@ %10000000 AND 0<> ;
           : FIND-ROMDEF ( c-addr u -- 0 | xt 1 | xt -1 )
           2>R  LAST-ROMDEF
           BEGIN
@@ -223,7 +223,7 @@
           WHILE
             DUP 2R@ ROT ( xt ca u xt R:ca u) FOUND-ROMDEF? ( xt f R:ca u)
             IF  DUP IMMEDIATE-ROMDEF? 2 AND 1-  2R> 2DROP  EXIT THEN
-            ( ROMXT>LFA:) XTMASK AND 'ROMDEF +  IXT@
+            ROM>LFA IXT@
           REPEAT ( R:ca u) 2R> 2DROP FALSE ;"
  :pfa [:twotor :lastromdef
        :qdup :izbranch 27
@@ -375,7 +375,7 @@
  :name "FOUND-ROMDEF?"
  :args [[:caddr :u :xt] [:f]]
  :flags #{:headerless}
- :source ": HIDDEN? ( xt -- f ) >LFA 2 + IC@ %01000000 AND 0<> ;
+ :source ": HIDDEN? ( xt -- f ) ROM>LFA 2 + IC@ %01000000 AND 0<> ;
           : STRING~ ( c-addr1 ic-addr2 u -- f )
             BEGIN
               ?DUP
@@ -390,7 +390,7 @@
             >ROMNFA ( ca u ca') SWAP STRING~ ;"
  :pfa [:dup
        ; HIDDEN
-         :tolfa :oneplus :oneplus :icfetch :icharlit 0x40 :and :zeronotequals
+         :romtolfa :oneplus :oneplus :icfetch :icharlit 0x40 :and :zeronotequals
        :izbranch 5
          :drop :twodrop :false :exit
        :twodup :romnamelength :notequals :izbranch 5
