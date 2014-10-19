@@ -267,7 +267,7 @@
 (defn print-names-table
   [code-prims]
   (doall (->> code-prims
-              #_(filter #(not (% :headerless?)))
+              (filter #(not (% :headerless?)))
               (map (fn [{:keys [name immediate?]}]
                      (println (format "\"\\%03o\" \"%s\""
                                       (bit-or (if immediate? 0x80 0x00)
