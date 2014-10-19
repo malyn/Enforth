@@ -1545,25 +1545,42 @@ DISPATCH_TOKEN:
                 printf(">");
             }
 
-            /* FIXME ROM Definitions no longer show up in the names
-             * table, which means that this code needs to be changed to
-             * pull the name out of the NFA field of the ROM Definition
-             * itself.  We'll just output the PFA's offset for now. */
-/*
             printf(" [%02x] ", token);
-            const char * curDef = kDefinitionNames;
-            for (i = 0; i < token; i++)
+
+            /* Search backwards from PFA until the flag byte (which also
+             * includes the NFA length).  Printable characters always
+             * have their second or third bits set to one, so we just
+             * scan backwards until we find a byte that has those bits
+             * set to zero.  We know that no ROM Definitions will be
+             * hidden (smudged) or refer to an FFI Definition, so those
+             * bits (the second and third) will always be zero in a ROM
+             * Definition flag+NFA byte. */
+            const char * curDef = w - 2; /* Skip over CFA. */
+
+            /* Is this field 0x00 or 0x80?  If so, this is a hidden (or
+             * hidden immediate) definition; output the XT instead of
+             * the name. */
+            if ((*curDef == 0x00) || (*curDef == 0x80))
             {
-                curDef += 1 + (((unsigned int)*curDef) & 0x1f);
+                printf("<pfa=%d>", (uint16_t)(w - (uint8_t*)definitions));
+            }
+            else
+            {
+                /* Normal definition; walk backwards to find the flags. */
+                while ((*curDef & 0x60) != 0)
+                {
+                    --curDef;
+                }
+
+                /* Found the NFA field; now walk forwards and output the
+                * name. */
+                for (i = 1; i <= (((unsigned int)*curDef) & 0x1f); i++)
+                {
+                    printf("%c", *(curDef + i));
+                }
             }
 
-            for (i = 1; i <= (((unsigned int)*curDef) & 0x1f); i++)
-            {
-                printf("%c", *(curDef + i));
-            }
-*/
-            printf(" [xt] PFA=%d", (uint16_t)(w - (uint8_t*)definitions));
-
+            /* Print the data stack and top-of-stack. */
             for (i = 0; i < &vm->data_stack[32] - restDataStack - 1; i++)
             {
                 printf(" %x", vm->data_stack[30 - i].u);
