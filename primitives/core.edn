@@ -178,18 +178,21 @@
  :source ": , ( x -- )  HERE !  1 CELLS ALLOT ;"
  :pfa [:here :store :icharlit 1 :cells :allot :exit]}
 
-; FIXME This needs to be changed as part of the overall refactoring.
-; Either we should compile a Code Primitive token, or we should compile
-; a prefixed ($8000 for RAM Definition or $C000 for Code Definition) XT.
+;; FIXME: This is all pretty horrible and will go away once XTs just
+;; point at the LFA (like MFORTH) and we do reverse names (like MFORTH).
 {:token :compilecomma
  :name "COMPILE,"
  :args [[:xt] []]
- :source ": COMPILE, ( xt --)  DUP >TOKEN C,  >BODY ?DUP IF 'DICT - XT, THEN ;"
- :pfa [:dup :totoken :ccomma
-       :tobody :qdup :izbranch 8
-         ; TICKDICT
-           :vm :icharlit "offsetof(EnforthVM, dictionary)" :plus :fetch
-         :minus :xtcomma
+ :source ": COMPILE, ( xt --)
+            DUP TOKEN? IF C, EXIT THEN
+            DUP ROMDEF? IF DUP ROM>CFA  OVER ROM>LFA  -
+              ELSE DUP >CFA  OVER >LFA  - THEN
+            ( xt headersize) + XT, ; "
+ :pfa [:dup :tokenq :izbranch 3 :ccomma :exit
+       :dup :romdefq :izbranch 8
+         :dup :romtocfa :over :romtolfa :minus :ibranch 6
+         :dup :tocfa :over :tolfa :minus
+       :plus :xtcomma
        :exit]}
 
 {:token :constant
@@ -217,10 +220,10 @@
  :source ": S, ( ca u --)  TUCK  HERE SWAP MOVE  ALLOT ;
           : CREATE ( \"<spaces>name\" -- )
             BL PARSE-WORD DUP 0= IF ABORT THEN ( ca u)
-            HERE >XT  LATEST @ XT,  LATEST ! ( ca u)
+            HERE >XT  LATEST @ LFA,  LATEST ! ( ca u)
             DUP C,  S,  ['] DOCREATE C,  ALIGN ;"
  :pfa [:bl :parseword :dup :zeroequals :izbranch 2 :abort
-       :here :toxt :latest :fetch :xtcomma :latest :store
+       :here :toxt :latest :fetch :lfacomma :latest :store
        :dup :ccomma
        ; S,
          :tuck :here :swap :move :allot

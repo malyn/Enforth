@@ -565,6 +565,13 @@
  :args [[] [:aaadr]]
  :pfa [:vm :icharlit "offsetof(EnforthVM, latest)" :plus :exit]}
 
+{:token :lfacomma
+ :name "LFA,"
+ :args [[:xt] []]
+ :flags #{:headerless}
+ :source ": LFA, ( xt -- )  DUP C,  8 RSHIFT C, ;"
+ :pfa [:dup :ccomma :icharlit 8 :rshift :ccomma :exit]}
+
 {:token :lit
  :name "(LIT)"
  :args [[] [:x]]
@@ -963,8 +970,8 @@
  :name "XT,"
  :args [[:xt] []]
  :flags #{:headerless}
- :source ": XT, ( xt -- )  DUP C,  8 RSHIFT C, ;"
- :pfa [:dup :ccomma :icharlit 8 :rshift :ccomma :exit]}
+ :source ": XT, ( xt -- )  DUP 8 RSHIFT C,  C, ;"
+ :pfa [:dup :icharlit 8 :rshift :ccomma :ccomma :exit]}
 
 {:token :xtfetch
  :name "XT@"

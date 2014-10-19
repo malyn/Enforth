@@ -350,7 +350,7 @@ void enforth_resume(EnforthVM * const vm)
             /* Convert the XT into a Word Pointer depending on the type
              * of XT (ROM definition or user definition) and then read
              * the CFA. */
-            if (xt & 0xC000) /* ROM Definition: 0xCxxx */
+            if ((xt & 0xC000) == 0xC000) /* ROM Definition: 0xCxxx */
             {
                 w = (uint8_t*)((uint8_t*)definitions + (xt & 0x3FFF));
 #ifdef __AVR__
