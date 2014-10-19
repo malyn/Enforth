@@ -768,8 +768,8 @@
  :name "ROMDEF?"
  :args [[:xt] [:f]]
  :flags #{:headerless}
- :source ": ROMDEF? ( xt -- f)  8 RSHIFT  %1100000  OVER AND = ;"
- :pfa [:icharlit 8 :rshift :icharlit 0xC0 :over :and :equals :exit]}
+ :source ": ROMDEF? ( xt -- f)  8 RSHIFT  %1100000  TUCK AND = ;"
+ :pfa [:icharlit 8 :rshift :icharlit 0xC0 :tuck :and :equals :exit]}
 
 {:token :romnamelength
  :name "ROMNAME-LENGTH"
