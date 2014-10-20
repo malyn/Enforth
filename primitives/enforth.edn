@@ -887,12 +887,12 @@
  :flags #{:headerless}
  :source ": >TOKEN ( xt -- token)
             DUP TOKEN? IF EXIT THEN
-            DUP FFI? IF >FFIDEF FFIDEF-ARITY FFI-EXECUTION-TOKEN-BASE + EXIT THEN
             DUP ROMDEF? IF ROM>CFA IC@ EXIT THEN
+            DUP FFI? IF >FFIDEF FFIDEF-ARITY FFI-EXECUTION-TOKEN-BASE + EXIT THEN
             >CFA C@ THEN ;"
  :pfa [:dup :tokenq :izbranch 2 :exit
-       :dup :ffiq :izbranch 7 :toffidef :ffidefarity :icharlit 0xf8 :plus :exit
        :dup :romdefq :izbranch 4 :romtocfa :icfetch :exit
+       :dup :ffiq :izbranch 7 :toffidef :ffidefarity :icharlit 0xf8 :plus :exit
        :tocfa :cfetch
        :exit]}
 

@@ -6,6 +6,5 @@ define vmvars
 	display tos
 	display &vm->data_stack[32] - restDataStack
 	display w
-	display/x xt
 	display (enum EnforthToken)token
 end
