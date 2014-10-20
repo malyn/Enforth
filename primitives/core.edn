@@ -549,7 +549,7 @@
  :pfa [:bl :parseword :findword
        :qdup :zeroequals :izbranch 8
          :type :space :icharlit "'?'" :emit :cr :abort
-       :zeroless :izbranch 10
+       :zeroless :izbranch 19
          ; We keep things simple and use LIT here even if the XT is a
          ; token (and could therefore use CHARLIT).  POSTPONE is used
          ; infrequently and optimizing for RAM size at the expense of
@@ -557,7 +557,12 @@
          ; complexity.
          :icharlit :lit :compilecomma
            :comma
-           :icharlit :compilecomma :compilecomma
+           :icharlit "((uint8_t)(((ROMDEF_PFA_COMPILECOMMA - 1) >> 8) & 0xff))"
+           :icharlit 0xC0 :or
+           :icharlit 8 :lshift
+           :icharlit "((uint8_t)(((ROMDEF_PFA_COMPILECOMMA - 1)     ) & 0xff))"
+           :or
+           :xtcomma
            :ibranch 2
          :compilecomma
        :exit]}
