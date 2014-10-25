@@ -30,7 +30,9 @@
 * Should be able to eliminate kDefinitionNames and the associated lookup functions now that we have CFAs in definitions -- just put the Code Primitives in the ROM Definition block with only a CFA.  That should allow the token to get called, but W *et al* to be left alone (since we're not calling a `DO*` word).
 * We need to switch to MFORTH-style reverse names so that we can put the real XT (the pointer to the LFA) in definitions and stuff and then just do math to go from there to the PFA.  Right now we're doing all of this awful stuff in order to convert from XTs to LFAs to PFAs to ... and it's getting bad.  Also, sometimes an "XT" points at the LFA and sometimes it points at the PFA.  Just bad overall.
 * XTs are MSB-first, but LFAs (and literals, I think?) are LSB-first; should we make all of that MSB first?
+  * I think that this goes away if we just unify XTs everywhere per the above item.
 * Modify DefGen to read code primitive EDN data from `/****`-prefixed comments in the `enforth.c` file.  Then rename the `primitives` directory to `definitions` and have it only include ROM definitions.
+* We could use relative LFAs with automatic one-byte encoding in cases where the value is less than 256.  This would shave about 240 bytes of the size of the ROM Definition.
 * Refactor the DefGen code to make it easier to load in the definitions and then traverse them for analysis purposes.  First analysis: output a GraphViz file that shows the calling patterns between all of the words.
 * Start creating the `enforth_*_extern.h` files for various Arduino libs in order to validate the FFI code, workflow, etc.
   * Consider creating a namespace enum for externs so that we can rewrite the FFIDef addresses after a load.  The trampoline would then contain the 16-bit id of the extern (10 bits for namespace, 6 bits for function).
