@@ -149,6 +149,38 @@ This is basically a two-pass assembler.
 * This change means that we can put constants in ROM (since we'll have a CFA now).
 * Every `ibranch` and `izbranch` has to change now that calls to ROM Definitions take two bytes.  Previously, every call in a ROM Definition was a one-byte token, but now that is only true for ROM Primitives; ROM Definitions are two bytes and none of the branch values account for that!  Ugh.  Really need to modify DefGen to know about looping constructs and stuff (which is I guess why people build Forth Metacompilers instead of doing this stuff by hand).  Maybe we can smarten up DefGen to rewrite `ibranch` and `izbranch` values to account for this extra length...  That feels better (?) than trying to do all of that manually, especially since we'll have to constantly remember/get right which tokens refer to Code Primitives and which tokens refer to ROM Definitions.
 
+## Next Update
+
+The ITC refactor is done, but the results are kind of a mess from an XT perspective.  XTs sometimes point at the LFA, other times at the PFA, and even the new sometimes want the CFA.  This is annoying and requires lots of logic and special handling throughout the code.
+
+A better solution is to go to the MFORTH dictionary layout, which means that the XT can always point to the flags field and then basic math (`XT + 2 + 1`) gets you to the CFA.  Compiling/Comparing names is more annoying, but that only happens rarely, whereas all of this XT-shuffling is very annoying and error-prone.
+
+### Dictionary Header:
+
+The Enforth dictionary uses the layout described by Robert L. Smith in his Forth Dimensions I/5 article titled "A Modest Proposal for Dictionary Headers".
+
+The 00h byte is called the Name Field Address in Enforth, even though it only points to the name count and flags.  The Link Field Address points to the Name Field Address of the preceding definition.
+
+The header below is for the word DUP; note that the word name is stored in reverse order in memory.
+
+  +--------------------------------+ -03h
+  | 1 |          'P'               |
+  +--------------------------------+ -02h
+  | 0 |          'U'               |
+  +--------------------------------+ -01h
+  | 0 |          'D'               |
+  +--------------------------------+  00h
+  | P | S | F | Count              |
+  +--------------------------------+  01h
+  |             Link               |
+  |             Field              |
+  +--------------------------------+  03h
+  |       Code Field (Token)       |
+  +--------------------------------+  04h
+  .           Parameter            .
+  .             Field              .
+  . . . . . . . .  . . . . . . . . .
+
 
 # Relocation
 

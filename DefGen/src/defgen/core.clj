@@ -2,39 +2,11 @@
   (:require [clojure.edn :as edn]
             [clojure.set :refer [difference]]
             [clojure.string :as s]
-            [me.raynes.fs :as fs])
+            [me.raynes.fs :as fs]
+            [medley.core :refer [filter-vals map-vals]])
   (:gen-class))
 
-;; INPUT PHASE:
-;; 1. Load all defs.
-;; 2. Sort defs.
-;; 3. Split defs into code-prims and rom-defs.
-;;
-;; CODE-PRIMS PROCESSING:
-;; 1. Assign tokens to code-prims.
-;;
-;; ROM-DEFS PROCESSING:
-;; 1. Calculate header size (2 + 1 + name + 1)
-;; 2. Calculate size of each PFA.
-;; 3. Calculate offset of each definition.
-;; 4. Build header.
-;;
-;; CODE-PRIMS OUTPUT PHASE:
-;; 1. Write out code-prims names table.
-;; 2. Write out code-prims jumptable.
-;; 3. Write out code-prims tokens table.
-;;
-;; ROM-DEFS OUTPUT PHASE:
-;; 1. Write out rom-defs definitions block.
-;;
 ;; THOUGHTS:
-;; * Could avoid sorting at all and just use the file order.  That will
-;;   be just as stable as sorting, but not require that we (constantly
-;;   re-)sort in DefGen.  Also, we could just generate a map during
-;;   loading and then use that everywhere rather than passing seqs
-;;   around.  Assign tokens could be map'ing with the seq and an
-;;   infinite range sequence, for example.  Probably a TODO for after
-;;   this current change works (as a simplification/refactoring change).
 ;; * We should put hidden rom-defs at the beginning though and then set
 ;;   their LFAs to zero.  That way the ROM dictionary search will
 ;;   terminate as soon the first hidden definition is found.
@@ -83,32 +55,19 @@
    :immediate? (flags :immediate)})
 
 (defn load-def-file
-  "Returns a vector of all of the definitions in the given file."
+  "Returns a map of all of the definitions in the given file, indexed by token id."
   [path]
   (with-open [rdr (java.io.PushbackReader. (clojure.java.io/reader path))]
     (loop [defs []]
       (if-let [next-def (edn/read {:eof nil} rdr)]
         (recur (conj defs (parse-def next-def)))
-        defs))))
-
-(defn compare-def
-  [this that]
-  (let [[this-private? that-private?] (map #(-> % :headerless? boolean)
-                                           [this that])
-        [this-name that-name] (map :name [this that])]
-    (cond
-      (not= this-private? that-private?) that-private?
-      :else (compare this-name that-name))))
-
-(defn sort-defs
-  [defs]
-  (sort-by identity compare-def defs))
+        (into {} (map #(vector (% :id) %) defs))))))
 
 (defn partition-defs
   "Returns [code-prims rom-defs] given a raw list of defs."
   [defs]
-  [(filter #(-> % :primitive-type (= :code)) defs)
-   (filter #(-> % :primitive-type (= :definition)) defs)])
+  [(filter-vals #(-> % :primitive-type (= :code)) defs)
+   (filter-vals #(-> % :primitive-type (= :definition)) defs)])
 
 
 ;; =====================================================================
@@ -117,7 +76,9 @@
 
 (defn assign-token-values
   [code-prims]
-  (map-indexed (fn [idx prim] (assoc prim :token-value idx)) code-prims))
+  (into {} (map-indexed (fn [idx [k prim]]
+                          (vector k (assoc prim :token-value idx)))
+                        code-prims)))
 
 
 ;; =====================================================================
@@ -138,23 +99,20 @@
     (assoc rom-def ::header-size header-size)))
 
 (defn token-byte-size
-  [code-prim-ids token]
+  [code-prims token]
   (cond
     (number? token)       1
     (string? token)       1
-    (code-prim-ids token) 1
+    (code-prims token)    1
     :else                 2))
 
 (defn calc-token-list-size
-  [code-prim-ids token-list]
-  (apply + (map #(token-byte-size code-prim-ids %) token-list)))
+  [code-prims token-list]
+  (apply + (map #(token-byte-size code-prims %) token-list)))
 
 (defn calc-pfa-size
   [code-prims {:keys [pfa] :as rom-def}]
-  (let [code-prim-ids (->> code-prims
-                           (map #(vector (:id %) %))
-                           (into {}))
-        pfa-size (calc-token-list-size code-prim-ids pfa)]
+  (let [pfa-size (calc-token-list-size code-prims pfa)]
     (assoc rom-def ::pfa-size pfa-size)))
 
 (defn calc-offsets
@@ -200,7 +158,7 @@
 
 (defn adjust-branch-targets
   "Branch targets are based on the number of elements in the PFA, but when written out they need to be based on the number of bytes in the PFA (which can change if other ROM Definitions are being referenced, since those use two-byte XTs instead of one-byte tokens."
-  [code-prim-ids in-pfa]
+  [code-prims in-pfa]
   (loop [offset 0
          out-pfa []]
     (if (= offset (count in-pfa))
@@ -220,7 +178,7 @@
                 branch-span (extract-branch-span in-pfa
                                                  (inc offset)
                                                  branch-target)
-                branch-byte-size (calc-token-list-size code-prim-ids
+                branch-byte-size (calc-token-list-size code-prims
                                                        branch-span)
                 new-branch-target (if (pos? branch-target)
                                     branch-byte-size
@@ -237,22 +195,19 @@
 
 (defn build-bodies
   [code-prims rom-defs]
-  (let [code-prim-ids (->> code-prims
-                           (map #(vector (% :id) %))
-                           (into {}))
-        rom-def-cfa-offsets (->> rom-defs
+  (let [rom-def-cfa-offsets (->> rom-defs
                                  (map #(vector (% :id)
                                                (+ (% :offset)
                                                   (% ::header-size)
                                                   -1))) ;; Back up to CFA
                                  (into {}))]
     (map (fn [{:keys [pfa] :as rom-def}]
-           (let [pfa (adjust-branch-targets code-prim-ids pfa)
+           (let [pfa (adjust-branch-targets code-prims pfa)
                  body (mapcat (fn [token]
                                 (cond
                                   (number? token) [token]
                                   (string? token) [token]
-                                  (code-prim-ids token) [(:token-name (code-prim-ids token))]
+                                  (code-prims token) [(:token-name (code-prims token))]
                                   (rom-def-cfa-offsets token) (xt-to-bytes (bit-or 0xC000 (rom-def-cfa-offsets token)))
                                   :else (throw (Exception. (str "Unknown token " token)))))
                               pfa)]
@@ -267,27 +222,28 @@
 (defn print-names-table
   [code-prims]
   (doall (->> code-prims
-              (filter #(not (% :headerless?)))
-              (map (fn [{:keys [name immediate?]}]
-                     (println (format "\"\\%03o\" \"%s\""
-                                      (bit-or (if immediate? 0x80 0x00)
-                                              (count name))
-                                      (escape-c-string name)))))))
+              (map-vals (fn [{:keys [name token-name headerless?]}]
+                          (println (if headerless?
+                                     (format "\"\\000\" /* %s */"
+                                             token-name)
+                                     (format "\"\\%03o\" \"%s\""
+                                             (count name)
+                                             (escape-c-string name))))))))
   (println "\"\\377\""))
 
 (defn print-token-enum
   [code-prims]
   (dorun
-    (map (fn [{:keys [token-name token-value]}]
-           (println (format "%s = 0x%02x," token-name token-value)))
-         code-prims)))
+    (map-vals (fn [{:keys [token-name token-value]}]
+                (println (format "%s = 0x%02x," token-name token-value)))
+              code-prims)))
 
 (defn print-jump-table
   [code-prims]
   (let [all-token-values (zipmap (range 0x70)
                                  (repeat nil))
-        token-value-names (zipmap (map :token-value code-prims)
-                                  (map :token-name code-prims))
+        token-value-names (zipmap (map :token-value (vals code-prims))
+                                  (map :token-name (vals code-prims)))
         token-list (sort-by key (merge
                                   all-token-values
                                   token-value-names))]
@@ -302,7 +258,7 @@
            offset :offset
            header ::header
            header-size ::header-size
-           body ::body} rom-defs]
+           body ::body} (sort-by :offset rom-defs)]
     (println "/*" token-name "*/")
     (print (s/join ", " header))
     (println ",")
@@ -333,14 +289,11 @@
                 "../primitives/enforth.edn"
                 "../primitives/string.edn"
                 "../primitives/tools.edn"]
-               (mapcat load-def-file)
-               sort-defs
+               (map load-def-file)
+               (apply merge)
                partition-defs
                first
-               assign-token-values))
-  (def cpids (->> cp
-                  (map #(vector (% :id) %))
-                  (into {}))))
+               assign-token-values)))
 
 
 ;; =====================================================================
@@ -350,12 +303,20 @@
 (defn -main
   [out-path & def-paths]
   (let [[code-prims rom-defs] (->> def-paths
-                                   (mapcat load-def-file)
-                                   sort-defs
+                                   (map load-def-file)
+                                   (apply merge)
                                    partition-defs)
         code-prims (->> code-prims
                         assign-token-values)
         rom-defs (->> rom-defs
+                      vals
+                      ;; FIXME We have to sort by id because POSTPONE
+                      ;; depends on COMPILECOMMA and so we need
+                      ;; COMPILECOMMA to come first.  It would be best
+                      ;; if we didn't have to depend on having
+                      ;; ROMDEF_PFA_COMPILECOMMA defined in order for
+                      ;; POSTPONE to work.
+                      (sort-by :id)
                       (map calc-header-size)
                       (map #(calc-pfa-size code-prims %))
                       calc-offsets

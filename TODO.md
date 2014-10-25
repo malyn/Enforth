@@ -1,5 +1,8 @@
-* Should be able to eliminate kDefinitionNames and the associated lookup functions now that we have CFAs in definitions -- just put the Code Primitives in the ROM Definition block with only a CFA.  That should allow the token to get called, but W *et al* to be left alone (since we're not calling a `DO*` word).
 * We need to switch to MFORTH-style reverse names so that we can put the real XT (the pointer to the LFA) in definitions and stuff and then just do math to go from there to the PFA.  Right now we're doing all of this awful stuff in order to convert from XTs to LFAs to PFAs to ... and it's getting bad.  Also, sometimes an "XT" points at the LFA and sometimes it points at the PFA.  Just bad overall.
+  * Change DefGen to output ROM Definitions this way.  Fix `FIND-ROMDEF` et al.  The inner interpreter should expect to have all XTs point at the NFA (flags) and then do basic math to get to the CFA and PFA.  User Definitions will no longer work (so those will have to be disabled in enforthsimple.c again).
+  * Fix all of the compilation words so that user definitions work again.
+* Should be able to eliminate kDefinitionNames and the associated lookup functions now that we have CFAs in definitions -- just put the Code Primitives in the ROM Definition block with only a CFA.  That should allow the token to get called, but W *et al* to be left alone (since we're not calling a `DO*` word).
+  * We'll do this after we go to reverse names since that will also make XTs the same everywhere.
 * XTs are MSB-first, but LFAs (and literals, I think?) are LSB-first; should we make all of that MSB first?
   * I think that this goes away if we just unify XTs everywhere per the above item.
 * Modify DefGen to read code primitive EDN data from `/****`-prefixed comments in the `enforth.c` file.  Then rename the `primitives` directory to `definitions` and have it only include ROM definitions.
