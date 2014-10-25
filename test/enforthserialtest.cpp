@@ -531,7 +531,7 @@ EnforthVM * const get_test_vm()
 	}
 
 	/* Open a new connection to the target. */
-	gSerialPort = OpenEnforthConnection("/dev/ttyS11");
+	gSerialPort = OpenEnforthConnection("/dev/ttyS3");
 
     /* Compile the tester words. */
     compile_tester(&gSerialPort);
