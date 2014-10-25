@@ -1,37 +1,15 @@
-* Remove the need for `PIQDO`, `PILOOP`, and `PIPLUSLOOP` by modifying `DUMP` to use `BEGIN` and `REPEAT` instead of loops.
-  * This is low-hanging fruit and needs to be done anyway.
-* We're out of tokens and the token multiplier has gotten out of control: x12 resulting in 871 bytes of padding (50% of the 1,745 of non-padding bytes!).  There are still a handful of additional words that need to be defined (maybe a dozen?) and ideally we would leave space for other things.
-  * Doing something smart about padding would be helpful as well, although for now we should focus on making more tokens available.
-  * Some words can probably be eliminated and/or folded in to other words (`C+!` wasn't being used, for example).
-  * Getting rid of the need to dedicated tokens for the `P*` CFAs would be get us 16 more bytes (by just making a separate, definition type-based jump table in `(EXECUTE)`).
-    * This could be subtle though, because `(EXECUTE)` would no longer take a token and a PFA, but would in some cases take an XT ($8000 | offset) and PFA and then the XT would be dereferenced in order to get the definition type.
-    * Note that only `(EXECUTE)` needs this special functionality, because we would still retain the non-`P*` CFA tokens since those are what gets compiled into other definitions.
-    * I wonder if maybe `(EXECUTE)` should just be given compilation tokens (and so we rename `>[TOKEN]` into `>TOKEN`) and then `(EXECUTE)` masks/shifts the compilation token into an offset into its local jumptable of `P*` definitions.
-      * Actually, this is even easier than I thought!  We now set `W` in a single place *before* `DISPATCH_TOKEN`, so `(EXECUTE)` just needs to set W (which it already does) and then turn the def type into a CFA (which is just an OR operation).  At that point the `xt` param is either a token or a definition type, and the latter is indicated by a $4000 | offset (just so that it is clear that we don't have an $8000-style XT).
-  * `I` could compile `R@` instead of providing its own token.  Same thing with `(DO)` and `2>R`
-  * `(LOOP)` could maybe always be `(+LOOP)` with a `:charlit 1` in front?
-  * Rewriting `DUMP` to use `BEGIN/REPEAT` instead of `DO/LOOP` eliminates `PIQDO`, `PILOOP`, and `PIPLUSLOOP`.
-  * `TICKNAMES` could just put a reference to names in the `vm` structure so that it could be accessed with `VM`.
-  * `DOCONSTANT` and `DOVARIABLE` could have their CFA compiled into each definition: for `DOCONSTANT` it is `"LIT $1234 @"` where `LIT $1234` is `LIT` and the `HERE` address when the definition was created; `DOVARIABLE` is just `"LIT $1234"`.  This would free up four tokens, although at the cost of RAM (which doesn't feel like a good trade).
-  * The last resort would be to stop using tokens for ROM definitions and instead use a two-byte $8000-style XT.  I don't love that though, especially because we now have to differentiate between ROM XTs and user XTs.
-    * On the other hand, this could cut the size of our jump table in half and also completely eliminate the need for padding.
-    * The ROM definitions might not be used as much (at runtime) as the code primitives, so the number of times that a two-byte XT has to be compiled could be minimal...  We don't care about interpretation performance, so using longer XTs there is fine (although DefGen would have to get a lot smarter and do a two-pass compile, among other things).
-      * Yeah, it actually looks like the runtime words (*i.e.,* not those that are primarily used by the text interpreter) are almost all in code primitives already, so moving everything else to two-byte XTs isn't likely to increase the size of user definitions all that much.
-      * Some of the common math words (`*`, `/`, `MOD`, etc.) are in definitions though and should maybe be moved into code.
-    * Huh, so calling other user definitions takes three bytes (token + PFA).  If we used a flag model (8000 for user defs, 4000 for ROM defs), then calling user definitions would only take two bytes, ROM definitions (which almost never get called at runtime anyway) would take two bytes, and code primitives would still only be one byte.
-      * We still need the CFA token though.  I suppose that we could move that back into the "real" CFA slot and have `EXECUTE` and the address interpreter start from that byte, setting `W` to the byte after the CFA.  `DOCOLON` is then just a normal token that stashes things on the return stack and continues to the next token (which is the PFA).
-        * I wonder if we even need to set `W` at that point?  Does anyone need `W` at the point where the IP auto-advances to the PFA?  `DOCONSTANT` is then just `LIT`, for example.  `DOVARIABLE` just pushes the current IP onto the stack and then jumps to `EXIT`.
-          * Yes, you do need `W` because you have to push the previous IP onto the return stack before you start executing the new word.  So `DOCOLON` has to exist as a thing that does that push *if we set the IP to the CFA*.  If we don't set the IP to the CFA, but instead IP is before the thing that jumped to the token, then the CFA could do a push (or not, in the case of `DOCONSTANT` and `DOVARIABLE`) before setting IP to the PFA.  And so we need to set `W` in that case.
-      * We only have 88 code primitives right now, so we could definitely access those with 7 bits and then use the 8th bit as a flag indicating that a two-byte XT is in use.
-      * Our ROM definition block is under 2KB right now (assuming that we eliminated the padding), which means that we can easily use a $4000-prefixed offset (8KB) for those definitions.  We're already using an $8000-prefixed offset for XTs due to Harvard architectures, so there is no change there.
-        * We could actually use an $800-prefixed XT for ROM definitions and then uses bits 12-14 for specifying the FFI arity of FFI trampolines.  FFI trampolines would then just be a raw function pointer compiled in to the dictionary.
-      * Note that this approach ties a compiled program (in EEPROM, for example) much more closely to the Enforth build -- we can't change the length of a ROM definition, for example.  That feels like a minor issue anyway; I doubt that most people are going to make changes to Enforth; most (all?) extensibility points will be through FFI definitions.
-      * **We thought about this before and threw it out.**  We need to figure out why.
 * Should be able to eliminate kDefinitionNames and the associated lookup functions now that we have CFAs in definitions -- just put the Code Primitives in the ROM Definition block with only a CFA.  That should allow the token to get called, but W *et al* to be left alone (since we're not calling a `DO*` word).
 * We need to switch to MFORTH-style reverse names so that we can put the real XT (the pointer to the LFA) in definitions and stuff and then just do math to go from there to the PFA.  Right now we're doing all of this awful stuff in order to convert from XTs to LFAs to PFAs to ... and it's getting bad.  Also, sometimes an "XT" points at the LFA and sometimes it points at the PFA.  Just bad overall.
 * XTs are MSB-first, but LFAs (and literals, I think?) are LSB-first; should we make all of that MSB first?
   * I think that this goes away if we just unify XTs everywhere per the above item.
 * Modify DefGen to read code primitive EDN data from `/****`-prefixed comments in the `enforth.c` file.  Then rename the `primitives` directory to `definitions` and have it only include ROM definitions.
+* Consider additional de-duplication of the Code Prims and ROM Definitions.
+  * `I` could compile `R@` instead of providing its own token.  Same thing with `(DO)` and `2>R`
+  * `(LOOP)` could maybe always be `(+LOOP)` with a `:charlit 1` in front?
+  * Rewriting `DUMP` to use `BEGIN/REPEAT` instead of `DO/LOOP` eliminates `PIQDO`, `PILOOP`, and `PIPLUSLOOP`.
+  * `TICKNAMES` could just put a reference to names in the `vm` structure so that it could be accessed with `VM`.
+* Consider further adjustments to the XT flags to make FFIs faster and perhaps simplify the actual demux logic in enforth.c
+  * We could actually use an $800-prefixed XT for ROM definitions and then uses bits 12-14 for specifying the FFI arity of FFI trampolines.  FFI trampolines would then just be a raw function pointer compiled in to the dictionary.
 * We could use relative LFAs with automatic one-byte encoding in cases where the value is less than 256.  This would shave about 240 bytes of the size of the ROM Definition.
 * Refactor the DefGen code to make it easier to load in the definitions and then traverse them for analysis purposes.  First analysis: output a GraphViz file that shows the calling patterns between all of the words.
 * Start creating the `enforth_*_extern.h` files for various Arduino libs in order to validate the FFI code, workflow, etc.
