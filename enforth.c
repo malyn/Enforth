@@ -93,6 +93,15 @@ typedef enum EnforthToken
 
 
 /* -------------------------------------
+ * Enforth constants
+ */
+
+static const int kNFAtoCFA = 1 /* PSF+namelen */ + 2 /* LFA */;
+static const int kNFAtoPFA = 1 /* PSF+namelen */ + 2 /* LFA */ + 1; /* CFA */
+
+
+
+/* -------------------------------------
  * Enforth globals.
  */
 
@@ -181,9 +190,9 @@ void enforth_reset(EnforthVM * const vm)
 
     /* Set the IP to the beginning of COLD. */
 #ifdef __AVR__
-    uint8_t* ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ROMDEF_PFA_COLD));
+    uint8_t* ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + (ROMDEF_COLD&0x3FFF) + kNFAtoPFA));
 #else
-    uint8_t* ip = (uint8_t*)definitions + ROMDEF_PFA_COLD;
+    uint8_t* ip = (uint8_t*)definitions + (ROMDEF_COLD&0x3FFF) + kNFAtoPFA;
 #endif
 
     /* Push RSP and IP to the stack. */
@@ -202,16 +211,16 @@ void enforth_evaluate(EnforthVM * const vm, const char * const text)
     /* Push the address of HALT onto the return stack so that we exit
      * the interpreter after EVALUATE is done. */
 #ifdef __AVR__
-    (--rsp)->ram = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ROMDEF_PFA_HALT));
+    (--rsp)->ram = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + (ROMDEF_HALT&0x3FFF) + kNFAtoPFA));
 #else
-    (--rsp)->ram = (uint8_t*)definitions + ROMDEF_PFA_HALT;
+    (--rsp)->ram = (uint8_t*)definitions + (ROMDEF_HALT&0x3FFF) + kNFAtoPFA;
 #endif
 
     /* Set the IP to the beginning of EVALUATE. */
 #ifdef __AVR__
-    uint8_t* ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ROMDEF_PFA_EVALUATE));
+    uint8_t* ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + (ROMDEF_EVALUATE&0x3FFF) + kNFAtoPFA));
 #else
-    uint8_t* ip = (uint8_t*)definitions + ROMDEF_PFA_EVALUATE;
+    uint8_t* ip = (uint8_t*)definitions + (ROMDEF_EVALUATE&0x3FFF) + kNFAtoPFA;
 #endif
 
     /* Restore the stack pointer. */
@@ -333,7 +342,7 @@ void enforth_resume(EnforthVM * const vm)
         {
 
             /* Not a token, which means that this is a two-byte XT that
-             * points at the CFA of the word to be called. */
+             * points at the NFA of the word to be called. */
             uint16_t xt = token << 8;
 
 #ifdef __AVR__
@@ -352,7 +361,7 @@ void enforth_resume(EnforthVM * const vm)
              * the CFA. */
             if ((xt & 0xC000) == 0xC000) /* ROM Definition: 0xCxxx */
             {
-                w = (uint8_t*)((uint8_t*)definitions + (xt & 0x3FFF));
+                w = (uint8_t*)((uint8_t*)definitions + (xt & 0x3FFF) + kNFAtoCFA);
 #ifdef __AVR__
                 token = pgm_read_byte(w++);
 #else
@@ -361,7 +370,7 @@ void enforth_resume(EnforthVM * const vm)
             }
             else /* User Definition: 0x8xxx */
             {
-                w = (uint8_t*)(vm->dictionary.ram + (xt & 0x3FFF));
+                w = (uint8_t*)(vm->dictionary.ram + (xt & 0x3FFF) + kNFAtoCFA);
                 token = *w++;
             }
         }
@@ -623,9 +632,9 @@ DISPATCH_TOKEN:
 
             /* Set the IP to the beginning of QUIT */
 #ifdef __AVR__
-            ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ROMDEF_PFA_QUIT));
+            ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + (ROMDEF_QUIT&0x3FFF) + kNFAtoPFA));
 #else
-            ip = (uint8_t*)definitions + ROMDEF_PFA_QUIT;
+            ip = (uint8_t*)definitions + (ROMDEF_QUIT&0x3FFF) + kNFAtoPFA;
 #endif
         }
         continue;
@@ -1547,36 +1556,22 @@ DISPATCH_TOKEN:
 
             printf(" [%02x] ", token);
 
-            /* Search backwards from PFA until the flag byte (which also
-             * includes the NFA length).  Printable characters always
-             * have their second or third bits set to one, so we just
-             * scan backwards until we find a byte that has those bits
-             * set to zero.  We know that no ROM Definitions will be
-             * hidden (smudged) or refer to an FFI Definition, so those
-             * bits (the second and third) will always be zero in a ROM
-             * Definition flag+NFA byte. */
-            const char * curDef = (const char *)w - 2; /* Skip over CFA. */
+            /* W points at the PFA; back up to the NFA. */
+            const char * curDef = (const char *)w - (1 + 2 + 1);
 
-            /* Is this field 0x00 or 0x80?  If so, this is a hidden (or
-             * hidden immediate) definition; output the XT instead of
-             * the name. */
-            if ((*curDef == 0x00) || (*curDef == 0x80))
+            /* Is this a hidden definition (the name is length zero)?
+             * If so, output the XT instead of the name. */
+            if ((*curDef & 0x1f) == 0)
             {
-                printf("<pfa=%d>", (uint16_t)(w - (uint8_t*)definitions));
+                printf("<pfa=0x%04X>", 0xC000 | (uint16_t)((uint8_t*)curDef - (uint8_t*)definitions));
             }
             else
             {
-                /* Normal definition; walk backwards to find the flags. */
-                while ((*curDef & 0x60) != 0)
+                /* Normal definition; walk backwards and output the
+                 * name. */
+                for (i = 1; i <= (((unsigned int)*curDef) & 0x1f); --i)
                 {
-                    --curDef;
-                }
-
-                /* Found the NFA field; now walk forwards and output the
-                * name. */
-                for (i = 1; i <= (((unsigned int)*curDef) & 0x1f); i++)
-                {
-                    printf("%c", *(curDef + i));
+                    printf("%c", *(curDef + i) & 0x7f);
                 }
             }
 
@@ -1680,9 +1675,9 @@ void enforth_go(EnforthVM * const vm)
 
     /* Set the IP to the beginning of COLD. */
 #ifdef __AVR__
-    uint8_t* ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + ROMDEF_PFA_COLD));
+    uint8_t* ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + (ROMDEF_COLD&0x3FFF) + kNFAtoPFA));
 #else
-    uint8_t* ip = (uint8_t*)definitions + ROMDEF_PFA_COLD;
+    uint8_t* ip = (uint8_t*)definitions + (ROMDEF_COLD&0x3FFF) + kNFAtoPFA;
 #endif
 
     /* Push RSP and IP to the stack. */

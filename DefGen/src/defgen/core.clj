@@ -92,11 +92,11 @@
 
 (defn calc-header-size
   [{:keys [headerless? name] :as rom-def}]
-  (let [header-size (+ 2 ;; LFA
-                       1 ;; PSF+5bit name length
-                       (if headerless? 0 (count name)) ;; NFA
+  (let [name-size (if headerless? 0 (count name))
+        header-size (+ 1 ;; PSF+5bit name length
+                       2 ;; LFA
                        1)] ;; CFA
-    (assoc rom-def ::header-size header-size)))
+    (assoc rom-def ::name-size name-size ::header-size header-size)))
 
 (defn token-byte-size
   [code-prims token]
@@ -115,39 +115,38 @@
   (let [pfa-size (calc-token-list-size code-prims pfa)]
     (assoc rom-def ::pfa-size pfa-size)))
 
-(defn calc-offsets
+(defn calc-xts
   [rom-defs]
-  (let [offsets (reductions + 0 (map #(+ (% ::header-size) (% ::pfa-size))
-                                     rom-defs))]
-    (map #(assoc %1 :offset %2)
-         rom-defs
-         offsets)))
+  (let [name-sizes (map ::name-size rom-defs)
+        prev-header-pfa-sizes (concat [0] (map #(+ (% ::header-size)
+                                                   (% ::pfa-size))
+                                               rom-defs))
+        prev-header-pfa-this-name-size (map + prev-header-pfa-sizes name-sizes)
+        xts (reductions + prev-header-pfa-this-name-size)]
+    (map #(assoc %1 :xt (bit-or 0xC000 %2)) rom-defs xts)))
 
-(defn lfa-to-bytes
-  "Convert the 16-bit LFA into an LSB-first array of two bytes."
+(defn xt-to-bytes
+  "Convert the 16-bit XT into an MSB-first array of two bytes as C-style, hex-encoded strings."
   [offset]
-  [(bit-and offset 0xff)
-   (bit-and (bit-shift-right offset 8) 0xff)])
+  (format "0x%02X,0x%02X"
+          (bit-and (bit-shift-right offset 8) 0xff)
+          (bit-and offset 0xff)))
 
 (defn build-headers
   [rom-defs]
-  (let [lfa-vals (concat [0] (map #(+ 0xC000 (% :offset)) rom-defs))]
-    (map (fn [{:keys [headerless? immediate? name] :as rom-def} lfa]
+  (let [prev-xts (concat [0] (map :xt rom-defs))]
+    (map (fn [{:keys [headerless? immediate? name] :as rom-def} prev-xt]
            (assoc rom-def
                   ::header
-                  (concat (lfa-to-bytes lfa)
-                          [(+ (if immediate? 0x80 0)
-                              (if headerless? 0 (count name)))]
-                          (when-not headerless? (string-to-char-array name))
+                  (concat (when-not headerless?
+                            (concat [(->> name reverse first escape-c-char (str "0x80|"))]
+                                    (->> name reverse rest string-to-char-array)))
+                          [(str (when immediate? "0x80|")
+                                (if headerless? 0 (count name)))]
+                          [(xt-to-bytes prev-xt)]
                           ["DOCOLONROM"])))
          rom-defs
-         lfa-vals)))
-
-(defn xt-to-bytes
-  "Convert the 16-bit XT into an MSB-first array of two bytes."
-  [offset]
-  [(bit-and (bit-shift-right offset 8) 0xff)
-   (bit-and offset 0xff)])
+         prev-xts)))
 
 (defn extract-branch-span
   "Returns branch-span elements of the PFA vector starting at offset.  branch-span may be negative, in which case the span will start at offset minus branch-span and continue to, but not include, offset."
@@ -195,12 +194,9 @@
 
 (defn build-bodies
   [code-prims rom-defs]
-  (let [rom-def-cfa-offsets (->> rom-defs
-                                 (map #(vector (% :id)
-                                               (+ (% :offset)
-                                                  (% ::header-size)
-                                                  -1))) ;; Back up to CFA
-                                 (into {}))]
+  (let [rom-def-xts (->> rom-defs
+                         (map #(vector (% :id) (% :xt)))
+                         (into {}))]
     (map (fn [{:keys [pfa] :as rom-def}]
            (let [pfa (adjust-branch-targets code-prims pfa)
                  body (mapcat (fn [token]
@@ -208,7 +204,7 @@
                                   (number? token) [token]
                                   (string? token) [token]
                                   (code-prims token) [(:token-name (code-prims token))]
-                                  (rom-def-cfa-offsets token) (xt-to-bytes (bit-or 0xC000 (rom-def-cfa-offsets token)))
+                                  (rom-def-xts token) [(xt-to-bytes (rom-def-xts token))]
                                   :else (throw (Exception. (str "Unknown token " token)))))
                               pfa)]
              (assoc rom-def ::body body)))
@@ -255,18 +251,22 @@
 (defn print-rom-defs-block
   [rom-defs]
   (doseq [{token-name :token-name
-           offset :offset
+           headerless? :headerless?
+           xt :xt
            header ::header
-           header-size ::header-size
-           body ::body} (sort-by :offset rom-defs)]
+           name-size ::name-size
+           body ::body} (sort-by :xt rom-defs)]
     (println "/*" token-name "*/")
-    (print (s/join ", " header))
+    (when-not headerless?
+      (print (s/join ", " (take name-size header)))
+      (println ","))
+    (println (format "#define ROMDEF_%s 0x%X" token-name xt))
+    (print (s/join ", " (drop name-size header)))
     (println ",")
-    (println (str "#define ROMDEF_PFA_" token-name) (+ offset header-size))
     (print (s/join ", " body))
     (println ",")
     (println))
-  (println (str "#define ROMDEF_LAST " (->> rom-defs last :offset))))
+  (println (format "#define ROMDEF_LAST 0x%X" (->> rom-defs last :xt))))
 
 ;; TODO: Use subgraph syntax "ROT -> { OVER DUP SWAP WHATEVER }
 ;; TODO: Eliminate EXIT, IZBRANCH, ZBRANCH, etc.
@@ -293,7 +293,18 @@
                (apply merge)
                partition-defs
                first
-               assign-token-values)))
+               assign-token-values))
+  (def rd (->> ["../primitives/core.edn"
+                "../primitives/core-ext.edn"
+                "../primitives/double.edn"
+                "../primitives/enforth.edn"
+                "../primitives/string.edn"
+                "../primitives/tools.edn"]
+               (map load-def-file)
+               (apply merge)
+               partition-defs
+               second
+               vals)))
 
 
 ;; =====================================================================
@@ -319,7 +330,7 @@
                       (sort-by :id)
                       (map calc-header-size)
                       (map #(calc-pfa-size code-prims %))
-                      calc-offsets
+                      calc-xts
                       build-headers
                       (build-bodies code-prims))]
 

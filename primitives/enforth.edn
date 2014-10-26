@@ -215,7 +215,7 @@
  :name "FIND-ROMDEF"
  :args [[:caddr :u] [[0] [:xt 1] [:xt -1]]]
  :flags #{:headerless}
- :source ": IMMEDIATE-ROMDEF? ( xt -- f )  ROM>LFA 2 + IC@ %10000000 AND 0<> ;
+ :source ": IMMEDIATE-ROMDEF? ( xt -- f )  ROMXT>NFA IC@ %10000000 AND 0<> ;
           : FIND-ROMDEF ( c-addr u -- 0 | xt 1 | xt -1 )
           2>R  LAST-ROMDEF
           BEGIN
@@ -223,17 +223,17 @@
           WHILE
             DUP 2R@ ROT ( xt ca u xt R:ca u) FOUND-ROMDEF? ( xt f R:ca u)
             IF  DUP IMMEDIATE-ROMDEF? 2 AND 1-  2R> 2DROP  EXIT THEN
-            ROM>LFA IXT@
+            ROMXT>LFA IXT@
           REPEAT ( R:ca u) 2R> 2DROP FALSE ;"
  :pfa [:twotor :lastromdef
-       :qdup :izbranch 27
-         :dup :tworfetch :rot :foundromdefq :izbranch 17
+       :qdup :izbranch 25
+         :dup :tworfetch :rot :foundromdefq :izbranch 15
            :dup
            ; IMMEDIATE-ROMDEF?
-             :romtolfa :oneplus :oneplus :icfetch :icharlit 0x80 :and :zeronotequals
+             :romxttonfa :icfetch :icharlit 0x80 :and :zeronotequals
            :icharlit 2 :and :oneminus :tworfrom :twodrop :exit
-         :romtolfa :ixtfetch
-         :ibranch -28
+         :romxttolfa :ixtfetch
+         :ibranch -26
        :tworfrom :twodrop :false
        :exit]}
 
@@ -370,39 +370,34 @@
 ;;
 ;; Compares the string c-addr with length u to the name of the ROM
 ;; Definition entry identified by xt and pushes true to the stack if the
-;; names are identical (ignoring case), false otherwise.
+;; names are identical (ignoring case), false otherwise.  Note that the
+;; names in compiled definitions are in reverse order, whereas the
+;; search string is in normal order.
 {:token :foundromdefq
  :name "FOUND-ROMDEF?"
  :args [[:caddr :u :xt] [:f]]
  :flags #{:headerless}
- :source ": HIDDEN? ( xt -- f ) ROM>LFA 2 + IC@ %01000000 AND 0<> ;
-          : STRING~ ( c-addr1 ic-addr2 u -- f )
+ :source ": STRING~ ( c-addr1 ic-addr2 u -- f )
             BEGIN
               ?DUP
             WHILE
               1- >R ( ca1 ica2 R:u'-1)
-              OVER C@  OVER IC@ C{} IF 2DROP R> DROP FALSE EXIT THEN
-              1+ SWAP 1+ SWAP ( ca1' ica2' R:u'-1) R>
+              OVER C@  OVER IC@ $7F AND C{} IF 2DROP R> DROP FALSE EXIT THEN
+              ( ca1 ica2 R:u'-1) 1- SWAP 1+ SWAP ( ca1' ica2' R:u'-1) R>
             REPEAT ( ca' ca2') 2DROP TRUE ;
           : FOUND-ROMDEF? ( c-addr u xt -- f)
-            DUP HIDDEN? IF DROP 2DROP FALSE EXIT THEN
             2DUP ROMNAME-LENGTH ( ca u xt u u') <> IF DROP 2DROP FALSE EXIT THEN
-            >ROMNFA ( ca u ca') SWAP STRING~ ;"
- :pfa [:dup
-       ; HIDDEN
-         :romtolfa :oneplus :oneplus :icfetch :icharlit 0x40 :and :zeronotequals
-       :izbranch 5
+            ROMXT>NFA ( ca u nfa) 1- ( ca u name) SWAP STRING~ ;"
+ :pfa [:twodup :romnamelength :notequals :izbranch 5
          :drop :twodrop :false :exit
-       :twodup :romnamelength :notequals :izbranch 5
-         :drop :twodrop :false :exit
-       :toromnfa :swap
+       :romxttonfa :oneminus :swap
        ; STRING~
-         :qdup :izbranch 22
+         :qdup :izbranch 25
            :oneminus :tor
-           :over :cfetch :over :icfetch :cnotsimilar :izbranch 6
+           :over :cfetch :over :icfetch :icharlit 0x7f :and :cnotsimilar :izbranch 6
              :twodrop :rfrom :drop :false :exit
-           :oneplus :swap :oneplus :swap :rfrom
-           :ibranch -23
+           :oneminus :swap :oneplus :swap :rfrom
+           :ibranch -26
          :twodrop :true
        :exit]}
 
@@ -549,8 +544,8 @@
  :name "IXT@"
  :args [[:addr] [:xt]]
  :flags #{:headerless}
- :source ": IXT@ ( addr -- xt )  DUP IC@  SWAP 1+ IC@ 8 LSHIFT  OR ;"
- :pfa [:dup :icfetch :swap :oneplus :icfetch :icharlit 8 :lshift :or :exit]}
+ :source ": IXT@ ( addr -- xt )  DUP IC@ 8 LSHIFT  SWAP 1+ IC@  OR ;"
+ :pfa [:dup :icfetch :icharlit 8 :lshift :swap :oneplus :icfetch :or :exit]}
 
 {:token :izbranch
  :args [[] []]
@@ -782,24 +777,28 @@
  :name "ROMNAME-LENGTH"
  :args [[:xt] [:u]]
  :flags #{:headerless}
- :source ": ROMNAME-LENGTH ( xt -- ru)  ROM>LFA 2 + IC@ $1F AND ;"
- :pfa [:romtolfa :oneplus :oneplus :icfetch :icharlit 0x1F :and :exit]}
+ :source ": ROMNAME-LENGTH ( xt -- ru)  ROMXT>NFA IC@ $1F AND ;"
+ :pfa [:romxttonfa :icfetch :icharlit 0x1F :and :exit]}
 
-;; xt must refer to a *non-anonymous* ROM definition
-;; FIXME It's kind of lame that we know that this will only be called
-;; when we are trying to execute a non-anonymous ROM definition...
-{:token :romtocfa
- :name "ROM>CFA"
+{:token :romxttocfa
+ :name "ROMXT>CFA"
  :args [[:xt] [:addr]]
  :flags #{:headerless}
- :source ": ROM>CFA ( xt -- addr)  DUP ROMNAME-LENGTH  SWAP ROM>LFA 2 + 1+  + ;"
- :pfa [:dup :romnamelength :swap :romtolfa :oneplus :oneplus :oneplus :plus :exit]}
+ :source ": ROMXT>CFA ( xt -- addr)  ROMXT>LFA 2 + ;"
+ :pfa [:romxttolfa :oneplus :oneplus :exit]}
 
-{:token :romtolfa
- :name "ROM>LFA"
+{:token :romxttolfa
+ :name "ROMXT>LFA"
  :args [[:xt] [:a-addr]]
  :flags #{:headerless}
- :source ": ROM>LFA ( xt -- a-addr)  XTMASK AND 'ROMDEF + ;"
+ :source ": ROMXT>LFA ( xt -- a-addr)  ROMXT>NFA 1+ ;"
+ :pfa [:romxttonfa :oneplus :exit]}
+
+{:token :romxttonfa
+ :name "ROMXT>NFA"
+ :args [[:xt] [:a-addr]]
+ :flags #{:headerless}
+ :source ": ROMXT>NFA ( xt -- a-addr)  XTMASK AND 'ROMDEF + ;"
  :pfa [:xtmask :and :tickromdef :plus :exit]}
 
 {:token :tib
@@ -870,13 +869,6 @@
  :source ": >NFA ( xt -- c-addr )  >LFA 2 + 1+ ;"
  :pfa [:tolfa :oneplus :oneplus :oneplus :exit]}
 
-{:token :toromnfa
- :name ">ROMNFA"
- :args [[:xt] [:c-addr]]
- :flags #{:headerless}
- :source ": >ROMNFA ( xt -- c-addr )  ROM>LFA 2 + 1+ ;"
- :pfa [:romtolfa :oneplus :oneplus :oneplus :exit]}
-
 ;; >TOKEN [ENFORTH] "to-token" ( xt -- token )
 ;;
 ;; Return the execution token for the given XT, which may refer to a
@@ -887,10 +879,10 @@
  :flags #{:headerless}
  :source ": >TOKEN ( xt -- token)
             DUP TOKEN? IF EXIT THEN
-            DUP ROMDEF? IF ROM>CFA IC@ EXIT THEN
+            DUP ROMDEF? IF ROMXT>CFA IC@ EXIT THEN
             >CFA C@ THEN ;"
  :pfa [:dup :tokenq :izbranch 2 :exit
-       :dup :romdefq :izbranch 4 :romtocfa :icfetch :exit
+       :dup :romdefq :izbranch 4 :romxttocfa :icfetch :exit
        :tocfa :cfetch
        :exit]}
 

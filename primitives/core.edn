@@ -178,21 +178,13 @@
  :source ": , ( x -- )  HERE !  1 CELLS ALLOT ;"
  :pfa [:here :store :icharlit 1 :cells :allot :exit]}
 
-;; FIXME: This is all pretty horrible and will go away once XTs just
-;; point at the LFA (like MFORTH) and we do reverse names (like MFORTH).
 {:token :compilecomma
  :name "COMPILE,"
  :args [[:xt] []]
- :source ": COMPILE, ( xt --)
-            DUP TOKEN? IF C, EXIT THEN
-            DUP ROMDEF? IF DUP ROM>CFA  OVER ROM>LFA  -
-              ELSE DUP >CFA  OVER >LFA  - THEN
-            ( xt headersize) + XT, ; "
- :pfa [:dup :tokenq :izbranch 3 :ccomma :exit
-       :dup :romdefq :izbranch 8
-         :dup :romtocfa :over :romtolfa :minus :ibranch 6
-         :dup :tocfa :over :tolfa :minus
-       :plus :xtcomma
+ :source ": COMPILE, ( xt --)  DUP TOKEN? IF C, ELSE XT, THEN ;"
+ :pfa [:dup :tokenq :izbranch 4
+         :ccomma :ibranch 2
+         :xtcomma
        :exit]}
 
 {:token :constant
@@ -549,7 +541,7 @@
  :pfa [:bl :parseword :findword
        :qdup :zeroequals :izbranch 8
          :type :space :icharlit "'?'" :emit :cr :abort
-       :zeroless :izbranch 19
+       :zeroless :izbranch 16
          ; We keep things simple and use LIT here even if the XT is a
          ; token (and could therefore use CHARLIT).  POSTPONE is used
          ; infrequently and optimizing for RAM size at the expense of
@@ -557,10 +549,9 @@
          ; complexity.
          :icharlit :lit :compilecomma
            :comma
-           :icharlit "((uint8_t)(((ROMDEF_PFA_COMPILECOMMA - 1) >> 8) & 0xff))"
-           :icharlit 0xC0 :or
+           :icharlit "((uint8_t)((ROMDEF_COMPILECOMMA >> 8) & 0xff))"
            :icharlit 8 :lshift
-           :icharlit "((uint8_t)(((ROMDEF_PFA_COMPILECOMMA - 1)     ) & 0xff))"
+           :icharlit "((uint8_t)((ROMDEF_COMPILECOMMA     ) & 0xff))"
            :or
            :xtcomma
            :ibranch 2
@@ -773,11 +764,11 @@
  :args [[:xt] [:a-addr]]
  :source ": >BODY ( xt -- a-addr)
             DUP TOKEN? IF DROP 0 EXIT THEN
-            DUP ROMDEF? IF ROM>CFA 1+ EXIT THEN
+            DUP ROMDEF? IF ROMXT>CFA 1+ EXIT THEN
             DUP NFA-LENGTH ( xt u)
             SWAP >LFA 2 + ( lfa) 1+ ( flags) + ( nfa) 1+ ( cfa) ;"
  :pfa [:dup :tokenq :izbranch 4 :drop :zero :exit
-       :dup :romdefq :izbranch 4 :romtocfa :oneplus :exit
+       :dup :romdefq :izbranch 4 :romxttocfa :oneplus :exit
        :dup :nfalength
        :swap :tolfa :oneplus :oneplus :oneplus :plus :oneplus
        ;; TODO Add :align if we start aligning the PFA.
