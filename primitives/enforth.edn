@@ -85,8 +85,8 @@
  :name "FFI?"
  :args [[:xt] [:f]]
  :flags #{:headerless}
- :source ": FFI? ( xt -- f)  >LFA 2 + C@ %0010000 AND 0<> ;"
- :pfa [:tolfa :oneplus :oneplus :cfetch :icharlit 0x20 :and :zeronotequals :exit]}
+ :source ": FFI? ( xt -- f)  >NFA C@ %0010000 AND 0<> ;"
+ :pfa [:tonfa :cfetch :icharlit 0x20 :and :zeronotequals :exit]}
 
 {:token :ffidefarity
  :name "FFIDEF-ARITY"
@@ -162,7 +162,7 @@
  :name "FIND-DEF"
  :args [[:caddr :u] [[0] [:xt 1] [:xt -1]]]
  :flags #{:headerless}
- :source ": IMMEDIATE-DEF? ( xt -- f )  >LFA 2 + C@ %10000000 AND 0<> ;
+ :source ": IMMEDIATE-DEF? ( xt -- f )  >NFA C@ %10000000 AND 0<> ;
           : FIND-DEF ( c-addr u -- 0 | xt 1 | xt -1 )
           2>R  LATEST @
           BEGIN
@@ -173,14 +173,14 @@
             >LFA XT@
           REPEAT ( R:ca u) 2R> 2DROP FALSE ;"
  :pfa [:twotor :latest :fetch
-       :qdup :izbranch 27
-         :dup :tworfetch :rot :founddefq :izbranch 17
+       :qdup :izbranch 25
+         :dup :tworfetch :rot :founddefq :izbranch 15
            :dup
            ; IMMEDIATE-DEF?
-             :tolfa :oneplus :oneplus :cfetch :icharlit 0x80 :and :zeronotequals
+             :tonfa :cfetch :icharlit 0x80 :and :zeronotequals
            :icharlit 2 :and :oneminus :tworfrom :twodrop :exit
          :tolfa :xtfetch
-         :ibranch -28
+         :ibranch -26
        :tworfrom :twodrop :false
        :exit]}
 
@@ -263,42 +263,44 @@
 ;;
 ;; Compares the string c-addr with length u to the name of the
 ;; dictionary entry identified by xt and pushes true to the stack if the
-;; names are identical (ignoring case), false otherwise.
+;; names are identical (ignoring case), false otherwise.  Note that the
+;; names in compiled definitions are in reverse order, whereas the
+;; search string is in normal order.
 {:token :founddefq
  :name "FOUND-DEF?"
  :args [[:caddr :u :xt] [:f]]
  :flags #{:headerless}
- :source ": HIDDEN? ( xt -- f ) >LFA 2 + C@ %01000000 AND 0<> ;
-          : STRING~ ( c-addr1 c-addr2 u -- f )
+ :source ": HIDDEN? ( xt -- f ) >NFA C@ %01000000 AND 0<> ;
+          : STRING~ ( c-addr1 ic-addr2 u -- f )
             BEGIN
               ?DUP
             WHILE
-              1- >R ( ca1 ca2 R:u'-1)
-              OVER C@  OVER C@ C{} IF 2DROP R> DROP FALSE EXIT THEN
-              1+ SWAP 1+ SWAP ( ca1' ca2' R:u'-1) R>
+              1- >R ( ca1 ica2 R:u'-1)
+              OVER C@  OVER C@ $7F AND C{} IF 2DROP R> DROP FALSE EXIT THEN
+              ( ca1 ica2 R:u'-1) 1- SWAP 1+ SWAP ( ca1' ica2' R:u'-1) R>
             REPEAT ( ca' ca2') 2DROP TRUE ;
           : FOUND-DEF? ( c-addr u xt -- f)
             DUP HIDDEN? IF DROP 2DROP FALSE EXIT THEN
             2DUP NAME-LENGTH ( ca u xt u u') <> IF DROP 2DROP FALSE EXIT THEN
             DUP FFI? IF ( ca u xt) FOUND-FFI? EXIT THEN
-            >NFA ( ca u ca') SWAP STRING~ ;"
+            >NFA ( ca u nfa) 1- ( ca u name) SWAP STRING~ ;"
  :pfa [:dup
        ; HIDDEN
-         :tolfa :oneplus :oneplus :cfetch :icharlit 0x40 :and :zeronotequals
+         :tonfa :cfetch :icharlit 0x40 :and :zeronotequals
        :izbranch 5
          :drop :twodrop :false :exit
        :twodup :namelength :notequals :izbranch 5
          :drop :twodrop :false :exit
        :dup :ffiq :izbranch 3
          :foundffiq :exit
-       :tonfa :swap
+       :tonfa :oneminus :swap
        ; STRING~
-         :qdup :izbranch 22
+         :qdup :izbranch 25
            :oneminus :tor
-           :over :cfetch :over :cfetch :cnotsimilar :izbranch 6
+           :over :cfetch :over :cfetch :icharlit 0x7f :and :cnotsimilar :izbranch 6
              :twodrop :rfrom :drop :false :exit
-           :oneplus :swap :oneplus :swap :rfrom
-           :ibranch -23
+           :oneminus :swap :oneplus :swap :rfrom
+           :ibranch -26
          :twodrop :true
        :exit]}
 
@@ -455,10 +457,10 @@
  :args [[] []]
  :flags #{:headerless}
  :source ": HIDE ( --)
-            LATEST @ >LFA 2 +
+            LATEST @ >NFA
             ( addr) DUP C@ %01000000 OR ( addr val)
             ( addr val) SWAP C!"
- :pfa [:latest :fetch :tolfa :oneplus :oneplus
+ :pfa [:latest :fetch :tonfa
        :dup :cfetch :icharlit 0x40 :or
        :swap :cstore
        :exit]}
@@ -560,13 +562,6 @@
  :args [[] [:aaadr]]
  :pfa [:vm :icharlit "offsetof(EnforthVM, latest)" :plus :exit]}
 
-{:token :lfacomma
- :name "LFA,"
- :args [[:xt] []]
- :flags #{:headerless}
- :source ": LFA, ( xt -- )  DUP C,  8 RSHIFT C, ;"
- :pfa [:dup :ccomma :icharlit 8 :rshift :ccomma :exit]}
-
 {:token :lit
  :name "(LIT)"
  :args [[] [:x]]
@@ -579,8 +574,8 @@
  :name "NAME-LENGTH"
  :args [[:xt] [:u]]
  :flags #{:headerless}
- :source ": NAME-LENGTH ( xt -- ru)  >LFA 2 + C@ $1F AND ;"
- :pfa [:tolfa :oneplus :oneplus :cfetch :icharlit 0x1F :and :exit]}
+ :source ": NAME-LENGTH ( xt -- ru)  >NFA C@ $1F AND ;"
+ :pfa [:tonfa :cfetch :icharlit 0x1F :and :exit]}
 
 ;; Length of the NFA field, not necessarily the name itself (because FFI
 ;; trampolines have a zero-length NFA since the name is stored in ROM in
@@ -758,10 +753,10 @@
  :args [[] []]
  :flags #{:headerless}
  :source ": REVEAL ( --)
-            LATEST @ >LFA 2 +
+            LATEST @ >NFA
             ( addr) DUP C@ %10111111 AND ( addr val)
             ( addr val) SWAP C!"
- :pfa [:latest :fetch :tolfa :oneplus :oneplus
+ :pfa [:latest :fetch :tonfa
        :dup :cfetch :icharlit 0xBF :and
        :swap :cstore
        :exit]}
@@ -833,8 +828,8 @@
  :name ">CFA"
  :args [[:xt] [:addr]]
  :flags #{:headerless}
- :source ": >CFA ( xt -- addr)  DUP NFA-LENGTH  SWAP >LFA 2 + 1+  + ;"
- :pfa [:dup :nfalength :swap :tolfa :oneplus :oneplus :oneplus :plus :exit]}
+ :source ": >CFA ( xt -- addr)  >LFA 2 + ;"
+ :pfa [:tolfa :oneplus :oneplus :exit]}
 
 {:token :toffidef
  :name ">FFIDEF"
@@ -855,19 +850,19 @@
  :name ">LFA"
  :args [[:xt] [:a-addr]]
  :flags #{:headerless}
- :source ": >LFA ( xt -- a-addr)  XTMASK AND 'DICT + ;"
- :pfa [:xtmask :and
-       ; 'DICT
-         :vm :icharlit "offsetof(EnforthVM, dictionary)" :plus :fetch
-       :plus
-       :exit]}
+ :source ": >LFA ( xt -- a-addr)  >NFA 1+ ;"
+ :pfa [:tonfa :oneplus :exit]}
 
 {:token :tonfa
  :name ">NFA"
  :args [[:xt] [:c-addr]]
  :flags #{:headerless}
- :source ": >NFA ( xt -- c-addr )  >LFA 2 + 1+ ;"
- :pfa [:tolfa :oneplus :oneplus :oneplus :exit]}
+ :source ": >NFA ( xt -- c-addr )  XTMASK AND 'DICT + ;"
+ :pfa [:xtmask :and
+       ; 'DICT
+         :vm :icharlit "offsetof(EnforthVM, dictionary)" :plus :fetch
+       :plus
+       :exit]}
 
 ;; >TOKEN [ENFORTH] "to-token" ( xt -- token )
 ;;
@@ -929,6 +924,7 @@
 
 ;; TODO Why does this abort if given an empty USE: declaration?  It
 ;; should generate an error or something.
+;; FIXME Broken; needs the proper dictionary layout
 {:token :use
  :name "USE:"
  :args [[] []]
@@ -943,7 +939,7 @@
  :pfa [:bl :parseword :dup :zeroequals :izbranch 2 :abort
        :twodup :findffidef :zeroequals :izbranch 8
          :type :space :icharlit "'?'" :emit :cr :abort
-       :here :toxt :latest :fetch :lfacomma :latest :store
+       :here :toxt :latest :fetch :xtcomma :latest :store
        :swap :icharlit 0x20 :or :ccomma
        :icharlit "DOFFI0" :over :ffidefarity :plus :ccomma
        :align :comma :drop
@@ -964,8 +960,8 @@
  :name "XT@"
  :args [[:addr] [:xt]]
  :flags #{:headerless}
- :source ": XT@ ( addr -- xt )  DUP C@  SWAP 1+ C@ 8 LSHIFT  OR ;"
- :pfa [:dup :cfetch :swap :oneplus :cfetch :icharlit 8 :lshift :or :exit]}
+ :source ": XT@ ( addr -- xt )  DUP C@ 8 LSHIFT  SWAP 1+ C@  OR ;"
+ :pfa [:dup :cfetch :icharlit 8 :lshift :swap :oneplus :cfetch :or :exit]}
 
 {:token :xtflag
  :args [[] [:u]]

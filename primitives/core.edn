@@ -209,16 +209,28 @@
 
 {:token :create
  :args [[] []]
- :source ": S, ( ca u --)  TUCK  HERE SWAP MOVE  ALLOT ;
+ :source ": NAME, ( ca u --)
+            OVER + ( ca-start ca-end)
+            1- DUP C@ $80 OR C, ( Write last char with end-of-name flag)
+            BEGIN
+              ( cas cae) 2DUP <>
+            WHILE
+              1- DUP C@ C,
+            REPEAT ( cas cas) 2DROP ;
           : CREATE ( \"<spaces>name\" -- )
             BL PARSE-WORD DUP 0= IF ABORT THEN ( ca u)
-            HERE >XT  LATEST @ LFA,  LATEST ! ( ca u)
-            DUP C,  S,  ['] DOCREATE C,  ALIGN ;"
+            TUCK ( u ca u) NAME, ( u)
+            HERE >XT ( u this-xt)  SWAP C,  LATEST @ XT,  ( this-xt) LATEST !
+            ['] DOCREATE C,  ALIGN ;"
  :pfa [:bl :parseword :dup :zeroequals :izbranch 2 :abort
-       :here :toxt :latest :fetch :lfacomma :latest :store
-       :dup :ccomma
-       ; S,
-         :tuck :here :swap :move :allot
+       :tuck
+       ; NAME,
+         :over :plus
+         :oneminus :dup :cfetch :icharlit 0x80 :or :ccomma
+         :twodup :notequals :izbranch 7
+           :oneminus :dup :cfetch :ccomma :ibranch -9
+         :twodrop
+       :here :toxt :swap :ccomma :latest :fetch :xtcomma :latest :store
        :icharlit "DOCREATE" :ccomma
        :align
        :exit]}
@@ -355,10 +367,10 @@
 {:token :immediate
  :args [[] []]
  :source ": IMMEDIATE ( --)
-            LATEST @ >LFA 2 +
+            LATEST @ >NFA
             ( addr) DUP C@ %10000000 OR ( addr val)
             ( addr val) SWAP C!"
- :pfa [:latest :fetch :tolfa :oneplus :oneplus
+ :pfa [:latest :fetch :tonfa
        :dup :cfetch :icharlit 0x80 :or
        :swap :cstore
        :exit]}
@@ -765,12 +777,10 @@
  :source ": >BODY ( xt -- a-addr)
             DUP TOKEN? IF DROP 0 EXIT THEN
             DUP ROMDEF? IF ROMXT>CFA 1+ EXIT THEN
-            DUP NFA-LENGTH ( xt u)
-            SWAP >LFA 2 + ( lfa) 1+ ( flags) + ( nfa) 1+ ( cfa) ;"
+            >CFA 1+ ;"
  :pfa [:dup :tokenq :izbranch 4 :drop :zero :exit
        :dup :romdefq :izbranch 4 :romxttocfa :oneplus :exit
-       :dup :nfalength
-       :swap :tolfa :oneplus :oneplus :oneplus :plus :oneplus
+       :tocfa :oneplus
        ;; TODO Add :align if we start aligning the PFA.
        :exit]}
 

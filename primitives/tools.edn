@@ -60,6 +60,7 @@
 
 ;; FIXME: PRIM-WORDS is now just CODEPRIM-WORDS and we need to add
 ;; ROMDEF-WORDS.
+;; FIXME: All broken again due to the new dictionary layout.
 {:token :words
  :args [[] []]
  :source ": VISIBLE? ( xt -- f ) >LFA 2 + C@ %01000000 AND 0= ;

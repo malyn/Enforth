@@ -1,5 +1,6 @@
 * We need to switch to MFORTH-style reverse names so that we can put the real XT (the pointer to the LFA) in definitions and stuff and then just do math to go from there to the PFA.  Right now we're doing all of this awful stuff in order to convert from XTs to LFAs to PFAs to ... and it's getting bad.  Also, sometimes an "XT" points at the LFA and sometimes it points at the PFA.  Just bad overall.
-  * User definitions are still being CREATEd with backwards LFA byte ordering, the name in the wrong place, etc.  This means that they can be called, and invoked via EXECUTE, but will not work when invoked by the inner interpreter (since the name is in the way).  Fix all of that.  `CREATE` and `>BODY` are the biggest culprits here, I think?
+  * Fix FFIs.
+  * Fix WORDS.
 * Should be able to eliminate kDefinitionNames and the associated lookup functions now that we have CFAs in definitions -- just put the Code Primitives in the ROM Definition block with only a CFA.  That should allow the token to get called, but W *et al* to be left alone (since we're not calling a `DO*` word).
   * We'll do this after we go to reverse names since that will also make XTs the same everywhere.
   * Another benefit to this unified approach -- the fact that XTs are the same everywhere, including in the LFA -- is that `FIND-WORD` itself can traverse LFAs and use the XT flags (User vs. ROM) to load the string into RAM and then do a `STRING~` on that.  No more `FIND-PRIM`, `FIND-DEF`, etc.  Instead, we only need individual words to read the names of those things.
