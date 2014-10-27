@@ -6,6 +6,45 @@
             [medley.core :refer [filter-vals map-vals]])
   (:gen-class))
 
+;; ISSUES:
+;; * How does unified lookup actually work?  LFAs are XTs and
+;;   FIND-ROMDEF just returns the current XT (the most recent LFA
+;;   traversed) once it matches a definition.  That means that code
+;;   prims will have $Cxxx XTs, but we actually want them to return a
+;;   single-byte token XT.  I guess FIND-WORD will need to detect tokens
+;;   (CFAs less than $70?) and return the contents of the CFA as the XT
+;;   instead of the XT itself?
+;;   * The other option is to just use the XT everywhere, even for code
+;;     primitives, and then only convert code primitive XTs to tokens in
+;;     COMPILE,.  That would prevent the code from having to know about
+;;     tokens except as an optimization when compiling XTs into
+;;     definitions.  COMPILE, already does a bit of token vs. XT
+;;     detection here anyway.  This is consistent with the whole reason
+;;     that COMPILE, exists anyway, which is as a way to take a
+;;     high-level XT and turn it into whatever the underlying platform
+;;     needs for execution (which in our case is a token).
+;;   * The other simplification that this provides is in EXECUTE -- we
+;;     can get rid of (EXECUTE) and move EXECUTE into a token that just
+;;     pops the XT and jumps to a new DISPATCH_XT label after setting
+;;     `xt
+;; * I wonder if we can leverage this new design as a way to eliminate
+;;   FFI trampolines?  We could have a new FFI prefix for XTs that
+;;   points at an FFI definition index (starting at LAST_FFI and working
+;;   backwards) and then chain that after all of the Code Primitives/ROM
+;;   Definitions.  COMPILE, could then write out a different prefix that
+;;   includes the arity and definition index.
+;;     * No, this doesn't work, because then invoking an FFI requires a
+;;       traversal of the definition list.  FFIs need to be fast, so the
+;;       trampoline has to exist as a thing that is able to do an
+;;       address space-wide lookup (16, 22, 32, etc. bits).  XTs are
+;;       always 16-bits and may not be wide enough to reference the
+;;       entire ROM address space.
+;;
+;; TODO
+;; 1. Unify code-prims and rom-defs so that they are in a single map.
+;; We'll need to chain all of the primitives/definitions together via
+;; their LFA, which means that they need to be in a single block.
+;;
 ;; THOUGHTS:
 ;; * We should put hidden rom-defs at the beginning though and then set
 ;;   their LFAs to zero.  That way the ROM dictionary search will
