@@ -924,7 +924,6 @@
 
 ;; TODO Why does this abort if given an empty USE: declaration?  It
 ;; should generate an error or something.
-;; FIXME Broken; needs the proper dictionary layout
 {:token :use
  :name "USE:"
  :args [[] []]
@@ -932,15 +931,15 @@
             BL PARSE-WORD  DUP 0= IF ABORT THEN ( ca u)
             2DUP FIND-FFIDEF ( ca u 0 | ca u addr -1)
             0= IF TYPE  SPACE  [CHAR] ? EMIT  CR  ABORT THEN ( ca u addr)
-            HERE >XT  LATEST @ LFA,  LATEST ! ( ca u addr)
-            SWAP  %00100000 OR C,
-            ['] DOFFI0 ( ca u addr ffitokenbase) OVER FFIDEF-ARITY + C,
+            HERE >XT ( ca u addr this-xt)  ROT %00100000 OR C, ( ca a xt)
+            LATEST @ XT,  ( ca addr this-xt) LATEST !
+            ['] DOFFI0 ( ca addr ffitokenbase) OVER FFIDEF-ARITY + C,
             ( ca addr) ALIGN ,  DROP ;"
  :pfa [:bl :parseword :dup :zeroequals :izbranch 2 :abort
        :twodup :findffidef :zeroequals :izbranch 8
          :type :space :icharlit "'?'" :emit :cr :abort
-       :here :toxt :latest :fetch :xtcomma :latest :store
-       :swap :icharlit 0x20 :or :ccomma
+       :here :toxt :rot :icharlit 0x20 :or :ccomma
+       :latest :fetch :xtcomma :latest :store
        :icharlit "DOFFI0" :over :ffidefarity :plus :ccomma
        :align :comma :drop
        :exit]}

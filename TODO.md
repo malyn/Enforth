@@ -1,11 +1,9 @@
-* We need to switch to MFORTH-style reverse names so that we can put the real XT (the pointer to the LFA) in definitions and stuff and then just do math to go from there to the PFA.  Right now we're doing all of this awful stuff in order to convert from XTs to LFAs to PFAs to ... and it's getting bad.  Also, sometimes an "XT" points at the LFA and sometimes it points at the PFA.  Just bad overall.
-  * Fix FFIs.
-  * Fix WORDS.
 * Should be able to eliminate kDefinitionNames and the associated lookup functions now that we have CFAs in definitions -- just put the Code Primitives in the ROM Definition block with only a CFA.  That should allow the token to get called, but W *et al* to be left alone (since we're not calling a `DO*` word).
   * We'll do this after we go to reverse names since that will also make XTs the same everywhere.
-  * Another benefit to this unified approach -- the fact that XTs are the same everywhere, including in the LFA -- is that `FIND-WORD` itself can traverse LFAs and use the XT flags (User vs. ROM) to load the string into RAM and then do a `STRING~` on that.  No more `FIND-PRIM`, `FIND-DEF`, etc.  Instead, we only need individual words to read the names of those things.
-* XTs are MSB-first, but LFAs (and literals, I think?) are LSB-first; should we make all of that MSB first?
-  * I think that this goes away if we just unify XTs everywhere per the above item.
+  * Another benefit to this unified approach -- the fact that XTs are used everywhere, including for Code Primitives -- is that `FIND-WORD` can now just traverse LFAs (from User Definitions into ROM Definitions) without having to use different `FIND-*` words.
+  * Replace the `>CFA`, `>NFA`, etc. words with "fetch" words (`@NFA`, `@LFA`, etc.) that are smart about the XT and know to do `C@` or `IC@`.
+  * Add `FOUND?` *( ca u xt -- f )* for comparing a string to a definition name (and then `FOUND?` is smart enough to do `C@` vs. `IC@` depending on if we are in RAM or ROM).  MFORTH has/had this word as well.
+  * Fix `WORDS` now that everything is in a "single" dictionary list.  We'll need a smart `.NAME` word that knows about RAM vs. ROM.
 * Modify DefGen to read code primitive EDN data from `/****`-prefixed comments in the `enforth.c` file.  Then rename the `primitives` directory to `definitions` and have it only include ROM definitions.
 * Consider additional de-duplication of the Code Prims and ROM Definitions.
   * `I` could compile `R@` instead of providing its own token.  Same thing with `(DO)` and `2>R`
