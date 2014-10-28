@@ -15,6 +15,26 @@ ENFORTH_EXTERN(pinMode, pinMode, 2)
 #define LAST_FFI GET_LAST_FFI(pinMode)
 
 
+// FFI definitions for tests.
+static int twoSeven()
+{
+    return 27;
+}
+
+static int doubleNumber(int num)
+{
+    return num + num;
+}
+
+ENFORTH_EXTERN(twoseven, twoSeven, 0)
+#undef LAST_FFI
+#define LAST_FFI GET_LAST_FFI(twoseven)
+
+ENFORTH_EXTERN(dubnum, doubleNumber, 1)
+#undef LAST_FFI
+#define LAST_FFI GET_LAST_FFI(dubnum)
+
+
 int serialKeyQ()
 {
   return Serial.available();
@@ -51,7 +71,7 @@ void serialEmit(char ch)
 }
 
 EnforthVM enforthVM;
-unsigned char enforthDict[512];
+unsigned char enforthDict[1024];
 
 
 void setup()

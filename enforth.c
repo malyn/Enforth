@@ -295,6 +295,14 @@ void enforth_resume(EnforthVM * const vm)
 
     /* Pop IP and RSP from the stack. */
     ip = (restDataStack++)->ram;
+    if (((unsigned int)ip & 0x8000) != 0)
+    {
+        /* This IP address points at a ROM definition; strip off that
+         * flag as part of popping the address. */
+        ip = (uint8_t*)((unsigned int)ip & 0x7FFF);
+        inProgramSpace = -1;
+    }
+
     returnTop = (EnforthCell *)(restDataStack++)->ram;
 
     /* Pop TOS into our register. */
@@ -324,6 +332,7 @@ void enforth_resume(EnforthVM * const vm)
          * token. */
         if (token < 128)
         {
+            w = NULL;
             goto DISPATCH_TOKEN;
         }
         else
