@@ -58,9 +58,8 @@
        :rfrom :base :store
        :exit]}
 
-;; FIXME: PRIM-WORDS is now just CODEPRIM-WORDS and we need to add
-;; ROMDEF-WORDS.
-;; FIXME: All broken again due to the new dictionary layout.
+;; FIXME: All broken again due to the new dictionary layout and the fact
+;; that we have unified Code Primitives and ROM Definitions.
 {:token :words
  :args [[] []]
  :source ": VISIBLE? ( xt -- f ) >LFA 2 + C@ %01000000 AND 0= ;
@@ -77,16 +76,7 @@
               THEN
               >LFA XT@
             REPEAT ;
-          : PRIM-WORDS ( -- )
-            'NAMES
-            BEGIN
-              DUP IC@ $FF <>
-            WHILE
-              ( addr) DUP PRIM-NAMELEN TUCK ( len addr len)
-              OVER + 1+ SWAP ( len nextaddr addr) 1+ ROT
-              ?DUP IF ITYPE SPACE ELSE DROP THEN
-            REPEAT DROP ;
-          : WORDS ( -- )  DEF-WORDS PRIM-WORDS ;"
+          : WORDS ( -- )  DEF-WORDS ;"
  :pfa [; DEF-WORDS
          :latest :fetch
          :qdup :izbranch 36
@@ -99,17 +89,4 @@
              :izbranch 7
                :dup :tonfa :over :nfalength :type :space
              :tolfa :xtfetch :ibranch -37
-       ; PRIM-WORDS
-         :ticknames
-         :dup :icfetch :icharlit 0xff :notequals :izbranch 23
-           :dup
-           ; PRIM-NAMELEN
-             :icfetch :icharlit 0x1F :and
-           :tuck
-           :over :plus :oneplus :swap :oneplus :rot
-           :qdup :izbranch 5
-             :itype :space :ibranch 2
-             :drop
-           :ibranch -28
-         :drop
        :exit]}

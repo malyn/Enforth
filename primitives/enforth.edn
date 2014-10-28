@@ -130,34 +130,6 @@
          :ifetch :ibranch -11
        :exit]}
 
-{:token :findcodeprim
- :name "FIND-CODEPRIM"
- :args [[:caddr :u] [[0] [:xt 1] [:xt -1]]]
- :flags #{:headerless}
- :source ": IMMEDIATE-PRIM? ( addr -- f ) IC@ %10000000 AND 0<> ;
-          : FIND-CODEPRIM ( c-addr u -- 0 | xt 1 | xt -1 )
-            2>R  0 'NAMES
-            BEGIN
-              ( token namesaddr R:ca u) DUP IC@ $FF <>
-            WHILE
-              DUP 2R@ ROT ( t na ca u na R:ca u) FOUND-PRIM?
-              IF ( t na na' R:ca u) DROP  IMMEDIATE-PRIM? 2 AND 1-
-                2R> 2DROP  EXIT THEN
-              ROT 1+ ( na na' t+1) ROT DROP SWAP ( t+1 na')
-            REPEAT ( token na R:ca u) 2DROP 2R> 2DROP FALSE ;"
- :pfa [:twotor :zero :ticknames
-       :dup :icfetch :icharlit 0xff :notequals :izbranch 27
-         :dup :tworfetch :rot :foundprimq :izbranch 14
-           :drop
-           ; IMMEDIATE-PRIM?
-             :icfetch :icharlit 0x80 :and :zeronotequals
-           :icharlit 2 :and :oneminus
-           :tworfrom :twodrop :exit
-         :rot :oneplus :rot :drop :swap
-         :ibranch -32
-       :twodrop :tworfrom :twodrop :false
-       :exit]}
-
 {:token :finddef
  :name "FIND-DEF"
  :args [[:caddr :u] [[0] [:xt 1] [:xt -1]]]
@@ -252,10 +224,8 @@
  :flags #{:headerless}
  :source ": FIND-WORD ( c-addr u -- c-addr u 0 | xt 1 | xt -1 )
             2DUP FIND-DEF ( ca u 0 | ca u xt 1/-1) ?DUP IF 2SWAP 2DROP EXIT THEN
-            2DUP FIND-CODEPRIM ( ca u 0 | ca u xt 1/-1) ?DUP IF 2SWAP 2DROP EXIT THEN
             2DUP FIND-ROMDEF ( ca u 0 | ca u xt 1/-1) DUP IF 2SWAP 2DROP THEN ;"
  :pfa [:twodup :finddef :qdup :izbranch 4 :twoswap :twodrop :exit
-       :twodup :findcodeprim :qdup :izbranch 4 :twoswap :twodrop :exit
        :twodup :findromdef :dup :izbranch 3 :twoswap :twodrop
        :exit]}
 
@@ -332,41 +302,6 @@
          :oneplus :swap :oneplus :swap :rfrom :ibranch -23
         :twodrop :true
         :exit]}
-
-{:token :foundprimq
- :name "FOUND-PRIM?"
- :args [[:caddr :u :offset1] [:offset2 :f]]
- :flags #{:headerless}
- :source ": PRIM-NAMELEN ( addr -- u )  IC@ $1F AND ;
-          : TRAVERSE-PRIM-NAME ( addr1 -- addr2 )  DUP PRIM-NAME-LENGTH + 1+ ;
-          : FOUND-PRIM? ( c-addr u addr1 -- addr2 f )
-            DUP TRAVERSE-PRIM-NAME >R ( ca u addr1 R:addr2)
-            DUP PRIM-NAME-LENGTH ROT <> IF 2DROP R> FALSE EXIT THEN
-            1+ BEGIN ( ca addr1+1 R:addr2)
-              OVER C@  OVER IC@ C{} IF 2DROP R> FALSE EXIT THEN
-              1+ SWAP 1+ SWAP ( ca' addr' R:addr2)
-              DUP R@ =
-            UNTIL
-            ( ca' off' R:off2) 2DROP R> TRUE ;"
- :pfa [:dup
-       ; TRAVERSE-PRIM-NAME
-         :dup
-         ; PRIM-NAMELEN
-           :icfetch :icharlit 0x1F :and
-         :plus :oneplus
-       :tor
-       :dup
-       ; PRIM-NAME-LENGTH
-         :icfetch :icharlit 0x1F :and
-       :rot :notequals :izbranch 5
-           :twodrop :rfrom :false :exit
-       :oneplus
-         :over :cfetch :over :icfetch :cnotsimilar :izbranch 5
-           :twodrop :rfrom :false :exit
-         :oneplus :swap :oneplus :swap
-         :dup :rfetch :equals :izbranch -19
-         :twodrop :rfrom :true
-       :exit]}
 
 ;; FOUND-ROMDEF? [Enforth] "found-romdef-question" ( c-addr u xt -- f)
 ;;
@@ -692,8 +627,6 @@
  :args [[:n1 :n2] []]
  :flags #{:headerless}}
 
-{:token :pexecute :name "(EXECUTE)" :flags #{:headerless}}
-
 {:token :phalt :flags #{:headerless}}
 
 {:token :piqdo
@@ -807,11 +740,6 @@
  :flags #{:headerless}
  :pfa [:icharlit 80 :exit]}
 
-{:token :ticknames
- :name "'NAMES"
- :args [[] [:c-addr]]
- :flags #{:headerless}}
-
 {:token :tickprevleave
  :name "'PREVLEAVE"
  :flags #{:headerless}
@@ -862,23 +790,6 @@
        ; 'DICT
          :vm :icharlit "offsetof(EnforthVM, dictionary)" :plus :fetch
        :plus
-       :exit]}
-
-;; >TOKEN [ENFORTH] "to-token" ( xt -- token )
-;;
-;; Return the execution token for the given XT, which may refer to a
-;; token, user definition, or FFI trampoline.
-{:token :totoken
- :name ">TOKEN"
- :args [[:xt] [:token]]
- :flags #{:headerless}
- :source ": >TOKEN ( xt -- token)
-            DUP TOKEN? IF EXIT THEN
-            DUP ROMDEF? IF ROMXT>CFA IC@ EXIT THEN
-            >CFA C@ THEN ;"
- :pfa [:dup :tokenq :izbranch 2 :exit
-       :dup :romdefq :izbranch 4 :romxttocfa :icfetch :exit
-       :tocfa :cfetch
        :exit]}
 
 {:token :toupper

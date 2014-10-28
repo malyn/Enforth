@@ -6,45 +6,6 @@
             [medley.core :refer [filter-vals map-vals]])
   (:gen-class))
 
-;; ISSUES:
-;; * How does unified lookup actually work?  LFAs are XTs and
-;;   FIND-ROMDEF just returns the current XT (the most recent LFA
-;;   traversed) once it matches a definition.  That means that code
-;;   prims will have $Cxxx XTs, but we actually want them to return a
-;;   single-byte token XT.  I guess FIND-WORD will need to detect tokens
-;;   (CFAs less than $70?) and return the contents of the CFA as the XT
-;;   instead of the XT itself?
-;;   * The other option is to just use the XT everywhere, even for code
-;;     primitives, and then only convert code primitive XTs to tokens in
-;;     COMPILE,.  That would prevent the code from having to know about
-;;     tokens except as an optimization when compiling XTs into
-;;     definitions.  COMPILE, already does a bit of token vs. XT
-;;     detection here anyway.  This is consistent with the whole reason
-;;     that COMPILE, exists anyway, which is as a way to take a
-;;     high-level XT and turn it into whatever the underlying platform
-;;     needs for execution (which in our case is a token).
-;;   * The other simplification that this provides is in EXECUTE -- we
-;;     can get rid of (EXECUTE) and move EXECUTE into a token that just
-;;     pops the XT and jumps to a new DISPATCH_XT label after setting
-;;     `xt
-;; * I wonder if we can leverage this new design as a way to eliminate
-;;   FFI trampolines?  We could have a new FFI prefix for XTs that
-;;   points at an FFI definition index (starting at LAST_FFI and working
-;;   backwards) and then chain that after all of the Code Primitives/ROM
-;;   Definitions.  COMPILE, could then write out a different prefix that
-;;   includes the arity and definition index.
-;;     * No, this doesn't work, because then invoking an FFI requires a
-;;       traversal of the definition list.  FFIs need to be fast, so the
-;;       trampoline has to exist as a thing that is able to do an
-;;       address space-wide lookup (16, 22, 32, etc. bits).  XTs are
-;;       always 16-bits and may not be wide enough to reference the
-;;       entire ROM address space.
-;;
-;; TODO
-;; 1. Unify code-prims and rom-defs so that they are in a single map.
-;; We'll need to chain all of the primitives/definitions together via
-;; their LFA, which means that they need to be in a single block.
-;;
 ;; THOUGHTS:
 ;; * We should put hidden rom-defs at the beginning though and then set
 ;;   their LFAs to zero.  That way the ROM dictionary search will
@@ -87,11 +48,27 @@
    :name (or name (id-to-name token))
    :args-in args-in
    :args-out args-out
+   :cfa (if pfa "DOCOLONROM" (id-to-token token))
    :source source
    :pfa pfa
-   :primitive-type (if (empty? pfa) :code :definition)
-   :headerless? (flags :headerless)
-   :immediate? (flags :immediate)})
+   :code? (empty? pfa)
+   :definition? (sequential? pfa)
+   :hidden? (contains? flags :headerless)
+   :immediate? (contains? flags :immediate)})
+
+(defn def-compare
+  "Compares defs by hidden/public, then name."
+  [{this-hidden? :hidden? this-name :name}
+   {that-hidden? :hidden? that-name :name}]
+  (cond
+    (not= this-hidden? that-hidden?) this-hidden?
+    :else (compare this-name that-name)))
+
+(defn sort-defs
+  [defs]
+  (into (sorted-map-by (fn [key1 key2]
+                         (def-compare (defs key1) (defs key2))))
+        defs))
 
 (defn load-def-file
   "Returns a map of all of the definitions in the given file, indexed by token id."
@@ -102,22 +79,22 @@
         (recur (conj defs (parse-def next-def)))
         (into {} (map #(vector (% :id) %) defs))))))
 
-(defn partition-defs
-  "Returns [code-prims rom-defs] given a raw list of defs."
-  [defs]
-  [(filter-vals #(-> % :primitive-type (= :code)) defs)
-   (filter-vals #(-> % :primitive-type (= :definition)) defs)])
-
 
 ;; =====================================================================
 ;; FUNCTIONS FOR WORKING WITH CODE PRIMITIVES
 ;;
 
 (defn assign-token-values
-  [code-prims]
-  (into {} (map-indexed (fn [idx [k prim]]
-                          (vector k (assoc prim :token-value idx)))
-                        code-prims)))
+  [defs]
+  (->> defs
+       (filter-vals :code?)
+       sort-defs
+       (reduce-kv (fn [indexed-defs k v]
+                    (assoc indexed-defs k (assoc v
+                                                 :token-value
+                                                 (count indexed-defs))))
+                  {})
+       (merge defs)))
 
 
 ;; =====================================================================
@@ -130,39 +107,41 @@
 ;; anyway).
 
 (defn calc-header-size
-  [{:keys [headerless? name] :as rom-def}]
-  (let [name-size (if headerless? 0 (count name))
+  [{:keys [hidden? name] :as rom-def}]
+  (let [name-size (if hidden? 0 (count name))
         header-size (+ 1 ;; PSF+5bit name length
                        2 ;; LFA
                        1)] ;; CFA
     (assoc rom-def ::name-size name-size ::header-size header-size)))
 
 (defn token-byte-size
-  [code-prims token]
+  [defs token]
   (cond
-    (number? token)       1
-    (string? token)       1
-    (code-prims token)    1
-    :else                 2))
+    (number? token)            1
+    (string? token)            1
+    (some-> defs token :code?) 1
+    :else                      2))
 
 (defn calc-token-list-size
-  [code-prims token-list]
-  (apply + (map #(token-byte-size code-prims %) token-list)))
+  [defs token-list]
+  (apply + (map #(token-byte-size defs %) token-list)))
 
 (defn calc-pfa-size
-  [code-prims {:keys [pfa] :as rom-def}]
-  (let [pfa-size (calc-token-list-size code-prims pfa)]
+  [defs {:keys [pfa] :as rom-def}]
+  (let [pfa-size (calc-token-list-size defs pfa)]
     (assoc rom-def ::pfa-size pfa-size)))
 
-(defn calc-xts
+(defn assign-xts
   [rom-defs]
-  (let [name-sizes (map ::name-size rom-defs)
+  (let [rom-defs (-> rom-defs sort-defs vals)
+        name-sizes (map ::name-size rom-defs)
         prev-header-pfa-sizes (concat [0] (map #(+ (% ::header-size)
                                                    (% ::pfa-size))
                                                rom-defs))
         prev-header-pfa-this-name-size (map + prev-header-pfa-sizes name-sizes)
         xts (reductions + prev-header-pfa-this-name-size)]
-    (map #(assoc %1 :xt (bit-or 0xC000 %2)) rom-defs xts)))
+    (zipmap (map :id rom-defs)
+            (map #(assoc %1 :xt (bit-or 0xC000 %2)) rom-defs xts))))
 
 (defn xt-to-bytes
   "Convert the 16-bit XT into an MSB-first array of two bytes as C-style, hex-encoded strings."
@@ -173,19 +152,21 @@
 
 (defn build-headers
   [rom-defs]
-  (let [prev-xts (concat [0] (map :xt rom-defs))]
-    (map (fn [{:keys [headerless? immediate? name] :as rom-def} prev-xt]
-           (assoc rom-def
-                  ::header
-                  (concat (when-not headerless?
-                            (concat [(->> name reverse first escape-c-char (str "0x80|"))]
-                                    (->> name reverse rest string-to-char-array)))
-                          [(str (when immediate? "0x80|")
-                                (if headerless? 0 (count name)))]
-                          [(xt-to-bytes prev-xt)]
-                          ["DOCOLONROM"])))
-         rom-defs
-         prev-xts)))
+  (let [rom-def-vals (-> rom-defs sort-defs vals)
+        prev-xts (concat [0] (map :xt rom-def-vals))
+        rom-def-prev-xts (zipmap (map :id rom-def-vals)
+                                 prev-xts)]
+    (map-vals (fn [{:keys [id hidden? immediate? name cfa] :as rom-def}]
+                (assoc rom-def
+                       ::header
+                       (concat (when-not hidden?
+                                 (concat [(->> name reverse first escape-c-char (str "0x80|"))]
+                                         (->> name reverse rest string-to-char-array)))
+                               [(str (when immediate? "0x80|")
+                                     (if hidden? 0 (count name)))]
+                               [(xt-to-bytes (rom-def-prev-xts id))]
+                               [cfa])))
+              rom-defs)))
 
 (defn extract-branch-span
   "Returns branch-span elements of the PFA vector starting at offset.  branch-span may be negative, in which case the span will start at offset minus branch-span and continue to, but not include, offset."
@@ -195,7 +176,7 @@
     (subvec pfa start-offset end-offset)))
 
 (defn adjust-branch-targets
-  "Branch targets are based on the number of elements in the PFA, but when written out they need to be based on the number of bytes in the PFA (which can change if other ROM Definitions are being referenced, since those use two-byte XTs instead of one-byte tokens."
+  "branch targets are based on the number of elements in the pfa, but when written out they need to be based on the number of bytes in the pfa (which can change if other rom definitions are being referenced, since those use two-byte xts instead of one-byte tokens."
   [code-prims in-pfa]
   (loop [offset 0
          out-pfa []]
@@ -232,53 +213,40 @@
                        token)))))))
 
 (defn build-bodies
-  [code-prims rom-defs]
-  (let [rom-def-xts (->> rom-defs
-                         (map #(vector (% :id) (% :xt)))
-                         (into {}))]
-    (map (fn [{:keys [pfa] :as rom-def}]
-           (let [pfa (adjust-branch-targets code-prims pfa)
-                 body (mapcat (fn [token]
-                                (cond
-                                  (number? token) [token]
-                                  (string? token) [token]
-                                  (code-prims token) [(:token-name (code-prims token))]
-                                  (rom-def-xts token) [(xt-to-bytes (rom-def-xts token))]
-                                  :else (throw (Exception. (str "Unknown token " token)))))
-                              pfa)]
-             (assoc rom-def ::body body)))
-         rom-defs)))
+  [defs]
+  (map-vals (fn [{:keys [pfa] :as rom-def}]
+              (let [pfa (adjust-branch-targets defs pfa)
+                    body (mapcat (fn [token]
+                                   (cond
+                                     (number? token) [token]
+                                     (string? token) [token]
+                                     (some-> defs token :code?) [(-> defs token :token-name)]
+                                     (some-> defs token :definition?) [(xt-to-bytes (-> defs token :xt))]
+                                     :else (throw (Exception. (str "Unknown token " token)))))
+                                 pfa)]
+                (assoc rom-def ::body body)))
+            defs))
 
 
 ;; =====================================================================
 ;; OUTPUT FUNCTIONS
 ;;
 
-(defn print-names-table
-  [code-prims]
-  (doall (->> code-prims
-              (map-vals (fn [{:keys [name token-name headerless?]}]
-                          (println (if headerless?
-                                     (format "\"\\000\" /* %s */"
-                                             token-name)
-                                     (format "\"\\%03o\" \"%s\""
-                                             (count name)
-                                             (escape-c-string name))))))))
-  (println "\"\\377\""))
-
 (defn print-token-enum
-  [code-prims]
-  (dorun
-    (map-vals (fn [{:keys [token-name token-value]}]
-                (println (format "%s = 0x%02x," token-name token-value)))
-              code-prims)))
+  [defs]
+  (let [code-prims (->> defs (filter-vals :code?) sort-defs vals)]
+    (dorun
+      (map (fn [{:keys [token-name token-value]}]
+             (println (format "%s = 0x%02x," token-name token-value)))
+           code-prims))))
 
 (defn print-jump-table
-  [code-prims]
-  (let [all-token-values (zipmap (range 0x70)
+  [defs]
+  (let [code-prims (->> defs (filter-vals :code?) sort-defs vals)
+        all-token-values (zipmap (range 0x70)
                                  (repeat nil))
-        token-value-names (zipmap (map :token-value (vals code-prims))
-                                  (map :token-name (vals code-prims)))
+        token-value-names (zipmap (map :token-value code-prims)
+                                  (map :token-name code-prims))
         token-list (sort-by key (merge
                                   all-token-values
                                   token-value-names))]
@@ -288,24 +256,29 @@
                  (str "&&" token-name ","))))))
 
 (defn print-rom-defs-block
-  [rom-defs]
+  [defs]
+  (println "#define ROMDEF_LAST 0x0000")
+  (println)
   (doseq [{token-name :token-name
-           headerless? :headerless?
+           hidden? :hidden?
+           definition? :definition?
            xt :xt
            header ::header
            name-size ::name-size
-           body ::body} (sort-by :xt rom-defs)]
+           body ::body} (->> defs sort-defs vals)]
     (println "/*" token-name "*/")
-    (when-not headerless?
+    (when-not hidden?
       (print (s/join ", " (take name-size header)))
       (println ","))
+    (println "#undef ROMDEF_LAST")
     (println (format "#define ROMDEF_%s 0x%X" token-name xt))
+    (println (format "#define ROMDEF_LAST 0x%X" xt))
     (print (s/join ", " (drop name-size header)))
     (println ",")
-    (print (s/join ", " body))
-    (println ",")
-    (println))
-  (println (format "#define ROMDEF_LAST 0x%X" (->> rom-defs last :xt))))
+    (when definition?
+      (print (s/join ", " body))
+      (println ","))
+    (println)))
 
 ;; TODO: Use subgraph syntax "ROT -> { OVER DUP SWAP WHATEVER }
 ;; TODO: Eliminate EXIT, IZBRANCH, ZBRANCH, etc.
@@ -318,11 +291,26 @@
 
 
 ;; =====================================================================
+;; COMPILATION FUNCTION
+;;
+
+(defn compile-definitions
+  [defs]
+  (->> defs
+       assign-token-values
+       (map-vals calc-header-size)
+       (map-vals #(calc-pfa-size defs %))
+       assign-xts
+       build-headers
+       build-bodies))
+
+
+;; =====================================================================
 ;; REPL HELPERS
 ;;
 
 (comment
-  (def cp (->> ["../primitives/core.edn"
+  (def ds (->> ["../primitives/core.edn"
                 "../primitives/core-ext.edn"
                 "../primitives/double.edn"
                 "../primitives/enforth.edn"
@@ -330,20 +318,7 @@
                 "../primitives/tools.edn"]
                (map load-def-file)
                (apply merge)
-               partition-defs
-               first
-               assign-token-values))
-  (def rd (->> ["../primitives/core.edn"
-                "../primitives/core-ext.edn"
-                "../primitives/double.edn"
-                "../primitives/enforth.edn"
-                "../primitives/string.edn"
-                "../primitives/tools.edn"]
-               (map load-def-file)
-               (apply merge)
-               partition-defs
-               second
-               vals)))
+               compile-definitions)))
 
 
 ;; =====================================================================
@@ -352,55 +327,32 @@
 
 (defn -main
   [out-path & def-paths]
-  (let [[code-prims rom-defs] (->> def-paths
-                                   (map load-def-file)
-                                   (apply merge)
-                                   partition-defs)
-        code-prims (->> code-prims
-                        assign-token-values)
-        rom-defs (->> rom-defs
-                      vals
-                      ;; FIXME We have to sort by id because POSTPONE
-                      ;; depends on COMPILECOMMA and so we need
-                      ;; COMPILECOMMA to come first.  It would be best
-                      ;; if we didn't have to depend on having
-                      ;; ROMDEF_PFA_COMPILECOMMA defined in order for
-                      ;; POSTPONE to work.
-                      (sort-by :id)
-                      (map calc-header-size)
-                      (map #(calc-pfa-size code-prims %))
-                      calc-xts
-                      build-headers
-                      (build-bodies code-prims))]
+  (let [defs (->> def-paths
+                  (map load-def-file)
+                  (apply merge)
+                  compile-definitions)]
 
     ;; Output statistics.
-    (println "Number of code primitives :" (count code-prims))
-    (println "Number of Forth primitives:" (count rom-defs))
-
-    ;; Output the name list.
-    (println "*** NAMES ***")
-    (spit
-      (fs/file out-path "enforth_names.h")
-      (with-out-str
-        (print-names-table code-prims)))
+    (println "Number of code primitives :" (->> defs (filter-vals :code?) count))
+    (println "Number of Forth primitives:" (->> defs (filter-vals :definition?) count))
 
     ;; Output the token enums.
     (println "*** TOKEN ENUM ***")
     (spit
       (fs/file out-path "enforth_tokens.h")
       (with-out-str
-        (print-token-enum code-prims)))
+        (print-token-enum defs)))
 
     ;; Output the jump table
     (println "*** JUMP TABLE ***")
     (spit
       (fs/file out-path "enforth_jumptable.h")
       (with-out-str
-        (print-jump-table code-prims)))
+        (print-jump-table defs)))
 
     ;; Output the definition block.
     (println "*** DEFINITIONS ***")
     (spit
       (fs/file out-path "enforth_definitions.h")
       (with-out-str
-        (print-rom-defs-block rom-defs)))))
+        (print-rom-defs-block defs)))))

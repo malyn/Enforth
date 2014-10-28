@@ -181,10 +181,15 @@
 {:token :compilecomma
  :name "COMPILE,"
  :args [[:xt] []]
- :source ": COMPILE, ( xt --)  DUP TOKEN? IF C, ELSE XT, THEN ;"
- :pfa [:dup :tokenq :izbranch 4
-         :ccomma :ibranch 2
-         :xtcomma
+ :source ": COMPILE, ( xt --)
+            DUP TOKEN? IF C, EXIT THEN
+            DUP ROMDEF? 0= IF XT, EXIT THEN
+            DUP ROMXT>CFA IC@  DUP $70 < IF C, DROP ELSE DROP XT, THEN ;"
+ :pfa [:dup :tokenq :izbranch 3 :ccomma :exit
+       :dup :romdefq :zeroequals :izbranch 3 :xtcomma :exit
+       :dup :romxttocfa :icfetch :dup :icharlit 0x70 :lessthan :izbranch 5
+         :ccomma :drop :ibranch 3
+         :drop :xtcomma
        :exit]}
 
 {:token :constant
@@ -334,10 +339,7 @@
 ;; Remove xt from the stack and perform the semantics identified by it.
 ;; Other stack effects are due to the word EXECUTEd.
 {:token :execute
- :args [[:xt] []]
- :source ": (EXECUTE) ( i*x token w -- j*x) ... ;
-          : EXECUTE ( i*x xt -- j*x)  DUP >TOKEN  SWAP >BODY  (EXECUTE) ;"
- :pfa [:dup :totoken :swap :tobody :pexecute :exit]}
+ :args [[:xt] []]}
 
 {:token :greaterthan :name ">"}
 
@@ -775,11 +777,9 @@
  :name ">BODY"
  :args [[:xt] [:a-addr]]
  :source ": >BODY ( xt -- a-addr)
-            DUP TOKEN? IF DROP 0 EXIT THEN
             DUP ROMDEF? IF ROMXT>CFA 1+ EXIT THEN
             >CFA 1+ ;"
- :pfa [:dup :tokenq :izbranch 4 :drop :zero :exit
-       :dup :romdefq :izbranch 4 :romxttocfa :oneplus :exit
+ :pfa [:dup :romdefq :izbranch 4 :romxttocfa :oneplus :exit
        :tocfa :oneplus
        ;; TODO Add :align if we start aligning the PFA.
        :exit]}

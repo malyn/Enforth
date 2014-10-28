@@ -155,6 +155,12 @@ The ITC refactor is done, but the results are kind of a mess from an XT perspect
 
 A better solution is to go to the MFORTH dictionary layout, which means that the XT can always point to the flags field and then basic math (`XT + 2 + 1`) gets you to the CFA.  Compiling/Comparing names is more annoying, but that only happens rarely, whereas all of this XT-shuffling is very annoying and error-prone.
 
+## NextNext Update
+
+This is now done -- XTs are used everywhere, including for the things that were previously called Code Primitives.  Those are now just standard ROM Definitions, but with the CFA set to their token value.  This is basically the same as any other ITC where the CFA contains code to be executed.  It's unclear if this is an ITC or DTC at this point; maybe there is no real name for this.
+
+Anyway, the big change here is that XTs are seen everywhere, including for things that are tokens.  You can execute the XT for a Code Primitive and we just execute the CFA like you would for any other definition.  `COMPILE,` is smart enough to take that XT and turn it into a token when the CFA points at a token instead of a definition (which it determines using the redefined `TOKEN?`).
+
 ### Dictionary Header:
 
 The Enforth dictionary uses the layout described by Robert L. Smith in his Forth Dimensions I/5 article titled "A Modest Proposal for Dictionary Headers".

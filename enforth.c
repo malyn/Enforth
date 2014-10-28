@@ -112,19 +112,6 @@ static int gTraceLevel = 0;
 
 
 /* -------------------------------------
- * Enforth definition names.
- */
-
-/* This must be stored in near memory on large AVRs since it is accessed
- * using instruction space words, all of which require that their target
- * addresses be able to fit in a cell (which is 16 bits on the AVR). */
-static const char kDefinitionNames[] PROGMEM =
-#include "enforth_names.h"
-;
-
-
-
-/* -------------------------------------
  * Enforth definitions.
  */
 
@@ -249,6 +236,7 @@ void enforth_evaluate(EnforthVM * const vm, const char * const text)
 void enforth_resume(EnforthVM * const vm)
 {
     register uint8_t *ip;
+    register uint16_t xt;
     register EnforthCell tos;
     register EnforthCell *restDataStack; /* Points at the second item on the stack. */
     register uint8_t *w;
@@ -343,7 +331,7 @@ void enforth_resume(EnforthVM * const vm)
 
             /* Not a token, which means that this is a two-byte XT that
              * points at the NFA of the word to be called. */
-            uint16_t xt = token << 8;
+            xt = token << 8;
 
 #ifdef __AVR__
             if (inProgramSpace)
@@ -356,6 +344,7 @@ void enforth_resume(EnforthVM * const vm)
                 xt |= *ip++;
             }
 
+DISPATCH_XT:
             /* Convert the XT into a Word Pointer depending on the type
              * of XT (ROM definition or user definition) and then read
              * the CFA. */
@@ -389,6 +378,9 @@ DISPATCH_TOKEN:
 
             printf(" [%02x] ", token);
 
+            /* FIXME Needs to get the XT of the token and then use that
+             * to retrieve the name. */
+#if false
             if (token < 0x70) /* No names for DO* tokens */
             {
                 const char * curDef = kDefinitionNames;
@@ -402,6 +394,7 @@ DISPATCH_TOKEN:
                     printf("%c", *(curDef + i));
                 }
             }
+#endif
 
             for (i = 0; i < &vm->data_stack[32] - restDataStack - 1; i++)
             {
@@ -674,12 +667,11 @@ DISPATCH_TOKEN:
         }
         continue;
 
-        PEXECUTE:
+        EXECUTE:
         {
-            w = tos.ram;
-            token = restDataStack++->u;
+            xt = tos.u;
             tos = *restDataStack++;
-            goto DISPATCH_TOKEN;
+            goto DISPATCH_XT;
         }
         continue;
 
@@ -1145,14 +1137,6 @@ DISPATCH_TOKEN:
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
             tos.ram = (uint8_t*)vm;
-        }
-        continue;
-
-        TICKNAMES:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            tos.ram = (uint8_t*)kDefinitionNames;
         }
         continue;
 

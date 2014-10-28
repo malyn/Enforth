@@ -1,9 +1,9 @@
-* Should be able to eliminate kDefinitionNames and the associated lookup functions now that we have CFAs in definitions -- just put the Code Primitives in the ROM Definition block with only a CFA.  That should allow the token to get called, but W *et al* to be left alone (since we're not calling a `DO*` word).
-  * We'll do this after we go to reverse names since that will also make XTs the same everywhere.
-  * Another benefit to this unified approach -- the fact that XTs are used everywhere, including for Code Primitives -- is that `FIND-WORD` can now just traverse LFAs (from User Definitions into ROM Definitions) without having to use different `FIND-*` words.
+* `FIND-WORD` should traverse LFAs (from User Definitions into ROM Definitions) without having to use different `FIND-*` words.
   * Replace the `>CFA`, `>NFA`, etc. words with "fetch" words (`@NFA`, `@LFA`, etc.) that are smart about the XT and know to do `C@` or `IC@`.
   * Add `FOUND?` *( ca u xt -- f )* for comparing a string to a definition name (and then `FOUND?` is smart enough to do `C@` vs. `IC@` depending on if we are in RAM or ROM).  MFORTH has/had this word as well.
-  * Fix `WORDS` now that everything is in a "single" dictionary list.  We'll need a smart `.NAME` word that knows about RAM vs. ROM.
+  * `LATEST` needs to default to `LAST_ROMDEF` instead of zero so that traversal continues into ROM.
+* Fix `WORDS` now that everything is in a "single" dictionary list.  We'll need a smart `.NAME` word that knows about RAM vs. ROM.  Can probably leverage the code from above.
+* Fix tracing now that kDefinitionNames has gone away.
 * Modify DefGen to read code primitive EDN data from `/****`-prefixed comments in the `enforth.c` file.  Then rename the `primitives` directory to `definitions` and have it only include ROM definitions.
 * Consider additional de-duplication of the Code Prims and ROM Definitions.
   * `I` could compile `R@` instead of providing its own token.  Same thing with `(DO)` and `2>R`

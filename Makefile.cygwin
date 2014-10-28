@@ -3,7 +3,7 @@
 all: test/enforthsimple test/enforthtest test/enforthserialtest
 
 clean:
-	rm -f utility/enforth_definitions.h utility/enforth_jumptable.h utility/enforth_names.h utility/enforth_tokens.h test/enforthtest.exe test/enforthserialtest.exe test/enforthsimple.exe
+	rm -f utility/enforth_definitions.h utility/enforth_jumptable.h utility/enforth_tokens.h test/enforthtest.exe test/enforthserialtest.exe test/enforthsimple.exe
 
 test: test/enforthtest
 	test/enforthtest --abort
@@ -17,16 +17,13 @@ utility/enforth_definitions.h: primitives/core.edn primitives/core-ext.edn primi
 utility/enforth_jumptable.h: primitives/core.edn primitives/core-ext.edn primitives/double.edn primitives/enforth.edn primitives/string.edn primitives/tools.edn
 	cd DefGen && lein run ../utility $(addprefix ../, $+)
 
-utility/enforth_names.h: primitives/core.edn primitives/core-ext.edn primitives/double.edn primitives/enforth.edn primitives/string.edn primitives/tools.edn
-	cd DefGen && lein run ../utility $(addprefix ../, $+)
-
 utility/enforth_tokens.h: primitives/core.edn primitives/core-ext.edn primitives/double.edn primitives/enforth.edn primitives/string.edn primitives/tools.edn
 	cd DefGen && lein run ../utility $(addprefix ../, $+)
 
-test/enforthsimple: enforth.h enforth.c utility/enforth_definitions.h utility/enforth_jumptable.h utility/enforth_names.h utility/enforth_tokens.h test/enforthsimple.c
+test/enforthsimple: enforth.h enforth.c utility/enforth_definitions.h utility/enforth_jumptable.h utility/enforth_tokens.h test/enforthsimple.c
 	cc -g -I. -I./utility -o $@ -DENABLE_STACK_CHECKING=1 enforth.c test/enforthsimple.c
 
-test/enforthtest: enforth.h enforth.c utility/enforth_definitions.h utility/enforth_jumptable.h utility/enforth_names.h utility/enforth_tokens.h test/catch.hpp test/enforthtesthelper.h test/enforthtesthelper.c test/test_core.cpp test/test_enforth.cpp test/enforthtest.cpp
+test/enforthtest: enforth.h enforth.c utility/enforth_definitions.h utility/enforth_jumptable.h utility/enforth_tokens.h test/catch.hpp test/enforthtesthelper.h test/enforthtesthelper.c test/test_core.cpp test/test_enforth.cpp test/enforthtest.cpp
 	c++ -g -I. -I./utility -o $@ -DENABLE_STACK_CHECKING=1 enforth.c test/enforthtesthelper.c test/test_enforth.cpp test/test_core.cpp test/enforthtest.cpp
 
 test/enforthserialtest: test/catch.hpp test/enforthtesthelper.h test/enforthtesthelper.c test/test_core.cpp test/test_enforth.cpp test/enforthserialtest.cpp
