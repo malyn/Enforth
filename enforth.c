@@ -150,7 +150,7 @@ void enforth_reset(EnforthVM * const vm)
 {
     /* Reset the globals. */
     vm->dp = vm->dictionary;
-    vm->latest.u = 0;
+    vm->latest.u = ROMDEF_LAST;
 
     vm->hld = NULL;
 
@@ -1194,14 +1194,6 @@ DISPATCH_TOKEN:
             CHECK_STACK(0, 1);
             *--restDataStack = tos;
             tos.ram = (uint8_t*)definitions;
-        }
-        continue;
-
-        LASTROMDEF:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            tos.u = ROMDEF_LAST;
         }
         continue;
 

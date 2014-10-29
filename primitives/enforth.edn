@@ -130,32 +130,6 @@
          :ifetch :ibranch -11
        :exit]}
 
-{:token :finddef
- :name "FIND-DEF"
- :args [[:caddr :u] [[0] [:xt 1] [:xt -1]]]
- :flags #{:headerless}
- :source ": IMMEDIATE-DEF? ( xt -- f )  >NFA C@ %10000000 AND 0<> ;
-          : FIND-DEF ( c-addr u -- 0 | xt 1 | xt -1 )
-          2>R  LATEST @
-          BEGIN
-            ( xt R:ca u) ?DUP
-          WHILE
-            DUP 2R@ ROT ( xt ca u xt R:ca u) FOUND-DEF? ( xt f R:ca u)
-            IF  DUP IMMEDIATE-DEF? 2 AND 1-  2R> 2DROP  EXIT THEN
-            >LFA XT@
-          REPEAT ( R:ca u) 2R> 2DROP FALSE ;"
- :pfa [:twotor :latest :fetch
-       :qdup :izbranch 25
-         :dup :tworfetch :rot :founddefq :izbranch 15
-           :dup
-           ; IMMEDIATE-DEF?
-             :tonfa :cfetch :icharlit 0x80 :and :zeronotequals
-           :icharlit 2 :and :oneminus :tworfrom :twodrop :exit
-         :tolfa :xtfetch
-         :ibranch -26
-       :tworfrom :twodrop :false
-       :exit]}
-
 {:token :findffidef
  :name "FIND-FFIDEF"
  :flags #{:headerless}
@@ -183,32 +157,6 @@
        :tworfrom :twodrop :false
        :exit]}
 
-{:token :findromdef
- :name "FIND-ROMDEF"
- :args [[:caddr :u] [[0] [:xt 1] [:xt -1]]]
- :flags #{:headerless}
- :source ": IMMEDIATE-ROMDEF? ( xt -- f )  ROMXT>NFA IC@ %10000000 AND 0<> ;
-          : FIND-ROMDEF ( c-addr u -- 0 | xt 1 | xt -1 )
-          2>R  LAST-ROMDEF
-          BEGIN
-            ( xt R:ca u) ?DUP
-          WHILE
-            DUP 2R@ ROT ( xt ca u xt R:ca u) FOUND-ROMDEF? ( xt f R:ca u)
-            IF  DUP IMMEDIATE-ROMDEF? 2 AND 1-  2R> 2DROP  EXIT THEN
-            ROMXT>LFA IXT@
-          REPEAT ( R:ca u) 2R> 2DROP FALSE ;"
- :pfa [:twotor :lastromdef
-       :qdup :izbranch 25
-         :dup :tworfetch :rot :foundromdefq :izbranch 15
-           :dup
-           ; IMMEDIATE-ROMDEF?
-             :romxttonfa :icfetch :icharlit 0x80 :and :zeronotequals
-           :icharlit 2 :and :oneminus :tworfrom :twodrop :exit
-         :romxttolfa :ixtfetch
-         :ibranch -26
-       :tworfrom :twodrop :false
-       :exit]}
-
 ;; FIND-WORD [Enforth] "paren-find-paren" ( c-addr u -- c-addr u 0 | xt 1 | xt -1 )
 ;;
 ;; Find the definition named in the string at c-addr with length u in
@@ -222,25 +170,55 @@
  :name "FIND-WORD"
  :args [[:caddr :u] [[:caddr :u 0] [:xt 1] [:xt -1]]]
  :flags #{:headerless}
- :source ": FIND-WORD ( c-addr u -- c-addr u 0 | xt 1 | xt -1 )
-            2DUP FIND-DEF ( ca u 0 | ca u xt 1/-1) ?DUP IF 2SWAP 2DROP EXIT THEN
-            2DUP FIND-ROMDEF ( ca u 0 | ca u xt 1/-1) DUP IF 2SWAP 2DROP THEN ;"
- :pfa [:twodup :finddef :qdup :izbranch 4 :twoswap :twodrop :exit
-       :twodup :findromdef :dup :izbranch 3 :twoswap :twodrop
+ :source ": IMMEDIATE? ( xt -- f )  NFA@ %10000000 AND 0<> ;
+          : FIND-WORD ( c-addr u -- c-addr u 0 | xt 1 | xt -1)
+            2>R  LATEST @
+            BEGIN
+              ( xt R:ca u) ?DUP
+            WHILE
+              DUP 2R@ ROT ( xt ca u xt R:ca u) FOUND? ( xt f R:ca u)
+              IF  DUP IMMEDIATE? 2 AND 1-  2R> 2DROP  EXIT THEN
+              LFA@
+            REPEAT ( R:ca u) 2R> FALSE ;"
+ :pfa [:twotor :latest :fetch
+       :qdup :izbranch 23
+         :dup :tworfetch :rot :foundq :izbranch 14
+           :dup
+           ; IMMEDIATE?
+             :nfafetch :icharlit 0x80 :and :zeronotequals
+           :icharlit 2 :and :oneminus :tworfrom :twodrop :exit
+         :lfafetch
+         :ibranch -24
+       :tworfrom :false
        :exit]}
 
-;; FOUND-DEF? [Enforth] "found-def-question" ( c-addr u xt -- f)
+;; FOUND? [Enforth] "found-question" ( c-addr u xt -- f)
 ;;
 ;; Compares the string c-addr with length u to the name of the
 ;; dictionary entry identified by xt and pushes true to the stack if the
 ;; names are identical (ignoring case), false otherwise.  Note that the
 ;; names in compiled definitions are in reverse order, whereas the
 ;; search string is in normal order.
-{:token :founddefq
- :name "FOUND-DEF?"
+{:token :foundq
+ :name "FOUND?"
  :args [[:caddr :u :xt] [:f]]
  :flags #{:headerless}
- :source ": HIDDEN? ( xt -- f ) >NFA C@ %01000000 AND 0<> ;
+ ;; FIXME: STRING~ needs to use something other than C@ to fetch the
+ ;; elements of the name.  Probably something that takes the XT and
+ ;; offset from the start of the name?  This works for now on non-AVR
+ ;; platforms, but it won't work on the AVR.  Maybe NFA@ is changed to
+ ;; take the xt and the offset?  Normal usage for flags is "xt 0 NFA@",
+ ;; but for getting the characters you say "xt 1 NFA@" (and then we
+ ;; always NEGATE the offset).
+ ;; FIXME: >NFA is left in there for now, but it needs to go away as
+ ;; part of adding NFA@.
+ ;; TODO: The FFI? section is kind of annoying; it would be nice to
+ ;; eliminate that.  Maybe NFA@ could deal with that by reading the
+ ;; bytes from the FFI definition?
+ ;; TODO Is the initial comparison of the name lengths really
+ ;; benefitting us from a performance perspective?  It adds ROM bytes
+ ;; and I am not sure if we need the functionality.
+ :source ": HIDDEN? ( xt -- f ) NFA@ %01000000 AND 0<> ;
           : STRING~ ( c-addr1 ic-addr2 u -- f )
             BEGIN
               ?DUP
@@ -249,21 +227,24 @@
               OVER C@  OVER C@ $7F AND C{} IF 2DROP R> DROP FALSE EXIT THEN
               ( ca1 ica2 R:u'-1) 1- SWAP 1+ SWAP ( ca1' ica2' R:u'-1) R>
             REPEAT ( ca' ca2') 2DROP TRUE ;
-          : FOUND-DEF? ( c-addr u xt -- f)
+          : FOUND? ( c-addr u xt -- f)
             DUP HIDDEN? IF DROP 2DROP FALSE EXIT THEN
             2DUP NAME-LENGTH ( ca u xt u u') <> IF DROP 2DROP FALSE EXIT THEN
             DUP FFI? IF ( ca u xt) FOUND-FFI? EXIT THEN
             >NFA ( ca u nfa) 1- ( ca u name) SWAP STRING~ ;"
  :pfa [:dup
        ; HIDDEN
-         :tonfa :cfetch :icharlit 0x40 :and :zeronotequals
+         :nfafetch :icharlit 0x40 :and :zeronotequals
        :izbranch 5
          :drop :twodrop :false :exit
        :twodup :namelength :notequals :izbranch 5
          :drop :twodrop :false :exit
-       :dup :ffiq :izbranch 3
-         :foundffiq :exit
-       :tonfa :oneminus :swap
+       ;; FIXME Put this back in.
+       ;;:dup :ffiq :izbranch 3
+       ;;  :foundffiq :exit
+       ;; FIXME: Remove this once STRING~ uses NFA@
+       :dup :romdefq :izbranch 4 :romxttonfa :ibranch 2 :tonfa
+       :oneminus :swap
        ; STRING~
          :qdup :izbranch 25
            :oneminus :tor
@@ -302,41 +283,6 @@
          :oneplus :swap :oneplus :swap :rfrom :ibranch -23
         :twodrop :true
         :exit]}
-
-;; FOUND-ROMDEF? [Enforth] "found-romdef-question" ( c-addr u xt -- f)
-;;
-;; Compares the string c-addr with length u to the name of the ROM
-;; Definition entry identified by xt and pushes true to the stack if the
-;; names are identical (ignoring case), false otherwise.  Note that the
-;; names in compiled definitions are in reverse order, whereas the
-;; search string is in normal order.
-{:token :foundromdefq
- :name "FOUND-ROMDEF?"
- :args [[:caddr :u :xt] [:f]]
- :flags #{:headerless}
- :source ": STRING~ ( c-addr1 ic-addr2 u -- f )
-            BEGIN
-              ?DUP
-            WHILE
-              1- >R ( ca1 ica2 R:u'-1)
-              OVER C@  OVER IC@ $7F AND C{} IF 2DROP R> DROP FALSE EXIT THEN
-              ( ca1 ica2 R:u'-1) 1- SWAP 1+ SWAP ( ca1' ica2' R:u'-1) R>
-            REPEAT ( ca' ca2') 2DROP TRUE ;
-          : FOUND-ROMDEF? ( c-addr u xt -- f)
-            2DUP ROMNAME-LENGTH ( ca u xt u u') <> IF DROP 2DROP FALSE EXIT THEN
-            ROMXT>NFA ( ca u nfa) 1- ( ca u name) SWAP STRING~ ;"
- :pfa [:twodup :romnamelength :notequals :izbranch 5
-         :drop :twodrop :false :exit
-       :romxttonfa :oneminus :swap
-       ; STRING~
-         :qdup :izbranch 25
-           :oneminus :tor
-           :over :cfetch :over :icfetch :icharlit 0x7f :and :cnotsimilar :izbranch 6
-             :twodrop :rfrom :drop :false :exit
-           :oneminus :swap :oneplus :swap :rfrom
-           :ibranch -26
-         :twodrop :true
-       :exit]}
 
 {:token :halt
  :flags #{:headerless}
@@ -488,14 +434,19 @@
  :args [[] []]
  :flags #{:headerless}}
 
-{:token :lastromdef
- :name "LAST-ROMDEF"
- :args [[] [:xt]]
- :flags #{:headerless}}
-
 {:token :latest
  :args [[] [:aaadr]]
  :pfa [:vm :icharlit "offsetof(EnforthVM, latest)" :plus :exit]}
+
+{:token :lfafetch
+ :name "LFA@"
+ :args [[:xt] [:addr]]
+ :flags #{:headerless}
+ ;; FIXME: Consider building in ROMXT>NFA, >NFA, IXT@, XT@, etc.
+ :source ": LFA@ ( xt -- addr)  DUP ROMDEF? IF ROMXT>LFA IXT@ ELSE >LFA XT@ ;"
+ :pfa [:dup :romdefq :izbranch 4
+         :romxttolfa :ixtfetch :exit
+         :tolfa :xtfetch :exit]}
 
 {:token :lit
  :name "(LIT)"
@@ -505,16 +456,29 @@
 ;; Length of the definition name, not necessarily the NFA field (because
 ;; FFI trampolines have a zero-length NFA since the name is stored in
 ;; ROM in the FFI definition).
+;; FIXME: Can probably be removed since it is only used in FOUND?
 {:token :namelength
  :name "NAME-LENGTH"
  :args [[:xt] [:u]]
  :flags #{:headerless}
- :source ": NAME-LENGTH ( xt -- ru)  >NFA C@ $1F AND ;"
- :pfa [:tonfa :cfetch :icharlit 0x1F :and :exit]}
+ :source ": NAME-LENGTH ( xt -- ru)  NFA@ $1F AND ;"
+ :pfa [:nfafetch :icharlit 0x1F :and :exit]}
+
+{:token :nfafetch
+ :name "NFA@"
+ :args [[:xt] [:addr]]
+ :flags #{:headerless}
+ ;; FIXME: Consider building in ROMXT>NFA, >NFA, etc.
+ :source ": NFA@ ( xt -- addr)  DUP ROMDEF? IF ROMXT>NFA IC@ ELSE >NFA C@ ;"
+ :pfa [:dup :romdefq :izbranch 4
+         :romxttonfa :icfetch :exit
+         :tonfa :cfetch :exit]}
 
 ;; Length of the NFA field, not necessarily the name itself (because FFI
 ;; trampolines have a zero-length NFA since the name is stored in ROM in
 ;; the FFI definition).
+;; FIXME: This can be removed once WORDS is fixed (since we won't need
+;; to worry about spanning the NFA anymore).
 {:token :nfalength
  :name "NFA-LENGTH"
  :args [[:xt] [:u]]
@@ -700,13 +664,6 @@
  :flags #{:headerless}
  :source ": ROMDEF? ( xt -- f)  8 RSHIFT  %1100000  TUCK AND = ;"
  :pfa [:icharlit 8 :rshift :icharlit 0xC0 :tuck :and :equals :exit]}
-
-{:token :romnamelength
- :name "ROMNAME-LENGTH"
- :args [[:xt] [:u]]
- :flags #{:headerless}
- :source ": ROMNAME-LENGTH ( xt -- ru)  ROMXT>NFA IC@ $1F AND ;"
- :pfa [:romxttonfa :icfetch :icharlit 0x1F :and :exit]}
 
 {:token :romxttocfa
  :name "ROMXT>CFA"

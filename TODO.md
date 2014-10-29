@@ -3,7 +3,6 @@
 * `FIND-WORD` should traverse LFAs (from User Definitions into ROM Definitions) without having to use different `FIND-*` words.
   * Replace the `>CFA`, `>NFA`, etc. words with "fetch" words (`@NFA`, `@LFA`, etc.) that are smart about the XT and know to do `C@` or `IC@`.
   * Add `FOUND?` *( ca u xt -- f )* for comparing a string to a definition name (and then `FOUND?` is smart enough to do `C@` vs. `IC@` depending on if we are in RAM or ROM).  MFORTH has/had this word as well.
-  * `LATEST` needs to default to `LAST_ROMDEF` instead of zero so that traversal continues into ROM.
 * Fix `WORDS` now that everything is in a "single" dictionary list.  We'll need a smart `.NAME` word that knows about RAM vs. ROM.  Can probably leverage the code from above.
 * Modify DefGen to read code primitive EDN data from `/****`-prefixed comments in the `enforth.c` file.  Then rename the `primitives` directory to `definitions` and have it only include ROM definitions.
 * Move `dp` and `latest` into the dictionary so that they load/save with the dictionary.
