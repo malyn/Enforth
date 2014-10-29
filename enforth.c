@@ -295,6 +295,7 @@ void enforth_resume(EnforthVM * const vm)
 
     /* Pop IP and RSP from the stack. */
     ip = (restDataStack++)->ram;
+#ifdef __AVR__
     if (((unsigned int)ip & 0x8000) != 0)
     {
         /* This IP address points at a ROM definition; strip off that
@@ -302,6 +303,7 @@ void enforth_resume(EnforthVM * const vm)
         ip = (uint8_t*)((unsigned int)ip & 0x7FFF);
         inProgramSpace = -1;
     }
+#endif
 
     returnTop = (EnforthCell *)(restDataStack++)->ram;
 
