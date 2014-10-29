@@ -139,6 +139,11 @@ static const int kEnforthFFIProcPtrSize = sizeof(void*);
     static const char FFIDEF_ ## name ## _NAME[] PROGMEM = #name; \
     static const EnforthFFIDef FFIDEF_##name PROGMEM = { LAST_FFI, FFIDEF_ ## name ## _NAME, arity, (void*)fn };
 
+#define ENFORTH_EXTERN_METHOD(name, fnbody, arity) \
+    static void * FFIMETHODCALL_ ## name (EnforthCell a, EnforthCell b, EnforthCell c) fnbody \
+    static const char FFIDEF_ ## name ## _NAME[] PROGMEM = #name; \
+    static const EnforthFFIDef FFIDEF_##name PROGMEM = { LAST_FFI, FFIDEF_ ## name ## _NAME, arity, (void*)FFIMETHODCALL_ ## name };
+
 #define GET_LAST_FFI(name) &FFIDEF_ ## name
 
 
