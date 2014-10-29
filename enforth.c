@@ -477,7 +477,15 @@ DISPATCH_TOKEN:
         continue;
 
         DOFFI3:
+        {
             CHECK_STACK(3, 1);
+            ThreeArgFFI fn = (ThreeArgFFI)pgm_read_word(&(*(EnforthFFIDef**)w)->fn);
+
+            EnforthCell arg3 = tos;
+            EnforthCell arg2 = *restDataStack++;
+            EnforthCell arg1 = *restDataStack++;
+            tos = (*fn)(arg1, arg2, arg3);
+        }
         continue;
 
         DOFFI4:
