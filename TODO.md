@@ -14,13 +14,14 @@
   * We could actually use an $800-prefixed XT for ROM definitions and then uses bits 12-14 for specifying the FFI arity of FFI trampolines.  FFI trampolines would then just be a raw function pointer compiled in to the dictionary.
 * We could use relative LFAs with automatic one-byte encoding in cases where the value is less than 256.  This would shave about 240 bytes of the size of the ROM Definition.
 * Refactor the DefGen code to make it easier to load in the definitions and then traverse them for analysis purposes.  First analysis: output a GraphViz file that shows the calling patterns between all of the words.
-* Start creating the `enforth_*_extern.h` files for various Arduino libs in order to validate the FFI code, workflow, etc.
+* Start creating the `externs/enforth_*.h` files for various Arduino libs in order to validate the FFI code, workflow, etc.
   * Consider creating a namespace enum for externs so that we can rewrite the FFIDef addresses after a load.  The trampoline would then contain the 16-bit id of the extern (10 bits for namespace, 6 bits for function).
 * PARSE-WORD needs to treat all control characters as space if given a space as the delimiter.
 * Improve the stack checking code.
   * First, the code is probably too aggressive and may not let us use the last stack item.
-  * Second, we have the macro scattered everywhere, but it would be better if the stack sizes were declared in a separate table, organized by token, and then checked in a single place right before DISPATCH\_TOKEN.  Similar to the rest of these tables, the source auto-generator will make it easier to build this table.
+  * Second, we have the macro scattered everywhere, but it would be better if the stack sizes were in an extra byte in the definition header and then checked in a single place right before DISPATCH\_TOKEN.  This may make the logic small enough to include on AVRs (although it will add at ~240 bytes to the size of the ROM Definition block).
   * We should also check the return stack.
+* Evaluate ways to reduce the size of the DOFFI\* tokens, especially now that we have the VOID variants that auto-drop (that code appears to add hundreds of bytes to the build).
 * Consider using the pgmspace typedefs (prog\_int8\_t, etc.) if that would make it easier to catch situations where we forgot to use the pgm\_\* accessors.
 * Consider creating EnforthDuino.cpp/.h wrappers to make it easier to interact with Enforth in the Arduino environment.
 * Add comments to all of the `.edn` files.

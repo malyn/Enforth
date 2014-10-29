@@ -121,6 +121,7 @@ typedef struct EnforthFFIDef
     const struct EnforthFFIDef * const prev;
     const char * const name;
     uint8_t arity;
+    uint8_t is_void;
     void * fn;
 } EnforthFFIDef;
 
@@ -137,12 +138,21 @@ static const int kEnforthFFIProcPtrSize = sizeof(void*);
  * resolution of the processor. */
 #define ENFORTH_EXTERN(name, fn, arity) \
     static const char FFIDEF_ ## name ## _NAME[] PROGMEM = #name; \
-    static const EnforthFFIDef FFIDEF_##name PROGMEM = { LAST_FFI, FFIDEF_ ## name ## _NAME, arity, (void*)fn };
+    static const EnforthFFIDef FFIDEF_##name PROGMEM = { LAST_FFI, FFIDEF_ ## name ## _NAME, arity, 0, (void*)fn };
+
+#define ENFORTH_EXTERN_VOID(name, fn, arity) \
+    static const char FFIDEF_ ## name ## _NAME[] PROGMEM = #name; \
+    static const EnforthFFIDef FFIDEF_##name PROGMEM = { LAST_FFI, FFIDEF_ ## name ## _NAME, arity, 1, (void*)fn };
 
 #define ENFORTH_EXTERN_METHOD(name, fnbody, arity) \
     static void * FFIMETHODCALL_ ## name (EnforthCell a, EnforthCell b, EnforthCell c) fnbody \
     static const char FFIDEF_ ## name ## _NAME[] PROGMEM = #name; \
-    static const EnforthFFIDef FFIDEF_##name PROGMEM = { LAST_FFI, FFIDEF_ ## name ## _NAME, arity, (void*)FFIMETHODCALL_ ## name };
+    static const EnforthFFIDef FFIDEF_##name PROGMEM = { LAST_FFI, FFIDEF_ ## name ## _NAME, arity, 0, (void*)FFIMETHODCALL_ ## name };
+
+#define ENFORTH_EXTERN_VOID_METHOD(name, fnbody, arity) \
+    static void * FFIMETHODCALL_ ## name (EnforthCell a, EnforthCell b, EnforthCell c) fnbody \
+    static const char FFIDEF_ ## name ## _NAME[] PROGMEM = #name; \
+    static const EnforthFFIDef FFIDEF_##name PROGMEM = { LAST_FFI, FFIDEF_ ## name ## _NAME, arity, 1, (void*)FFIMETHODCALL_ ## name };
 
 #define GET_LAST_FFI(name) &FFIDEF_ ## name
 

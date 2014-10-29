@@ -446,11 +446,20 @@ DISPATCH_TOKEN:
 
             /* W contains a pointer to the PFA of the FFI definition;
              * get the FFI definition pointer and then use that to get
-             * the FFI function pointer. */
+             * the FFI function pointer.  Get the value of the is_void
+             * flag as well.*/
             ZeroArgFFI fn = (ZeroArgFFI)pgm_read_word(&(*(EnforthFFIDef**)w)->fn);
+            uint8_t is_void = pgm_read_byte(&(*(EnforthFFIDef**)w)->is_void);
 
-            *--restDataStack = tos;
-            tos = (*fn)();
+            if (is_void == 0)
+            {
+                *--restDataStack = tos;
+                tos = (*fn)();
+            }
+            else
+            {
+                (*fn)();
+            }
         }
         continue;
 
@@ -460,10 +469,17 @@ DISPATCH_TOKEN:
 
             /* W contains a pointer to the PFA of the FFI definition;
              * get the FFI definition pointer and then use that to get
-             * the FFI function pointer. */
+             * the FFI function pointer.  Get the value of the is_void
+             * flag as well. */
             OneArgFFI fn = (OneArgFFI)pgm_read_word(&(*(EnforthFFIDef**)w)->fn);
+            uint8_t is_void = pgm_read_byte(&(*(EnforthFFIDef**)w)->is_void);
 
             tos = (*fn)(tos);
+
+            if (is_void == 1)
+            {
+                tos = *restDataStack++;
+            }
         }
         continue;
 
@@ -471,10 +487,17 @@ DISPATCH_TOKEN:
         {
             CHECK_STACK(2, 1);
             TwoArgFFI fn = (TwoArgFFI)pgm_read_word(&(*(EnforthFFIDef**)w)->fn);
+            uint8_t is_void = pgm_read_byte(&(*(EnforthFFIDef**)w)->is_void);
 
             EnforthCell arg2 = tos;
             EnforthCell arg1 = *restDataStack++;
+
             tos = (*fn)(arg1, arg2);
+
+            if (is_void == 1)
+            {
+                tos = *restDataStack++;
+            }
         }
         continue;
 
@@ -482,11 +505,18 @@ DISPATCH_TOKEN:
         {
             CHECK_STACK(3, 1);
             ThreeArgFFI fn = (ThreeArgFFI)pgm_read_word(&(*(EnforthFFIDef**)w)->fn);
+            uint8_t is_void = pgm_read_byte(&(*(EnforthFFIDef**)w)->is_void);
 
             EnforthCell arg3 = tos;
             EnforthCell arg2 = *restDataStack++;
             EnforthCell arg1 = *restDataStack++;
+
             tos = (*fn)(arg1, arg2, arg3);
+
+            if (is_void == 1)
+            {
+                tos = *restDataStack++;
+            }
         }
         continue;
 

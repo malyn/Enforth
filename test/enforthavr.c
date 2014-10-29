@@ -54,7 +54,7 @@ ENFORTH_EXTERN(rand, rand, 0)
 #undef LAST_FFI
 #define LAST_FFI GET_LAST_FFI(rand)
 
-ENFORTH_EXTERN(srand, srand, 1)
+ENFORTH_EXTERN_VOID(srand, srand, 1)
 #undef LAST_FFI
 #define LAST_FFI GET_LAST_FFI(srand)
 
