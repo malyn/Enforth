@@ -1,35 +1,48 @@
+# Before Release
+
 * `FIND-WORD` should traverse LFAs (from User Definitions into ROM Definitions) without having to use different `FIND-*` words.
   * Replace the `>CFA`, `>NFA`, etc. words with "fetch" words (`@NFA`, `@LFA`, etc.) that are smart about the XT and know to do `C@` or `IC@`.
   * Add `FOUND?` *( ca u xt -- f )* for comparing a string to a definition name (and then `FOUND?` is smart enough to do `C@` vs. `IC@` depending on if we are in RAM or ROM).  MFORTH has/had this word as well.
   * `LATEST` needs to default to `LAST_ROMDEF` instead of zero so that traversal continues into ROM.
 * Fix `WORDS` now that everything is in a "single" dictionary list.  We'll need a smart `.NAME` word that knows about RAM vs. ROM.  Can probably leverage the code from above.
-* Fix tracing now that kDefinitionNames has gone away.
 * Modify DefGen to read code primitive EDN data from `/****`-prefixed comments in the `enforth.c` file.  Then rename the `primitives` directory to `definitions` and have it only include ROM definitions.
-* Consider additional de-duplication of the Code Prims and ROM Definitions.
-  * `I` could compile `R@` instead of providing its own token.  Same thing with `(DO)` and `2>R`
-  * `(LOOP)` could maybe always be `(+LOOP)` with a `:charlit 1` in front?
-  * Rewriting `DUMP` to use `BEGIN/REPEAT` instead of `DO/LOOP` eliminates `PIQDO`, `PILOOP`, and `PIPLUSLOOP`.
-  * `TICKNAMES` could just put a reference to names in the `vm` structure so that it could be accessed with `VM`.
-* Consider further adjustments to the XT flags to make FFIs faster and perhaps simplify the actual demux logic in enforth.c
-  * We could actually use an $800-prefixed XT for ROM definitions and then uses bits 12-14 for specifying the FFI arity of FFI trampolines.  FFI trampolines would then just be a raw function pointer compiled in to the dictionary.
-* We could use relative LFAs with automatic one-byte encoding in cases where the value is less than 256.  This would shave about 240 bytes of the size of the ROM Definition.
-* Refactor the DefGen code to make it easier to load in the definitions and then traverse them for analysis purposes.  First analysis: output a GraphViz file that shows the calling patterns between all of the words.
-* Start creating the `externs/enforth_*.h` files for various Arduino libs in order to validate the FFI code, workflow, etc.
-  * Consider creating a namespace enum for externs so that we can rewrite the FFIDef addresses after a load.  The trampoline would then contain the 16-bit id of the extern (10 bits for namespace, 6 bits for function).
+* Move `dp` and `latest` into the dictionary so that they load/save with the dictionary.
+* Add `eeprom-load` and `eeprom-save` FFIs for loading/saving the dictionary from/to EEPROM.
+  * Note that, per a TODO below, RAM addresses in memory need to still be valid across cold starts.  That should be true now that DP and LATEST are in the dictionary.
+  * These functions should be implemented in C++ in an Enforth externs header.  Note that they will probably need to call into some sort of Enforth VM function in order to reset the `vm` struct after the load operation has completed.  In other words, Enforth itself needs to be participate in part of the load/save (spilling data to/from the `vm` struct), but the actual copying of data should happen in device- and medium-specific functions.
+* Implement the remaining `CORE` words (the ones whose tests have been commented out in `test_core.cpp`).
+* Create more `externs/enforth_*.h` files for various Arduino libs in order to validate the FFI code, workflow, etc.
+  * Especially interesting to determine is the maximum number of FFI args that are actually need.  We currently support 8, but something like 4 would probably be better.
 * PARSE-WORD needs to treat all control characters as space if given a space as the delimiter.
 * Improve the stack checking code.
   * First, the code is probably too aggressive and may not let us use the last stack item.
-  * Second, we have the macro scattered everywhere, but it would be better if the stack sizes were in an extra byte in the definition header and then checked in a single place right before DISPATCH\_TOKEN.  This may make the logic small enough to include on AVRs (although it will add at ~240 bytes to the size of the ROM Definition block).
+  * Second, we have the macro scattered everywhere, but it would be better if the stack sizes were in an extra byte in the definition header and then checked in a single place right before DISPATCH\_TOKEN.  This may make the logic small enough to include on AVRs (although it will add ~240 bytes to the size of the ROM Definition block).
+* Consider additional de-duplication of the Code Prims and ROM Definitions.
+  * `I` could compile `R@` instead of providing its own token.  Same thing with `(DO)` and `2>R`
+  * `TOKEN,` could be `C@`.
+  * `(LOOP)` could maybe always be `(+LOOP)` with a `:charlit 1` in front?
+  * DefGen could implement the above optimizations, that way the code always reads nicely, even though it is being rewritten during compilation.  Note that this doesn't work for `I`.
+  * Rewriting `DUMP` to use `BEGIN/REPEAT` instead of `DO/LOOP` eliminates `PIQDO`, `PILOOP`, and `PIPLUSLOOP`.
+  * Is there any benefit to defining `DOICONSTANT` for storing constants in ROM PFAs?  Currently we define tokens or words that calculate and return constants.
+* Fix tracing now that kDefinitionNames has gone away.
+* Consider creating EnforthDuino.cpp/.h wrappers to make it easier to interact with Enforth in the Arduino environment.  Mostly just to wrap the serial code.
+* Add comments to all of the `.edn` files.
+
+# After Release
+
+(although maybe we want `PAUSE` and tasking in there...)
+
+* Consider further adjustments to the XT flags in order to reduce the size of XTs in certain situations.  For example, the XTs could support relative-RAM and relative-ROM variants for spanning definitions as large as 32-bytes (5-bits) if we could get away with dedicating an extra bit to that vs. an absolute (offset-based) address.
+  * ROM XTs only need to be 11 bits (assuming that we align to two bytes), for example.
+  * This is where a constraint solver could help: perhaps a specific ordering of the words in the dictionary produces an optimal (from a minimum size perspective) dictionary, assuming that words that call each other can be clustered together.
+  * Similarly, if LFAs were always relative, with automatic one-byte encoding, then we could shave about 240 bytes off the size of the ROM Definition.
   * We should also check the return stack.
 * Evaluate ways to reduce the size of the DOFFI\* tokens, especially now that we have the VOID variants that auto-drop (that code appears to add hundreds of bytes to the build).
 * Consider using the pgmspace typedefs (prog\_int8\_t, etc.) if that would make it easier to catch situations where we forgot to use the pgm\_\* accessors.
-* Consider creating EnforthDuino.cpp/.h wrappers to make it easier to interact with Enforth in the Arduino environment.
-* Add comments to all of the `.edn` files.
-* Modify DefGen so that it puts the 0xFF into the names table as soon as the last named primitive is seen (instead of adding in all of those wasted 0x00 bytes).
+* Consider creating a namespace enum for FFI definitions so that we can rewrite the FFIDef addresses after a load.  The trampoline would then contain the 16-bit id of the extern (10 bits for namespace, 6 bits for function).
 * Do something about absolute RAM addresses on the stack, in variables, etc.  These prevent the VM from being saved to/from storage (such as EEPROM).
   * We can't relativize everything on save, because we don't always know what we are looking at -- how do we know that a dictionary variable contains a RAM address?  We could probably relativize all addresses in the VM though and then `@`, `!`, etc. would do the adjustment as necessary (and could offer bounds-checking).  All of these addresses are VM-relative and that VM base address will probably end up being stored in a constant register pair.  Access to memory-mapped CPU resources gets messy (this is mostly an ARM problem), although we could offer special fetch and store operations for those.  Similarly, FFI interop involving addresses is now a problem because we need to convert those back and forth.
   * Note that the VM itself has quite a few absolute addresses (DP, HERE, SOURCE, etc.) and we'll need to deal with those on load/save.  Most of these have to do with the text interpreter though and we could easily just say that persistence resets the state of the text interpreter and can only be performed when *not* in compilation mode.  That would leave a very small number of pointers in the VM and those could just be serialized as part of persisting the dictionary.
-* Move `dp` and `latest` into the dictionary so that they load/save with the dictionary.
 * Add a single default task and move the stacks and BASE into that memory area.  No `PAUSE` yet.
   * Tasks are 32 return stack cells (64/128 bytes), 16 data stack cells (32/64 bytes), 16 user cells (32/64 bytes) for a total of 128/256 bytes per task.
     * Note that tasks go into the dictionary and not at the end!  This allows dictionaries to be resized or only partially copied to storage.
@@ -37,16 +50,9 @@
 * Forth200x updates (mostly just `TIB` and `#TIB`?, although numeric prefixes look very useful).
 * Add `PAUSE`, which spills the registers to global variables in `vm` and then returns from `go()` similar to what we did in Ficl.
 * Add dumb exceptions that just restart the VM?
-* Consider optimizing the size of `DOCOLON` references by creating "bank-switched" versions of this token.  This would reduce the number of times that calling a definition needs three bytes instead of just two bytes (the primary downside to dictionary-relative instead of IP-relative compilation offsets).
-  * You could call `DOCOLON0` for offsets 0-511 in the dictionary, `DOCOLON1` for 512-1023, etc.  Eight of these would allow us to span 4KB of dictionary, at which point we would just fall back to absolute references.  Most (?) dictionaries probably won't be greater than 4KB anyway, and at that point you probably have plenty of RAM to blow on three-byte references.
-  * `ALIGN` would actually be needed now in order to make each bank span as many bytes as possible.
-  * Remember that compiled XTs can never be smaller than 16-bits anyway, so the goal here is to try and keep those XTs at 16 bits most of the time if possible.
 * Consider adding `PAD`, perhaps with a configurable size.  Do not use `PAD` in the kernel though so that we can avoid making it a requirement.
-* We may not need to blow 16 tokens on the `PDO*` primitives; instead we can just create a dedicated jump table in `EXECUTE` for those tokens.  `EXECUTE` is almost only ever used when we are doing text interpretation, so spilling and filling registers here should be fine.
-  * The only thing that this does is save us token space, it still uses the same amount of ROM.  This is only valuable/necessary if we are running low on tokens.
 * Since we have more free tokens now we can probably code in some of the most frequently used FFI functions (`pinWrite` and stuff) as tokens, perhaps through compiler directives.
   * I wonder if we can find a way to predefine a set of trampolines in Flash instead of in RAM?  *i.e.,* we reserve the last 32 tokens for precompiled trampolines and then provide a simplified way to build up that flash array.  This table-based method would actually work since it would just be a list of other addresses (which conveniently we already have thanks to the `FFIDEF_*` vars that are being used for the linked list).  This would give users a way to modify their enforth compile to predefine externals in a way that consumes no RAM.  You still need to define the FFIs, but you don't need to reference them at runtime.
   * This feels like a good balance between ROM and RAM: you can access any FFI at runtime if you are willing to consume memory on that (which is probably fine during development) and then you switch to a ROM-based FFI primitive once you know you'll be using an FFI a lot.  This breaks your flash, of course, but your source is unchanged (and we could make the `EXTERNAL:` word just do nothing in the case where you are trying to reference a ROM-based FFI primitive).
-  * This makes the ATtiny85 possible again, because we'll just define the primitives that we care about as ROM primitives.
-* Consider different multipliers for the ROM definitions.
-  * Maybe we should multiply the token by a prime (3?) instead of 4 so that we can pack these in more/perfectly tightly?  Something along the lines of a Golomb Ruler?  Multiplication on the AVR takes two cycles, just like two left shifts (for x4), so we might as well multiply if it gets us better packing.
+  * This makes the ATtiny85 possible again, because we'll just define the primitives that we care about as ROM primitives.  The theory here is that we'll only get 256 bytes or something for the dictionary on ATtiny85 and so we don't want to waste 6 bytes on every Arduino function that we want to call.  I don't know if I buy that though, because the real concern on the ATtiny85 is ROM and we're way over our limit at the moment.
+* Refactor the DefGen code to make it easier to load in the definitions and then traverse them for analysis purposes.  First analysis: output a GraphViz file that shows the calling patterns between all of the words.
