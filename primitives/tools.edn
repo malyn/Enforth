@@ -58,12 +58,13 @@
        :rfrom :base :store
        :exit]}
 
-;; FIXME: All broken again due to the new dictionary layout and the fact
-;; that we have unified Code Primitives and ROM Definitions.
-#_{:token :words
+{:token :words
  :args [[] []]
- :source ": VISIBLE? ( xt -- f ) >LFA 2 + C@ %01000000 AND 0= ;
-          : DEF-WORDS ( -- )
+ :source ": VISIBLE? ( xt -- f ) C@XT %01000000 AND 0= ;
+          : .NAME ( xt -- )
+            DUP NAME-LENGTH  OVER SWAP - SWAP ( xt-end xt-start)
+            BEGIN 2DUP <> WHILE 1- DUP C@XT $7F AND EMIT REPEAT 2DROP ;
+          : WORDS ( -- )
             LATEST @
             BEGIN
               ?DUP
@@ -72,21 +73,26 @@
               IF
                 DUP >FFIDEF  DUP FFIDEF-NAME  SWAP FFIDEF-NAMELEN  ITYPE SPACE
               ELSE
-                DUP VISIBLE? IF DUP >NFA  OVER NFA-LENGTH  TYPE SPACE
+                DUP VISIBLE? IF DUP .NAME SPACE THEN
               THEN
-              >LFA XT@
-            REPEAT ;
-          : WORDS ( -- )  DEF-WORDS ;"
+              LFA@
+            REPEAT ;"
  :pfa [; DEF-WORDS
          :latest :fetch
-         :qdup :izbranch 36
+         :qdup :izbranch 48
            :dup :ffiq :izbranch 11
              :dup :toffidef :dup :ffidefname :swap :ffidefnamelen :itype :space
-               :ibranch 18
+               :ibranch 31
              :dup
              ; VISIBLE?
-               :tolfa :oneplus :oneplus :cfetch :icharlit 0x40 :and :zeroequals
-             :izbranch 7
-               :dup :tonfa :over :nfalength :type :space
-             :tolfa :xtfetch :ibranch -37
+               :cfetchxt :icharlit 0x40 :and :zeroequals
+             :izbranch 24
+               :dup
+               ; .NAME
+                 :dup :namelength :over :swap :minus :swap
+                 :twodup :notequals :izbranch 10
+                   :oneminus :dup :cfetchxt :icharlit 0x7f :and :emit :ibranch -12
+                 :twodrop
+               :space
+             :lfafetch :ibranch -49
        :exit]}

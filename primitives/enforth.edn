@@ -460,8 +460,6 @@
 ;; Length of the definition name, not necessarily the NFA field (because
 ;; FFI trampolines have a zero-length NFA since the name is stored in
 ;; ROM in the FFI definition).
-;; FIXME: Can probably be removed since it is only used in FOUND? (once
-;; we drop NFA-LENGTH thanks to fixing WORDS).
 {:token :namelength
  :name "NAME-LENGTH"
  :args [[:xt] [:u]]

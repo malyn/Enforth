@@ -1,13 +1,11 @@
 # Before Release
 
-* Fix `WORDS` now that everything is in a "single" dictionary list.  Use C@XT for printing out the name.
-  * Just copy-paste FIND-WORD initially.
-  * Then create some sort of iterate-over-the-dictionary word that takes an XT (FOUND?, in the case of FIND-WORD) and stops iterating when the word returns true?
 * Move `dp` and `latest` into the dictionary so that they load/save with the dictionary.
 * Add `eeprom-load` and `eeprom-save` FFIs for loading/saving the dictionary from/to EEPROM.
   * Note that, per a TODO below, RAM addresses in memory need to still be valid across cold starts.  That should be true now that DP and LATEST are in the dictionary.
   * These functions should be implemented in C++ in an Enforth externs header.  Note that they will probably need to call into some sort of Enforth VM function in order to reset the `vm` struct after the load operation has completed.  In other words, Enforth itself needs to be participate in part of the load/save (spilling data to/from the `vm` struct), but the actual copying of data should happen in device- and medium-specific functions.
 * Modify DefGen to read code primitive EDN data from `/****`-prefixed comments in the `enforth.c` file.  Then rename the `primitives` directory to `definitions` and have it only include ROM definitions.
+* Create some sort of iterate-over-the-dictionary word that takes an XT (`FOUND?`, in the case of `FIND-WORD`) and stops iterating when the word returns true?  Use this for both `FIND-WORD` and `WORDS`.
 * Most of `FOUND-FFIDEF?` is just `FOUND?`; we should find a way to merge that code.
   * FFI definition names are stored normally (forward order) which means that `FOUND?` cannot use `STRING~XT` for comparing FFIs.  We should put definitions in forward order and then just do subtraction to jump to the start of the definition.  Then we can use `FOUND?` for everything.
   * As an FYI, we can't easily remove `FIND-FFIDEF` (even though it looks like `FIND-WORD`), because it is chaining through defs using absolute addresses and not XTs.
