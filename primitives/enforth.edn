@@ -203,15 +203,6 @@
  :name "FOUND?"
  :args [[:caddr :u :xt] [:f]]
  :flags #{:headerless}
- ;; FIXME: STRING~ needs to use something other than C@ to fetch the
- ;; elements of the name.  Probably something that takes the XT and
- ;; offset from the start of the name?  This works for now on non-AVR
- ;; platforms, but it won't work on the AVR.  Maybe NFA@ is changed to
- ;; take the xt and the offset?  Normal usage for flags is "xt 0 NFA@",
- ;; but for getting the characters you say "xt 1 NFA@" (and then we
- ;; always NEGATE the offset).
- ;; FIXME: >NFA is left in there for now, but it needs to go away as
- ;; part of adding NFA@.
  ;; TODO: The FFI? section is kind of annoying; it would be nice to
  ;; eliminate that.  Maybe NFA@ could deal with that by reading the
  ;; bytes from the FFI definition?
@@ -219,19 +210,19 @@
  ;; benefitting us from a performance perspective?  It adds ROM bytes
  ;; and I am not sure if we need the functionality.
  :source ": HIDDEN? ( xt -- f ) NFA@ %01000000 AND 0<> ;
-          : STRING~ ( c-addr1 ic-addr2 u -- f )
+          : STRING~XT ( c-addr nfa u -- f )
             BEGIN
               ?DUP
             WHILE
-              1- >R ( ca1 ica2 R:u'-1)
-              OVER C@  OVER C@ $7F AND C{} IF 2DROP R> DROP FALSE EXIT THEN
-              ( ca1 ica2 R:u'-1) 1- SWAP 1+ SWAP ( ca1' ica2' R:u'-1) R>
-            REPEAT ( ca' ca2') 2DROP TRUE ;
+              1- >R ( ca nfa R:u'-1)
+              OVER C@  OVER NFA@ $7F AND C{} IF 2DROP R> DROP FALSE EXIT THEN
+              ( ca nfa R:u'-1) 1- SWAP 1+ SWAP ( ca' nfa' R:u'-1) R>
+            REPEAT ( ca' nfa') 2DROP TRUE ;
           : FOUND? ( c-addr u xt -- f)
             DUP HIDDEN? IF DROP 2DROP FALSE EXIT THEN
             2DUP NAME-LENGTH ( ca u xt u u') <> IF DROP 2DROP FALSE EXIT THEN
             DUP FFI? IF ( ca u xt) FOUND-FFI? EXIT THEN
-            >NFA ( ca u nfa) 1- ( ca u name) SWAP STRING~ ;"
+            ( ca u xt) 1- ( ca u name) SWAP STRING~ ;"
  :pfa [:dup
        ; HIDDEN
          :nfafetch :icharlit 0x40 :and :zeronotequals
@@ -242,13 +233,11 @@
        ;; FIXME Put this back in.
        ;;:dup :ffiq :izbranch 3
        ;;  :foundffiq :exit
-       ;; FIXME: Remove this once STRING~ uses NFA@
-       :dup :romdefq :izbranch 4 :romxttonfa :ibranch 2 :tonfa
        :oneminus :swap
-       ; STRING~
+       ; STRING~XT
          :qdup :izbranch 25
            :oneminus :tor
-           :over :cfetch :over :cfetch :icharlit 0x7f :and :cnotsimilar :izbranch 6
+           :over :cfetch :over :nfafetch :icharlit 0x7f :and :cnotsimilar :izbranch 6
              :twodrop :rfrom :drop :false :exit
            :oneminus :swap :oneplus :swap :rfrom
            :ibranch -26
