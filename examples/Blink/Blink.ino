@@ -76,7 +76,7 @@ unsigned char enforthDict[1024];
 
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   /* Initialize Enforth. */
   enforth_init(
