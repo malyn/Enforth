@@ -1,5 +1,25 @@
 {:token :branch :flags #{:headerless}}
 
+; C@XT [Enforth] ( xt -- c )
+;
+; Fetch a byte from the given XT, which may point anywhere in the header
+; of the definition.  xt can refer to either a ROM or RAM definition.
+{:token :cfetchxt
+ :name "C@XT"
+ :args [[:xt] [:c]]
+ :flags #{:headerless}
+ :source ": ROMDEF? ( xt -- f )  14 RSHIFT %11 = ;
+          : >ROMNFA ( xt -- addr )  XTMASK AND 'ROMDEF + ;
+          : C@XT ( xt -- c )  DUP ROMDEF? IF >ROMNFA IC@ ELSE >NFA C@ ;"
+ :pfa [:dup
+       ; ROMDEF?
+         :icharlit 14 :rshift :icharlit 3 :equals
+       :izbranch 7
+         ; >ROMNFA
+           :xtmask :and :tickromdef :plus
+         :icfetch :exit
+       :tonfa :cfetch :exit]}
+
 {:token :cnotsimilar
  :name "C{}"
  :args [[:c1 :c2] [:f]]
@@ -85,8 +105,8 @@
  :name "FFI?"
  :args [[:xt] [:f]]
  :flags #{:headerless}
- :source ": FFI? ( xt -- f)  NFA@ %0010000 AND 0<> ;"
- :pfa [:nfafetch :icharlit 0x20 :and :zeronotequals :exit]}
+ :source ": FFI? ( xt -- f)  C@XT %0010000 AND 0<> ;"
+ :pfa [:cfetchxt :icharlit 0x20 :and :zeronotequals :exit]}
 
 {:token :ffidefarity
  :name "FFIDEF-ARITY"
@@ -170,7 +190,7 @@
  :name "FIND-WORD"
  :args [[:caddr :u] [[:caddr :u 0] [:xt 1] [:xt -1]]]
  :flags #{:headerless}
- :source ": IMMEDIATE? ( xt -- f )  NFA@ %10000000 AND 0<> ;
+ :source ": IMMEDIATE? ( xt -- f )  C@XT %10000000 AND 0<> ;
           : FIND-WORD ( c-addr u -- c-addr u 0 | xt 1 | xt -1)
             2>R  LATEST @
             BEGIN
@@ -185,7 +205,7 @@
          :dup :tworfetch :rot :foundq :izbranch 14
            :dup
            ; IMMEDIATE?
-             :nfafetch :icharlit 0x80 :and :zeronotequals
+             :cfetchxt :icharlit 0x80 :and :zeronotequals
            :icharlit 2 :and :oneminus :tworfrom :twodrop :exit
          :lfafetch
          :ibranch -24
@@ -212,13 +232,13 @@
  ;; TODO Is the initial comparison of the name lengths really
  ;; benefitting us from a performance perspective?  It adds ROM bytes
  ;; and I am not sure if we need the functionality.
- :source ": HIDDEN? ( xt -- f ) NFA@ %01000000 AND 0<> ;
+ :source ": HIDDEN? ( xt -- f ) C@XT %01000000 AND 0<> ;
           : STRING~XT ( c-addr nfa u -- f )
             BEGIN
               ?DUP
             WHILE
               1- >R ( ca nfa R:u'-1)
-              OVER C@  OVER NFA@ $7F AND C{} IF 2DROP R> DROP FALSE EXIT THEN
+              OVER C@  OVER C@XT $7F AND C{} IF 2DROP R> DROP FALSE EXIT THEN
               ( ca nfa R:u'-1) 1- SWAP 1+ SWAP ( ca' nfa' R:u'-1) R>
             REPEAT ( ca' nfa') 2DROP TRUE ;
           : FOUND? ( c-addr u xt -- f)
@@ -228,7 +248,7 @@
             ( ca u xt) 1- ( ca u name) SWAP STRING~ ;"
  :pfa [:dup
        ; HIDDEN
-         :nfafetch :icharlit 0x40 :and :zeronotequals
+         :cfetchxt :icharlit 0x40 :and :zeronotequals
        :izbranch 5
          :drop :twodrop :false :exit
        :twodup :namelength :notequals :izbranch 5
@@ -239,7 +259,7 @@
        ; STRING~XT
          :qdup :izbranch 25
            :oneminus :tor
-           :over :cfetch :over :nfafetch :icharlit 0x7f :and :cnotsimilar :izbranch 6
+           :over :cfetch :over :cfetchxt :icharlit 0x7f :and :cnotsimilar :izbranch 6
              :twodrop :rfrom :drop :false :exit
            :oneminus :swap :oneplus :swap :rfrom
            :ibranch -26
@@ -414,30 +434,23 @@
        :twodrop
        :exit]}
 
-{:token :ixtfetch
- :name "IXT@"
- :args [[:addr] [:xt]]
- :flags #{:headerless}
- :source ": IXT@ ( addr -- xt )  DUP IC@ 8 LSHIFT  SWAP 1+ IC@  OR ;"
- :pfa [:dup :icfetch :icharlit 8 :lshift :swap :oneplus :icfetch :or :exit]}
-
 {:token :izbranch
  :args [[] []]
  :flags #{:headerless}}
 
 {:token :latest
- :args [[] [:aaadr]]
+ :args [[] [:aaddr]]
  :pfa [:vm :icharlit "offsetof(EnforthVM, latest)" :plus :exit]}
 
 {:token :lfafetch
  :name "LFA@"
- :args [[:xt] [:addr]]
+ :args [[:xt] [:xt]]
  :flags #{:headerless}
- ;; FIXME: Consider building in ROMXT>NFA, >NFA, IXT@, XT@, etc.
- :source ": LFA@ ( xt -- addr)  DUP ROMDEF? IF ROMXT>LFA IXT@ ELSE >LFA XT@ ;"
- :pfa [:dup :romdefq :izbranch 4
-         :romxttolfa :ixtfetch :exit
-         :tolfa :xtfetch :exit]}
+ :source ": LFA@ ( xt -- xt')
+            1+ ( NFA>LFA)  DUP C@XT 8 LSHIFT  SWAP 1+ C@XT  OR ;"
+ :pfa [:oneplus
+       :dup :cfetchxt :icharlit 8 :lshift
+       :swap :oneplus :cfetchxt :or :exit]}
 
 {:token :lit
  :name "(LIT)"
@@ -447,23 +460,14 @@
 ;; Length of the definition name, not necessarily the NFA field (because
 ;; FFI trampolines have a zero-length NFA since the name is stored in
 ;; ROM in the FFI definition).
-;; FIXME: Can probably be removed since it is only used in FOUND?
+;; FIXME: Can probably be removed since it is only used in FOUND? (once
+;; we drop NFA-LENGTH thanks to fixing WORDS).
 {:token :namelength
  :name "NAME-LENGTH"
  :args [[:xt] [:u]]
  :flags #{:headerless}
- :source ": NAME-LENGTH ( xt -- ru)  NFA@ $1F AND ;"
- :pfa [:nfafetch :icharlit 0x1F :and :exit]}
-
-{:token :nfafetch
- :name "NFA@"
- :args [[:xt] [:addr]]
- :flags #{:headerless}
- ;; FIXME: Consider building in ROMXT>NFA, >NFA, etc.
- :source ": NFA@ ( xt -- addr)  DUP ROMDEF? IF ROMXT>NFA IC@ ELSE >NFA C@ ;"
- :pfa [:dup :romdefq :izbranch 4
-         :romxttonfa :icfetch :exit
-         :tonfa :cfetch :exit]}
+ :source ": NAME-LENGTH ( xt -- ru)  C@XT $1F AND ;"
+ :pfa [:cfetchxt :icharlit 0x1F :and :exit]}
 
 ;; Length of the NFA field, not necessarily the name itself (because FFI
 ;; trampolines have a zero-length NFA since the name is stored in ROM in
@@ -649,34 +653,6 @@
        :swap :cstore
        :exit]}
 
-{:token :romdefq
- :name "ROMDEF?"
- :args [[:xt] [:f]]
- :flags #{:headerless}
- :source ": ROMDEF? ( xt -- f)  8 RSHIFT  %1100000  TUCK AND = ;"
- :pfa [:icharlit 8 :rshift :icharlit 0xC0 :tuck :and :equals :exit]}
-
-{:token :romxttocfa
- :name "ROMXT>CFA"
- :args [[:xt] [:addr]]
- :flags #{:headerless}
- :source ": ROMXT>CFA ( xt -- addr)  ROMXT>LFA 2 + ;"
- :pfa [:romxttolfa :oneplus :oneplus :exit]}
-
-{:token :romxttolfa
- :name "ROMXT>LFA"
- :args [[:xt] [:a-addr]]
- :flags #{:headerless}
- :source ": ROMXT>LFA ( xt -- a-addr)  ROMXT>NFA 1+ ;"
- :pfa [:romxttonfa :oneplus :exit]}
-
-{:token :romxttonfa
- :name "ROMXT>NFA"
- :args [[:xt] [:a-addr]]
- :flags #{:headerless}
- :source ": ROMXT>NFA ( xt -- a-addr)  XTMASK AND 'ROMDEF + ;"
- :pfa [:xtmask :and :tickromdef :plus :exit]}
-
 {:token :tib
  :args [[] [:caadr]]
  :flags #{:headerless}
@@ -688,6 +664,12 @@
  :flags #{:headerless}
  :pfa [:icharlit 80 :exit]}
 
+{:token :tickdict
+ :name "'DICT"
+ :args [[] [:addr]]
+ :flags #{:headerless}
+ :pfa [:vm :icharlit "offsetof(EnforthVM, dictionary)" :plus :fetch :exit]}
+
 {:token :tickprevleave
  :name "'PREVLEAVE"
  :flags #{:headerless}
@@ -697,15 +679,6 @@
  :name "'ROMDEF"
  :args [[] [:c-addr]]
  :flags #{:headerless}}
-
-;; xt must refer to a compiled (not primitive) definition or FFI
-;; trampoline.
-{:token :tocfa
- :name ">CFA"
- :args [[:xt] [:addr]]
- :flags #{:headerless}
- :source ": >CFA ( xt -- addr)  >LFA 2 + ;"
- :pfa [:tolfa :oneplus :oneplus :exit]}
 
 {:token :toffidef
  :name ">FFIDEF"
@@ -720,25 +693,12 @@
  :source ": TOKEN? ( xt -- f)  XTFLAG AND 0= ;"
  :pfa [:xtflag :and :zeroequals :exit]}
 
-;; xt must refer to a compiled (not primitive) definition or FFI
-;; trampoline.
-{:token :tolfa
- :name ">LFA"
- :args [[:xt] [:a-addr]]
- :flags #{:headerless}
- :source ": >LFA ( xt -- a-addr)  >NFA 1+ ;"
- :pfa [:tonfa :oneplus :exit]}
-
 {:token :tonfa
  :name ">NFA"
  :args [[:xt] [:c-addr]]
  :flags #{:headerless}
  :source ": >NFA ( xt -- c-addr )  XTMASK AND 'DICT + ;"
- :pfa [:xtmask :and
-       ; 'DICT
-         :vm :icharlit "offsetof(EnforthVM, dictionary)" :plus :fetch
-       :plus
-       :exit]}
+ :pfa [:xtmask :and :tickdict :plus :exit]}
 
 {:token :toupper
  :name ">UPPER"
@@ -758,9 +718,7 @@
  :args [[:a-addr] [:xt]]
  :flags #{:headerless}
  :source ": >XT ( a-addr -- xt)  'DICT - XTFLAG OR ;"
- :pfa [:vm :icharlit "offsetof(EnforthVM, dictionary)" :plus :fetch
-       :minus :xtflag :or
-       :exit]}
+ :pfa [:tickdict :minus :xtflag :or :exit]}
 
 {:token :twonip
  :name "2NIP"
@@ -813,13 +771,6 @@
  :flags #{:headerless}
  :source ": XT, ( xt -- )  DUP 8 RSHIFT C,  C, ;"
  :pfa [:dup :icharlit 8 :rshift :ccomma :ccomma :exit]}
-
-{:token :xtfetch
- :name "XT@"
- :args [[:addr] [:xt]]
- :flags #{:headerless}
- :source ": XT@ ( addr -- xt )  DUP C@ 8 LSHIFT  SWAP 1+ C@  OR ;"
- :pfa [:dup :cfetch :icharlit 8 :lshift :swap :oneplus :cfetch :or :exit]}
 
 {:token :xtflag
  :args [[] [:u]]

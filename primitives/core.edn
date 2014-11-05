@@ -178,16 +178,19 @@
  :source ": , ( x -- )  HERE !  1 CELLS ALLOT ;"
  :pfa [:here :store :icharlit 1 :cells :allot :exit]}
 
+;; FIXME It's confusing that TOKEN? returns any token, but then we turn
+;; around and basically do a similar thing to decide if this is not a
+;; DO* word.  We need some way to differentiate between these things: a
+;; token and a definition.
 {:token :compilecomma
  :name "COMPILE,"
  :args [[:xt] []]
  :source ": COMPILE, ( xt --)
             DUP TOKEN? IF C, EXIT THEN
-            DUP ROMDEF? 0= IF XT, EXIT THEN
-            DUP ROMXT>CFA IC@  DUP $70 < IF C, DROP ELSE DROP XT, THEN ;"
+            DUP 3 + ( >CFA) C@XT  DUP $70 < IF C, DROP ELSE DROP XT, THEN ;"
  :pfa [:dup :tokenq :izbranch 3 :ccomma :exit
-       :dup :romdefq :zeroequals :izbranch 3 :xtcomma :exit
-       :dup :romxttocfa :icfetch :dup :icharlit 0x70 :lessthan :izbranch 5
+       :dup :oneplus :oneplus :oneplus :cfetchxt
+       :dup :icharlit 0x70 :lessthan :izbranch 5
          :ccomma :drop :ibranch 3
          :drop :xtcomma
        :exit]}
@@ -773,14 +776,18 @@
          :type :space :icharlit "'?'" :emit :cr :abort
        :exit]}
 
+;; Only works for RAM definitions
+;; TODO Update the DESIGN.md doc to indicate that a general Enforth
+;; principle is that user definitions are never aware of the Harvard
+;; architecture -- they only deal in RAM.  Hence the reason why they
+;; should never do >BODY on a ROM definition.  If we need a ROM constant
+;; (for example) then we'll just come up with a new DOCONSTANTROM or
+;; something.
 {:token :tobody
  :name ">BODY"
  :args [[:xt] [:a-addr]]
- :source ": >BODY ( xt -- a-addr)
-            DUP ROMDEF? IF ROMXT>CFA 1+ EXIT THEN
-            >CFA 1+ ;"
- :pfa [:dup :romdefq :izbranch 4 :romxttocfa :oneplus :exit
-       :tocfa :oneplus
+ :source ": >BODY ( xt -- a-addr)  XTMASK AND 'DICT + 4 + ( NFA + LFA + CFA) ;"
+ :pfa [:xtmask :and :tickdict :plus :icharlit 4 :plus
        ;; TODO Add :align if we start aligning the PFA.
        :exit]}
 

@@ -60,7 +60,7 @@
 
 ;; FIXME: All broken again due to the new dictionary layout and the fact
 ;; that we have unified Code Primitives and ROM Definitions.
-{:token :words
+#_{:token :words
  :args [[] []]
  :source ": VISIBLE? ( xt -- f ) >LFA 2 + C@ %01000000 AND 0= ;
           : DEF-WORDS ( -- )
