@@ -2,15 +2,15 @@
 
 
 // FFI definitions
-ENFORTH_EXTERN(delay, delay, 2)
+ENFORTH_EXTERN_VOID(delay, delay, 2)
 #undef LAST_FFI
 #define LAST_FFI GET_LAST_FFI(delay)
 
-ENFORTH_EXTERN(digitalWrite, digitalWrite, 2)
+ENFORTH_EXTERN_VOID(digitalWrite, digitalWrite, 2)
 #undef LAST_FFI
 #define LAST_FFI GET_LAST_FFI(digitalWrite)
 
-ENFORTH_EXTERN(pinMode, pinMode, 2)
+ENFORTH_EXTERN_VOID(pinMode, pinMode, 2)
 #undef LAST_FFI
 #define LAST_FFI GET_LAST_FFI(pinMode)
 
