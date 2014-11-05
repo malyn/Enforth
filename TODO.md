@@ -1,9 +1,9 @@
 # Before Release
 
-* `FIND-WORD` should traverse LFAs (from User Definitions into ROM Definitions) without having to use different `FIND-*` words.
-  * Replace the `>CFA`, `>NFA`, etc. words with "fetch" words (`@NFA`, `@LFA`, etc.) that are smart about the XT and know to do `C@` or `IC@`.
-  * Add `FOUND?` *( ca u xt -- f )* for comparing a string to a definition name (and then `FOUND?` is smart enough to do `C@` vs. `IC@` depending on if we are in RAM or ROM).  MFORTH has/had this word as well.
-    * Note that the new `STRING~XT` word knows that it can decrement an XT in order to walk backwards through the NFA.  This will break if XTs are no longer byte offsets (*i.e.*, if align the NFA and then shift the XT to the right in order to get more bits).
+* Replace the `>CFA`, `>NFA`, etc. words with "fetch" words (`@NFA`, `@LFA`, etc.) that are smart about the XT and know to do `C@` or `IC@`.
+* Most of `FOUND-FFIDEF?` is just `FOUND?`; we should find a way to merge that code.
+  * FFI definition names are stored normally (forward order) which means that `FOUND?` cannot use `STRING~XT` for comparing FFIs.  We should put definitions in forward order and then just do subtraction to jump to the start of the definition.  Then we can use `FOUND?` for everything.
+  * We can't easily remove `FIND-FFIDEF` (even though it looks like `FIND-WORD`), because it is chaining through defs using absolute addresses and not XTs...
 * Fix `WORDS` now that everything is in a "single" dictionary list.  We'll need a smart `.NAME` word that knows about RAM vs. ROM.  Can probably leverage the code from above.
 * Modify DefGen to read code primitive EDN data from `/****`-prefixed comments in the `enforth.c` file.  Then rename the `primitives` directory to `definitions` and have it only include ROM definitions.
 * Move `dp` and `latest` into the dictionary so that they load/save with the dictionary.

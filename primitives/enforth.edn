@@ -85,8 +85,8 @@
  :name "FFI?"
  :args [[:xt] [:f]]
  :flags #{:headerless}
- :source ": FFI? ( xt -- f)  >NFA C@ %0010000 AND 0<> ;"
- :pfa [:tonfa :cfetch :icharlit 0x20 :and :zeronotequals :exit]}
+ :source ": FFI? ( xt -- f)  NFA@ %0010000 AND 0<> ;"
+ :pfa [:nfafetch :icharlit 0x20 :and :zeronotequals :exit]}
 
 {:token :ffidefarity
  :name "FFIDEF-ARITY"
@@ -205,7 +205,10 @@
  :flags #{:headerless}
  ;; TODO: The FFI? section is kind of annoying; it would be nice to
  ;; eliminate that.  Maybe NFA@ could deal with that by reading the
- ;; bytes from the FFI definition?
+ ;; bytes from the FFI definition?  STRING~XT would need to know to go
+ ;; forwards (vs. backwards) through the name though...  Maybe we should
+ ;; just go to forwards names and then FOUND? can compare anything with
+ ;; an XT.
  ;; TODO Is the initial comparison of the name lengths really
  ;; benefitting us from a performance perspective?  It adds ROM bytes
  ;; and I am not sure if we need the functionality.
@@ -230,9 +233,8 @@
          :drop :twodrop :false :exit
        :twodup :namelength :notequals :izbranch 5
          :drop :twodrop :false :exit
-       ;; FIXME Put this back in.
-       ;;:dup :ffiq :izbranch 3
-       ;;  :foundffiq :exit
+       :dup :ffiq :izbranch 3
+         :foundffiq :exit
        :oneminus :swap
        ; STRING~XT
          :qdup :izbranch 25
