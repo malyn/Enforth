@@ -463,6 +463,8 @@
  :args [[] [:x]]
  :flags #{:headerless}}
 
+{:token :load}
+
 ;; Length of the definition name, not necessarily the NFA field (because
 ;; FFI trampolines have a zero-length NFA since the name is stored in
 ;; ROM in the FFI definition).
@@ -656,6 +658,8 @@
        :dup :cfetch :icharlit 0xBF :and
        :swap :cstore
        :exit]}
+
+{:token :save}
 
 {:token :tib
  :args [[] [:caadr]]

@@ -1,3 +1,5 @@
+#include <EEPROM.h>
+
 #include <enforth.h>
 
 
@@ -70,6 +72,36 @@ void serialEmit(char ch)
   Serial.write(ch);
 }
 
+int eepromLoad(uint8_t * dictionary, int size)
+{
+  if (size > 1024)
+  {
+    return 0;
+  }
+
+  for (int i = 0; i < size; i++)
+  {
+    dictionary[i] = EEPROM.read(i);
+  }
+
+  return -1;
+}
+
+int eepromSave(uint8_t * dictionary, int size)
+{
+  if (size > 1024)
+  {
+    return 0;
+  }
+
+  for (int i = 0; i < size; i++)
+  {
+    EEPROM.write(i, dictionary[i]);
+  }
+
+  return -1;
+}
+
 EnforthVM enforthVM;
 unsigned char enforthDict[1024];
 
@@ -83,7 +115,8 @@ void setup()
     &enforthVM,
     enforthDict, sizeof(enforthDict),
     LAST_FFI,
-    serialKeyQ, serialKey, serialEmit);
+    serialKeyQ, serialKey, serialEmit,
+    eepromLoad, eepromSave);
 
   /* Add a couple of definitions. */
   enforth_evaluate(&enforthVM, ": favnum 27 ;");

@@ -1,9 +1,5 @@
 # Before Release
 
-* Add `eeprom-load` and `eeprom-save` FFIs for loading/saving the dictionary from/to EEPROM.
-  * Note that, per a TODO below, RAM addresses in memory need to still be valid across cold starts.  That should be true now that DP and LATEST are in the dictionary.
-  * These functions should be implemented in C++ in an Enforth externs header.  Note that they will probably need to call into some sort of Enforth VM function in order to reset the `vm` struct after the load operation has completed.  In other words, Enforth itself needs to be participate in part of the load/save (spilling data to/from the `vm` struct), but the actual copying of data should happen in device- and medium-specific functions.
-  * Should we also have higher-level `SAVE` and `LOAD` words that vector to those FFIs?  I can see users want to save frequently and it might be nice to just type `SAVE`.
 * Modify DefGen to read code primitive EDN data from `/****`-prefixed comments in the `enforth.c` file.  Then rename the `primitives` directory to `definitions` and have it only include ROM definitions.
 * Create some sort of iterate-over-the-dictionary word that takes an XT (`FOUND?`, in the case of `FIND-WORD`) and stops iterating when the word returns true?  Use this for both `FIND-WORD` and `WORDS`.
 * Most of `FOUND-FFIDEF?` is just `FOUND?`; we should find a way to merge that code.
@@ -13,6 +9,7 @@
 * Create more `externs/enforth_*.h` files for various Arduino libs in order to validate the FFI code, workflow, etc.
   * Especially interesting to determine is the maximum number of FFI args that are actually need.  We currently support 8, but something like 4 would probably be better.
   * Need to test with things take take/return long (such as Arduino's `randomSeed` and `random`) and see how those work.  We might need a variant of `ENFORTH_EXTERN` that pushes two cells, for example.
+    * For example, `delay` takes a long, but it's not in the right (`100 S>D`) format.  This seems bad...
 * PARSE-WORD needs to treat all control characters as space if given a space as the delimiter.
 * Improve the stack checking code.
   * First, the code is probably too aggressive and may not let us use the last stack item.
@@ -25,7 +22,7 @@
   * Rewriting `DUMP` to use `BEGIN/REPEAT` instead of `DO/LOOP` eliminates `PIQDO`, `PILOOP`, and `PIPLUSLOOP`.
   * Is there any benefit to defining `DOICONSTANT` for storing constants in ROM PFAs?  Currently we define tokens or words that calculate and return constants.
 * Fix tracing now that kDefinitionNames has gone away.
-* Consider creating EnforthDuino.cpp/.h wrappers to make it easier to interact with Enforth in the Arduino environment.  Mostly just to wrap the serial code, allocate the dictionary block, etc.
+* Consider creating EnforthDuino.cpp/.h wrappers to make it easier to interact with Enforth in the Arduino environment.  Mostly just to wrap the serial code, allocate the dictionary block, implement EEPROM-backed load/save, etc.
 * Add comments to all of the `.edn` files.
 
 # After Release

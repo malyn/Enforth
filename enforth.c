@@ -132,13 +132,16 @@ void enforth_init(
         EnforthVM * const vm,
         uint8_t * const dictionary, int dictionary_size,
         const EnforthFFIDef * const last_ffi,
-        int (*keyq)(void), char (*key)(void), void (*emit)(char))
+        int (*keyq)(void), char (*key)(void), void (*emit)(char),
+        int (*load)(uint8_t*, int), int (*save)(uint8_t*, int))
 {
     vm->last_ffi = last_ffi;
 
     vm->keyq = keyq;
     vm->key = key;
     vm->emit = emit;
+    vm->load = load;
+    vm->save = save;
 
     vm->dictionary.ram = dictionary;
     vm->dictionary_size.u = dictionary_size;
@@ -1524,6 +1527,40 @@ DISPATCH_TOKEN:
             CHECK_STACK(2, 1);
             tos.i = tos.i < restDataStack->i ? tos.i : restDataStack->i;
             ++restDataStack;
+        }
+        continue;
+
+        LOAD:
+        {
+            CHECK_STACK(0, 1);
+
+            *--restDataStack = tos;
+
+            if (vm->load != NULL)
+            {
+                tos.i = vm->load(vm->dictionary.ram, vm->dictionary_size.u);
+            }
+            else
+            {
+                tos.i = 0;
+            }
+        }
+        continue;
+
+        SAVE:
+        {
+            CHECK_STACK(0, 1);
+
+            *--restDataStack = tos;
+
+            if (vm->save != NULL)
+            {
+                tos.i = vm->save(vm->dictionary.ram, vm->dictionary_size.u);
+            }
+            else
+            {
+                tos.i = 0;
+            }
         }
         continue;
 

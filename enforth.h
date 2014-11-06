@@ -170,6 +170,8 @@ typedef struct
     int (*keyq)(void);
     char (*key)(void);
     void (*emit)(char);
+    int (*load)(uint8_t*, int);
+    int (*save)(uint8_t*, int);
 
     EnforthCell dictionary;
     EnforthCell dictionary_size;
@@ -207,7 +209,8 @@ void enforth_init(
         /* TODO Remove this and just have it be in the FFI (which we
          * look up in the constructor and then stash into our private
          * function pointers). */
-        int (*keyq)(void), char (*key)(void), void (*emit)(char));
+        int (*keyq)(void), char (*key)(void), void (*emit)(char),
+        int (*load)(uint8_t*, int), int (*save)(uint8_t*, int));
 
 void enforth_reset(
         EnforthVM * const vm);

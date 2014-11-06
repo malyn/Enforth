@@ -38,6 +38,7 @@
 /* ANSI C includes. */
 #include <stdlib.h>
 #include <stdio.h>
+#include <fcntl.h>
 
 /* Enforth includes. */
 #include "enforth.h"
@@ -100,6 +101,48 @@ static void enforthSimpleEmit(char ch)
 
 
 /* -------------------------------------
+ * Enforth storage primitives.
+ */
+
+static int enforthLoad(uint8_t * dictionary, int size)
+{
+    int fd = open("enforthsimple.img", O_RDONLY);
+    if (fd == -1)
+    {
+        return 0;
+    }
+
+    if (read(fd, dictionary, size) != size)
+    {
+        close(fd);
+        return 0;
+    }
+
+    close(fd);
+    return -1;
+}
+
+static int enforthSave(uint8_t * dictionary, int size)
+{
+    int fd = open("enforthsimple.img", O_WRONLY|O_CREAT|O_TRUNC, 0644);
+    if (fd == -1)
+    {
+        return 0;
+    }
+
+    if (write(fd, dictionary, size) != size)
+    {
+        close(fd);
+        return 0;
+    }
+
+    close(fd);
+    return -1;
+}
+
+
+
+/* -------------------------------------
  * Globals.
  */
 
@@ -118,7 +161,8 @@ int main(int argc, char **argv)
             &enforthVM,
             enforthDict, sizeof(enforthDict),
             LAST_FFI,
-            enforthSimpleKeyQuestion, enforthSimpleKey, enforthSimpleEmit);
+            enforthSimpleKeyQuestion, enforthSimpleKey, enforthSimpleEmit,
+            enforthLoad, enforthSave);
 
     /* Add a couple of definitions (one of which is multiline). */
     enforth_evaluate(&enforthVM, ": favnum 27 ;");

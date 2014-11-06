@@ -126,7 +126,8 @@ EnforthVM * const get_test_vm()
             &enforthVM,
             enforthDict, sizeof(enforthDict),
             LAST_FFI,
-            enforthSimpleKeyQuestion, enforthSimpleKey, enforthSimpleEmit);
+            enforthSimpleKeyQuestion, enforthSimpleKey, enforthSimpleEmit,
+            NULL, NULL);
 
     /* Compile the tester words. */
     compile_tester(&enforthVM);

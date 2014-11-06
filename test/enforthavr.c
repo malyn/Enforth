@@ -118,7 +118,8 @@ int main(void)
             &enforthVM,
             enforthDict, sizeof(enforthDict),
             LAST_FFI,
-            enforthStaticKeyQuestion, enforthStaticKey, enforthStaticEmit);
+            enforthStaticKeyQuestion, enforthStaticKey, enforthStaticEmit,
+            NULL, NULL);
 
     /* Add a couple of definitions. */
     enforth_evaluate(&enforthVM, ": favnum 27 ;");
