@@ -81,11 +81,13 @@
          :true
        :exit]}
 
+;; The cell that contains the dictionary pointer is stored at the start
+;; of the dictionary; return that address.
 {:token :dp
  :args [[] [:addr]]
  :flags #{:headerless}
- :source ": DP ( -- addr )  VM +DP ;"
- :pfa [:vm :icharlit "offsetof(EnforthVM, dp)" :plus :exit]}
+ :source ": DP ( -- addr )  'DICT ;"
+ :pfa [:tickdict :exit]}
 
 ; END-LOOP [Enforth] ( do-orig pdo-xt -- )
 ;
@@ -438,9 +440,13 @@
  :args [[] []]
  :flags #{:headerless}}
 
+;; The cell that contains the LATEST pointer is the second cell in the
+;; dictionary (DP is the first); return that address.
 {:token :latest
- :args [[] [:aaddr]]
- :pfa [:vm :icharlit "offsetof(EnforthVM, latest)" :plus :exit]}
+ :args [[] [:addr]]
+ :flags #{:headerless}
+ :source ": LATEST ( -- addr )  'DICT CELL+ ;"
+ :pfa [:tickdict :cellplus :exit]}
 
 {:token :lfafetch
  :name "LFA@"

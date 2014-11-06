@@ -148,10 +148,14 @@ void enforth_init(
 
 void enforth_reset(EnforthVM * const vm)
 {
-    /* Reset the globals. */
-    vm->dp = vm->dictionary;
-    vm->latest.u = ROMDEF_LAST;
+    /* Reset the DP and LATEST cells, both of which are stored at the
+     * start of the dictionary.  The user-accessible portion of the
+     * dictionary starts after those two cells.  DP is reset to point
+     * after LATEST and LATEST is reset to point at ROMDEF_LAST. */
+    ((EnforthCell*)vm->dictionary.ram)[0].ram = vm->dictionary.ram + (kEnforthCellSize * 2);
+    ((EnforthCell*)vm->dictionary.ram)[1].u = ROMDEF_LAST;
 
+    /* Reset the globals. */
     vm->hld = NULL;
 
     vm->state = 0;
