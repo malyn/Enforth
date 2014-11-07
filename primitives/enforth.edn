@@ -592,8 +592,6 @@
  :args [[:n1 :n2] []]
  :flags #{:headerless}}
 
-{:token :phalt :flags #{:headerless}}
-
 {:token :piqdo
  :name "(I?DO)"
  :flags #{:headerless}}

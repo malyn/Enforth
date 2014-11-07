@@ -430,6 +430,17 @@ DISPATCH_TOKEN:
 
         goto *(void *)pgm_read_word(&primitive_table[token]);
 
+        /* -------------------------------------------------------------
+         * (HALT) [Enforth] ( i*x -- i*x ) ( R: j*x -- j*x )
+         *
+         * Stops and exits the VM.  State is preserved on the stack,
+         * allowing the VM to be resumed by enforth_resume.
+         *
+        ***{:token :phalt
+        *** :name "(HALT)"
+        *** :args [[] []]
+        *** :flags #{:headerless}}
+         */
         PHALT:
         {
             /* Push TOS onto the stack. */
@@ -553,6 +564,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :dup
+        *** :args [[:x] [:x :x]]}
+         */
         DUP:
         {
             CHECK_STACK(1, 2);

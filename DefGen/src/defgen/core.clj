@@ -70,14 +70,44 @@
                          (def-compare (defs key1) (defs key2))))
         defs))
 
-(defn load-def-file
-  "Returns a map of all of the definitions in the given file, indexed by token id."
+(defn load-def-c-file
+  [path]
+  ;; Partition the lines into consecutive groups of EDN data
+  ;; (***-prefixed lines) and non-EDN data.  The file will always
+  ;; follow the pattern non-EDN, EDN, non-EDN, EDN, ... due to the
+  ;; fact that the comment must begin and end on lines that do *not*
+  ;; contain EDN data.  We use this to our advantage and strip out the
+  ;; odd number elements in the sequence after the partition
+  ;; operation.  Then we strip the comment leader from each line, join
+  ;; all of the lines together, and finally run each joined line
+  ;; through the EDN reader.
+  (->> path
+       slurp
+       s/split-lines
+       (partition-by #(some? (re-matches #"^\s*\*\*\*.*" %)))
+       rest
+       (take-nth 2)
+       (map (fn [lines] (map #(s/replace % #"^\s*\*\*\*(.*)$" "$1")
+                             lines)))
+       (map s/join)
+       (map edn/read-string)
+       (map parse-def)))
+
+(defn load-def-edn-file
   [path]
   (with-open [rdr (java.io.PushbackReader. (clojure.java.io/reader path))]
     (loop [defs []]
       (if-let [next-def (edn/read {:eof nil} rdr)]
         (recur (conj defs (parse-def next-def)))
-        (into {} (map #(vector (% :id) %) defs))))))
+        defs))))
+
+(defn load-def-file
+  "Returns a map of all of the definitions in the given file, indexed by token id.  The file may be either an EDN file (ending in .edn) or a C file (ending in .c).  If the latter, then ***-prefixed comments will be read in order to locate EDN data."
+  [path]
+  (let [defs (if (= ".c" (fs/extension path))
+               (load-def-c-file path)
+               (load-def-edn-file path))]
+    (into {} (map #(vector (% :id) %) defs))))
 
 
 ;; =====================================================================

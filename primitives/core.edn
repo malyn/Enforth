@@ -272,8 +272,6 @@
 
 {:token :drop :args [[:x1 :x2] [:x1]]}
 
-{:token :dup :args [[:x] [:x :x]]}
-
 {:token :else
  :flags #{:immediate}
  :source ": ELSE ( C: orig1 -- orig2 )

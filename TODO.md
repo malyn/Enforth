@@ -1,6 +1,7 @@
 # Before Release
 
-* Modify DefGen to read code primitive EDN data from `/****`-prefixed comments in the `enforth.c` file.  Then rename the `primitives` directory to `definitions` and have it only include ROM definitions.
+* Move all Code Primitive EDN data into `enforth.c`.
+* Rename the `primitives` directory to `definitions` now that it only contains ROM definitions.
 * Create some sort of iterate-over-the-dictionary word that takes an XT (`FOUND?`, in the case of `FIND-WORD`) and stops iterating when the word returns true?  Use this for both `FIND-WORD` and `WORDS`.
 * Most of `FOUND-FFIDEF?` is just `FOUND?`; we should find a way to merge that code.
   * FFI definition names are stored normally (forward order) which means that `FOUND?` cannot use `STRING~XT` for comparing FFIs.  We should put definitions in forward order and then just do subtraction to jump to the start of the definition.  Then we can use `FOUND?` for everything.
@@ -14,16 +15,19 @@
 * Improve the stack checking code.
   * First, the code is probably too aggressive and may not let us use the last stack item.
   * Second, we have the macro scattered everywhere, but it would be better if the stack sizes were in an extra byte in the definition header and then checked in a single place right before DISPATCH\_TOKEN.  This may make the logic small enough to include on AVRs (although it will add ~240 bytes to the size of the ROM Definition block).
+* Rewrite `DUMP` to use `BEGIN/REPEAT` instead of `DO/LOOP`; eliminates `PIQDO`, `PILOOP`, and `PIPLUSLOOP`.
 * Consider additional de-duplication of the Code Prims and ROM Definitions.
   * `I` could compile `R@` instead of providing its own token.  Same thing with `(DO)` and `2>R`
   * `TOKEN,` could be `C@`.
   * `(LOOP)` could maybe always be `(+LOOP)` with a `:charlit 1` in front?
   * DefGen could implement the above optimizations, that way the code always reads nicely, even though it is being rewritten during compilation.  Note that this doesn't work for `I`.
-  * Rewriting `DUMP` to use `BEGIN/REPEAT` instead of `DO/LOOP` eliminates `PIQDO`, `PILOOP`, and `PIPLUSLOOP`.
   * Is there any benefit to defining `DOICONSTANT` for storing constants in ROM PFAs?  Currently we define tokens or words that calculate and return constants.
+  * Can we eliminate some of the `DOUBLE` words that are used for things like parsing and output?
 * Fix tracing now that kDefinitionNames has gone away.
+* Create a `:profile` property on each word that lets us build smaller versions of the ROM.  For example, maybe you eliminate `DOUBLE` support or the `TOOLS` so that you can get down to something that fits on ATtiny85.  Code Primitives should be included in this as well and then jump table entries for elided primitives should not be generated (so that the compiler will remove that code).
 * Consider creating EnforthDuino.cpp/.h wrappers to make it easier to interact with Enforth in the Arduino environment.  Mostly just to wrap the serial code, allocate the dictionary block, implement EEPROM-backed load/save, etc.
 * Add comments to all of the `.edn` files.
+* Move to [Arduino 1.5 library format](https://github.com/arduino/Arduino/wiki/Arduino-IDE-1.5:-Library-specification) now that 1.0.6 supports that format?
 
 # After Release
 
@@ -52,4 +56,6 @@
   * I wonder if we can find a way to predefine a set of trampolines in Flash instead of in RAM?  *i.e.,* we reserve the last 32 tokens for precompiled trampolines and then provide a simplified way to build up that flash array.  This table-based method would actually work since it would just be a list of other addresses (which conveniently we already have thanks to the `FFIDEF_*` vars that are being used for the linked list).  This would give users a way to modify their enforth compile to predefine externals in a way that consumes no RAM.  You still need to define the FFIs, but you don't need to reference them at runtime.
   * This feels like a good balance between ROM and RAM: you can access any FFI at runtime if you are willing to consume memory on that (which is probably fine during development) and then you switch to a ROM-based FFI primitive once you know you'll be using an FFI a lot.  This breaks your flash, of course, but your source is unchanged (and we could make the `EXTERNAL:` word just do nothing in the case where you are trying to reference a ROM-based FFI primitive).
   * This makes the ATtiny85 possible again, because we'll just define the primitives that we care about as ROM primitives.  The theory here is that we'll only get 256 bytes or something for the dictionary on ATtiny85 and so we don't want to waste 6 bytes on every Arduino function that we want to call.  I don't know if I buy that though, because the real concern on the ATtiny85 is ROM and we're way over our limit at the moment.
+  * This would allow `LOAD` and `SAVE` to be FFIs without consuming RAM -- they would just be the first two tokens in this extra table.
+  * All of this should be much easier now that we have the new XT format.  We just need a way to tack some extra stuff onto the definitions table (or use a new XT flag to target this extra definition block).  We can probably implement this using macros since we don't actually need the names here (it's just a bunch of FFI trampolines one after the other).  Probably similar to how the names table worked way-back-when.
 * Refactor the DefGen code to make it easier to load in the definitions and then traverse them for analysis purposes.  First analysis: output a GraphViz file that shows the calling patterns between all of the words.
