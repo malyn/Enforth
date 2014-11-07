@@ -346,7 +346,6 @@ void enforth_resume(EnforthVM * const vm)
         }
         else
         {
-
             /* Not a token, which means that this is a two-byte XT that
              * points at the NFA of the word to be called. */
             xt = token << 8;
@@ -430,33 +429,157 @@ DISPATCH_TOKEN:
 
         goto *(void *)pgm_read_word(&primitive_table[token]);
 
-        /* -------------------------------------------------------------
-         * (HALT) [Enforth] ( i*x -- i*x ) ( R: j*x -- j*x )
-         *
-         * Stops and exits the VM.  State is preserved on the stack,
-         * allowing the VM to be resumed by enforth_resume.
-         *
-        ***{:token :phalt
-        *** :name "(HALT)"
-        *** :args [[] []]
-        *** :flags #{:headerless}}
-         */
-        PHALT:
+
+#if ENABLE_STACK_CHECKING
+        STACK_OVERFLOW:
         {
-            /* Push TOS onto the stack. */
-            *--restDataStack = tos;
-
-            /* Push RSP and IP to the stack. */
-            /* TODO Both of these need to be relative addresses. */
-            (--restDataStack)->ram = (uint8_t*)returnTop;
-            (--restDataStack)->ram = ip;
-
-            /* Save the stack pointer. */
-            vm->saved_sp.u = &vm->data_stack[31] - restDataStack;
-
-            /* Exit the interpreter. */
-            return;
+            if (vm->emit != NULL)
+            {
+                vm->emit('\n');
+                vm->emit('!');
+                vm->emit('O');
+                vm->emit('V');
+                vm->emit('\n');
+            }
+            goto ABORT;
         }
+        continue;
+
+        STACK_UNDERFLOW:
+        {
+            if (vm->emit != NULL)
+            {
+                vm->emit('\n');
+                vm->emit('!');
+                vm->emit('U');
+                vm->emit('N');
+                vm->emit('\n');
+            }
+            goto ABORT;
+        }
+        continue;
+#endif
+
+
+        /* =============================================================
+         * KERNEL PRIMITIVES
+         */
+
+        DOCOLON:
+        {
+            /* IP points to the next word in the PFA and that is the
+             * location to which we should return once this new word has
+             * executed. */
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                /* Set the high bit on the return address so that we
+                 * know that this address is in ROM. */
+                ip = (uint8_t*)((unsigned int)ip | 0x8000);
+
+                /* We are no longer in program space since, by design,
+                 * DOCOLON is only ever used for user-defined words in
+                 * RAM. */
+                inProgramSpace = 0;
+            }
+#endif
+            (--returnTop)->ram = ip;
+
+            /* Now set the IP to the PFA of the word that is being
+             * called and continue execution inside of that word. */
+            ip = w;
+        }
+        continue;
+
+        DOCOLONROM:
+        {
+#if ENABLE_TRACING
+            gTraceLevel++;
+
+            int i;
+            for (i = 0; i < gTraceLevel; i++)
+            {
+                printf(">");
+            }
+
+            printf(" [%02x] ", token);
+
+            /* W points at the PFA; back up to the NFA. */
+            const char * curDef = (const char *)w - (1 + 2 + 1);
+
+            /* Is this a hidden definition (the name is length zero)?
+             * If so, output the XT instead of the name. */
+            if ((*curDef & 0x1f) == 0)
+            {
+                printf("<pfa=0x%04X>", 0xC000 | (uint16_t)((uint8_t*)curDef - (uint8_t*)definitions));
+            }
+            else
+            {
+                /* Normal definition; walk backwards and output the
+                 * name. */
+                for (i = 1; i <= (((unsigned int)*curDef) & 0x1f); --i)
+                {
+                    printf("%c", *(curDef + i) & 0x7f);
+                }
+            }
+
+            /* Print the data stack and top-of-stack. */
+            for (i = 0; i < &vm->data_stack[32] - restDataStack - 1; i++)
+            {
+                printf(" %x", vm->data_stack[30 - i].u);
+            }
+
+            if ((&vm->data_stack[32] - restDataStack) > 0)
+            {
+                printf(" %x", tos.u);
+            }
+
+            printf("\n");
+            fflush(stdout);
+#endif
+            /* IP points to the next word in the PFA and that is the
+             * location to which we should return once this new word has
+             * executed. */
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                /* Set the high bit on the return address so that we
+                 * know that this address is in ROM. */
+                ip = (uint8_t*)((unsigned int)ip | 0x8000);
+            }
+#endif
+            (--returnTop)->ram = ip;
+
+            /* Now set the IP to the PFA of the word that is being
+             * called and continue execution inside of that word. */
+            ip = w;
+
+#ifdef __AVR__
+            /* We are obviously now in program space since, by design,
+             * DOCOLONROM is only ever used for ROM definitions. */
+            inProgramSpace = -1;
+#endif
+        }
+        continue;
+
+        DOCONSTANT:
+        {
+            /* W points at the PFA of this word; push the address in
+             * that location onto the stack. */
+            *--restDataStack = tos;
+            tos = *(EnforthCell*)w;
+        }
+        continue;
+
+        DOCREATE:
+        DOVARIABLE:
+        {
+            /* W points at the PFA of this word; push that location onto
+             * the stack. */
+            *--restDataStack = tos;
+            tos.ram = w;
+        }
+        continue;
 
         DOFFI0:
         {
@@ -555,100 +678,6 @@ DISPATCH_TOKEN:
         continue;
 
         /* -------------------------------------------------------------
-        ***{:token :lit
-        *** :name "(LIT)"
-        *** :args [[] [:x]]
-        *** :flags #{:headerless}}
-         */
-        /* Cannot be used in ROM definitions! */
-        LIT:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            tos = *(EnforthCell*)ip;
-            ip += kEnforthCellSize;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :dup
-        *** :args [[:x] [:x :x]]}
-         */
-        DUP:
-        {
-            CHECK_STACK(1, 2);
-            *--restDataStack = tos;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :drop
-        *** :args [[:x1 :x2] [:x1]]}
-         */
-        DROP:
-        {
-            CHECK_STACK(1, 0);
-            tos = *restDataStack++;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :plus
-        *** :name "+"}
-         */
-        PLUS:
-        {
-            CHECK_STACK(2, 1);
-            tos.i += restDataStack++->i;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :minus
-        *** :name "-"}
-         */
-        MINUS:
-        {
-            CHECK_STACK(2, 1);
-            tos.i = restDataStack++->i - tos.i;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :oneplus
-        *** :name "1+"}
-         */
-        ONEPLUS:
-        {
-            CHECK_STACK(1, 1);
-            tos.i++;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :oneminus
-        *** :name "1-"}
-         */
-        ONEMINUS:
-        {
-            CHECK_STACK(1, 1);
-            tos.i--;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :swap}
-         */
-        SWAP:
-        {
-            CHECK_STACK(2, 2);
-            EnforthCell swap = restDataStack[0];
-            restDataStack[0] = tos;
-            tos = swap;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
         ***{:token :ibranch
         *** :flags #{:headerless}}
          */
@@ -690,59 +719,6 @@ DISPATCH_TOKEN:
         }
         continue;
 
-#if ENABLE_STACK_CHECKING
-        STACK_OVERFLOW:
-        {
-            if (vm->emit != NULL)
-            {
-                vm->emit('\n');
-                vm->emit('!');
-                vm->emit('O');
-                vm->emit('V');
-                vm->emit('\n');
-            }
-            goto ABORT;
-        }
-        continue;
-
-        STACK_UNDERFLOW:
-        {
-            if (vm->emit != NULL)
-            {
-                vm->emit('\n');
-                vm->emit('!');
-                vm->emit('U');
-                vm->emit('N');
-                vm->emit('\n');
-            }
-            goto ABORT;
-        }
-        continue;
-#endif
-        /* -------------------------------------------------------------
-         * ABORT [CORE] 6.1.0670 ( i*x -- ) ( R: j*x -- )
-         *
-         * Empty the data stack and perform the function of QUIT, which
-         * includes emptying the return stack, without displaying a
-         * message.
-         *
-        ***{:token :abort}
-         */
-        ABORT:
-        {
-            tos.i = 0;
-            restDataStack = (EnforthCell*)&vm->data_stack[32];
-            vm->base = 10;
-
-            /* Set the IP to the beginning of QUIT */
-#ifdef __AVR__
-            ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + (ROMDEF_QUIT&0x3FFF) + kNFAtoPFA));
-#else
-            ip = (uint8_t*)definitions + (ROMDEF_QUIT&0x3FFF) + kNFAtoPFA;
-#endif
-        }
-        continue;
-
         /* -------------------------------------------------------------
         ***{:token :icharlit
         *** :args [[] [:char]]
@@ -775,118 +751,102 @@ DISPATCH_TOKEN:
         continue;
 
         /* -------------------------------------------------------------
-        ***{:token :emit}
+        ***{:token :exit}
          */
-        EMIT:
+        EXIT:
         {
-            CHECK_STACK(1, 0);
-
-            if (vm->emit != NULL)
+#if ENABLE_TRACING
+            int i;
+            for (i = 0; i < gTraceLevel; i++)
             {
-                vm->emit(tos.i);
+                printf("<");
             }
 
-            tos = *restDataStack++;
+            printf(" (");
+            for (i = 0; i < &vm->data_stack[32] - restDataStack - 1; i++)
+            {
+                printf("%x ", vm->data_stack[30 - i].u);
+            }
+
+            if ((&vm->data_stack[32] - restDataStack) > 0)
+            {
+                printf("%x", tos.u);
+            }
+            printf(")");
+
+            printf(" (R:");
+            for (i = 0; i < &vm->return_stack[32] - returnTop; i++)
+            {
+                printf(" %x", vm->return_stack[31 - i].u);
+            }
+            printf(")");
+
+            printf("\n");
+
+            gTraceLevel--;
+#endif
+
+            ip = (uint8_t *)((returnTop++)->ram);
+
+#ifdef __AVR__
+            if (((unsigned int)ip & 0x8000) != 0)
+            {
+                /* This return address points at a ROM definition; strip
+                 * off that flag as part of popping the address. */
+                ip = (uint8_t*)((unsigned int)ip & 0x7FFF);
+                inProgramSpace = -1;
+            }
+            else
+            {
+                inProgramSpace = 0;
+            }
+#endif
         }
         continue;
 
         /* -------------------------------------------------------------
-         * EXECUTE [CORE] 6.1.1370 ( i*x xt -- j*x )
-         *
-         * Remove xt from the stack and perform the semantics identified
-         * by it.  Other stack effects are due to the word EXECUTEd.
-         *
-        ***{:token :execute
-        *** :args [[:xt] []]}
-         */
-        EXECUTE:
-        {
-            xt = tos.u;
-            tos = *restDataStack++;
-            goto DISPATCH_XT;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :ifetch
-        *** :name "I@"
-        *** :args [[:addr] [:x]]
+        ***{:token :lit
+        *** :name "(LIT)"
+        *** :args [[] [:x]]
         *** :flags #{:headerless}}
          */
-        IFETCH:
-#ifdef __AVR__
+        /* Cannot be used in ROM definitions! */
+        LIT:
         {
-            CHECK_STACK(1, 1);
-            tos.u = pgm_read_word(tos.ram);
-        }
-        continue;
-#else
-        /* Fall through, since the other architectures use shared
-         * instruction and data space. */
-#endif
-        /* -------------------------------------------------------------
-        ***{:token :fetch
-        *** :name "@"}
-         */
-        FETCH:
-        {
-            CHECK_STACK(1, 1);
-            tos = *(EnforthCell*)tos.ram;
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos = *(EnforthCell*)ip;
+            ip += kEnforthCellSize;
         }
         continue;
 
         /* -------------------------------------------------------------
-        ***{:token :or}
-         */
-        OR:
-        {
-            CHECK_STACK(2, 1);
-            tos.i |= restDataStack++->i;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :qdup
-        *** :name "?DUP"}
-         */
-        QDUP:
-        {
-            CHECK_STACK(1, 2);
-
-            if (tos.i != 0)
-            {
-                *--restDataStack = tos;
-            }
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-         * ! [CORE] 6.1.0010 "store" ( x a-addr -- )
+         * (HALT) [Enforth] ( i*x -- i*x ) ( R: j*x -- j*x )
          *
-         * Store x at a-addr.
+         * Stops and exits the VM.  State is preserved on the stack,
+         * allowing the VM to be resumed by enforth_resume.
          *
-        ***{:token :store
-        *** :name "!"}
+        ***{:token :phalt
+        *** :name "(HALT)"
+        *** :args [[] []]
+        *** :flags #{:headerless}}
          */
-        STORE:
+        PHALT:
         {
-            CHECK_STACK(2, 0);
-            *(EnforthCell*)tos.ram = *restDataStack++;
-            tos = *restDataStack++;
-        }
-        continue;
+            /* Push TOS onto the stack. */
+            *--restDataStack = tos;
 
-        /* -------------------------------------------------------------
-        ***{:token :twodrop
-        *** :name "2DROP"}
-         */
-        TWODROP:
-        {
-            CHECK_STACK(2, 0);
-            restDataStack++;
-            tos = *restDataStack++;
+            /* Push RSP and IP to the stack. */
+            /* TODO Both of these need to be relative addresses. */
+            (--restDataStack)->ram = (uint8_t*)returnTop;
+            (--restDataStack)->ram = ip;
+
+            /* Save the stack pointer. */
+            vm->saved_sp.u = &vm->data_stack[31] - restDataStack;
+
+            /* Exit the interpreter. */
+            return;
         }
-        continue;
 
         /* -------------------------------------------------------------
         ***{:token :izbranch
@@ -936,119 +896,53 @@ DISPATCH_TOKEN:
         }
         continue;
 
-        /* -------------------------------------------------------------
-        ***{:token :true}
+
+
+        /* =============================================================
+         * CORE PRIMITIVES
          */
-        TRUE:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            tos.i = -1;
-        }
-        continue;
 
         /* -------------------------------------------------------------
-        ***{:token :false}
+         * ABORT [CORE] 6.1.0670 ( i*x -- ) ( R: j*x -- )
+         *
+         * Empty the data stack and perform the function of QUIT, which
+         * includes emptying the return stack, without displaying a
+         * message.
+         *
+        ***{:token :abort}
          */
-        FALSE:
-
-        /* -------------------------------------------------------------
-        ***{:token :zero
-        *** :name "0"}
-         */
-        ZERO:
+        ABORT:
         {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
             tos.i = 0;
-        }
-        continue;
+            restDataStack = (EnforthCell*)&vm->data_stack[32];
+            vm->base = 10;
 
-        /* -------------------------------------------------------------
-        ***{:token :zeroequals
-        *** :name "0="}
-         */
-        ZEROEQUALS:
-        {
-            CHECK_STACK(1, 1);
-            tos.i = tos.i == 0 ? -1 : 0;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :zeronotequals
-        *** :name "0<>"
-        *** :args [[:x] [:f]]}
-         */
-        ZERONOTEQUALS:
-        {
-            CHECK_STACK(1, 1);
-            tos.i = tos.i != 0 ? -1 : 0;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :pisquote
-        *** :name "(IS\")"
-        *** :args [[] [:icaddr :u]]
-        *** :flags #{:headerless}}
-         */
-        /* TODO Should probably just remove this since it is only used
-         * in COLD... */
-        PISQUOTE:
+            /* Set the IP to the beginning of QUIT */
 #ifdef __AVR__
-        {
-            CHECK_STACK(0, 2);
-
-            /* Push existing TOS onto the stack. */
-            *--restDataStack = tos;
-
-            /* Instruction stream contains the length of the string as a
-             * byte and then the string itself.  Start out by getting
-             * the length into TOS. */
-            tos.u = pgm_read_byte(ip);
-            ip++;
-
-            /* Now push the address of the string (the newly-incremented
-             * IP) onto the stack. */
-            (--restDataStack)->ram = ip;
-
-            /* Advance IP over the string. */
-            ip = ip + tos.u;
+            ip = (void *)(0x8000 | (unsigned int)((uint8_t*)definitions + (ROMDEF_QUIT&0x3FFF) + kNFAtoPFA));
+#else
+            ip = (uint8_t*)definitions + (ROMDEF_QUIT&0x3FFF) + kNFAtoPFA;
+#endif
         }
         continue;
-#else
-        /* Fall through, since the other architectures use shared
-         * instruction and data space. */
-#endif
 
         /* -------------------------------------------------------------
-         * (s") [ENFORTH] "paren-s-quote-paren" ( -- c-addr u )
-         *
-         * Runtime behavior of S": return c-addr and u.
-         * NOTE: Cannot be used in program space!
-         *
-        ***{:token :psquote
-        *** :name "(S\")"
-        *** :flags #{:headerless}}
+        ***{:token :abs}
          */
-        PSQUOTE:
+        ABS:
         {
-            CHECK_STACK(0, 2);
+            CHECK_STACK(1, 1);
+            tos.u = abs(tos.i);
+        }
+        continue;
 
-            /* Push existing TOS onto the stack. */
-            *--restDataStack = tos;
-
-            /* Instruction stream contains the length of the string as a
-             * byte and then the string itself.  Start out by pushing
-             * the address of the string (ip+1) onto the stack. */
-            (--restDataStack)->ram = ip + 1;
-
-            /* Now get the string length into TOS. */
-            tos.i = *ip++;
-
-            /* Advance IP over the string. */
-            ip = ip + tos.i;
+        /* -------------------------------------------------------------
+        ***{:token :and}
+         */
+        AND:
+        {
+            CHECK_STACK(2, 1);
+            tos.i &= restDataStack++->i;
         }
         continue;
 
@@ -1081,6 +975,24 @@ DISPATCH_TOKEN:
         continue;
 
         /* -------------------------------------------------------------
+         * C! [CORE] 6.1.0850 "c-store" ( char c-addr -- )
+         *
+         * Store char at c-addr.  When character size is smaller than
+         * cell size, only the number of low-order bits corresponding to
+         * character size are transferred.
+         *
+        ***{:token :cstore
+        *** :name "C!"}
+         */
+        CSTORE:
+        {
+            CHECK_STACK(2, 0);
+            *(uint8_t*)tos.ram = restDataStack++->u;
+            tos = *restDataStack++;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
          * DEPTH [CORE] 6.1.1200 ( -- +n )
          *
          * +n is the number of single-cell values contained in the data
@@ -1103,155 +1015,96 @@ DISPATCH_TOKEN:
         continue;
 
         /* -------------------------------------------------------------
-        ***{:token :twodup
-        *** :name "2DUP"}
+        ***{:token :drop
+        *** :args [[:x1 :x2] [:x1]]}
          */
-        TWODUP:
-        {
-            CHECK_STACK(2, 4);
-            EnforthCell second = *restDataStack;
-            *--restDataStack = tos;
-            *--restDataStack = second;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :tuck}
-         */
-        TUCK:
-        {
-            EnforthCell second = *restDataStack;
-            *restDataStack = tos;
-            *--restDataStack = second;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :move}
-         */
-        MOVE:
-        {
-            CHECK_STACK(3, 0);
-            EnforthCell arg3 = tos;
-            EnforthCell arg2 = *restDataStack++;
-            EnforthCell arg1 = *restDataStack++;
-            memcpy(arg2.ram, arg1.ram, arg3.u);
-            tos = *restDataStack++;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :nip}
-         */
-        NIP:
-        {
-            CHECK_STACK(2, 1);
-            restDataStack++;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-         * C! [CORE] 6.1.0850 "c-store" ( char c-addr -- )
-         *
-         * Store char at c-addr.  When character size is smaller than
-         * cell size, only the number of low-order bits corresponding to
-         * character size are transferred.
-         *
-        ***{:token :cstore
-        *** :name "C!"}
-         */
-        CSTORE:
-        {
-            CHECK_STACK(2, 0);
-            *(uint8_t*)tos.ram = restDataStack++->u;
-            tos = *restDataStack++;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :abs}
-         */
-        ABS:
-        {
-            CHECK_STACK(1, 1);
-            tos.u = abs(tos.i);
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-         * ROT [CORE] 6.1.2160 "rote" ( x1 x2 x3 -- x2 x3 x1 )
-         *
-         * Rotate the top three stack entries.
-         *
-        ***{:token :rot}
-         */
-        ROT:
-        {
-            CHECK_STACK(3, 3);
-            EnforthCell x3 = tos;
-            EnforthCell x2 = *restDataStack++;
-            EnforthCell x1 = *restDataStack++;
-            *--restDataStack = x2;
-            *--restDataStack = x3;
-            tos = x1;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-         * 0< [CORE] 6.1.0250 "zero-less" ( b -- flag )
-         *
-         * flag is true if and only if n is less than zero.
-         *
-        ***{:token :zeroless
-        *** :name "0<"}
-         */
-        ZEROLESS:
+        DROP:
         {
             CHECK_STACK(1, 0);
-            tos.i = tos.i < 0 ? -1 : 0;
+            tos = *restDataStack++;
         }
         continue;
 
         /* -------------------------------------------------------------
-         * UM/MOD [CORE] 6.1.2370 "u-m-slash-mod" ( ud u1 -- u2 u3 )
-         *
-         * Divide ud by u1, giving the quotient u3 and the remainder u2.
-         * All values and arithmetic are unsigned.  An ambiguous
-         * condition exists if u1 is zero or if the quotient lies
-         * outside the range of a single-cell unsigned integer.
-         *
-        ***{:token :umslashmod
-        *** :name "UM/MOD"
-        *** :args [[:ud :u1] [:u2 :u3]]}
+        ***{:token :dup
+        *** :args [[:x] [:x :x]]}
          */
-        UMSLASHMOD:
+        DUP:
         {
-            CHECK_STACK(3, 2);
+            CHECK_STACK(1, 2);
+            *--restDataStack = tos;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :emit}
+         */
+        EMIT:
+        {
+            CHECK_STACK(1, 0);
+
+            if (vm->emit != NULL)
+            {
+                vm->emit(tos.i);
+            }
+
+            tos = *restDataStack++;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :equals
+        *** :name "="}
+         */
+        EQUALS:
+        {
+            CHECK_STACK(2, 1);
+            tos.i = restDataStack++->i == tos.i ? -1 : 0;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+         * EXECUTE [CORE] 6.1.1370 ( i*x xt -- j*x )
+         *
+         * Remove xt from the stack and perform the semantics identified
+         * by it.  Other stack effects are due to the word EXECUTEd.
+         *
+        ***{:token :execute
+        *** :args [[:xt] []]}
+         */
+        EXECUTE:
+        {
+            xt = tos.u;
+            tos = *restDataStack++;
+            goto DISPATCH_XT;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :ifetch
+        *** :name "I@"
+        *** :args [[:addr] [:x]]
+        *** :flags #{:headerless}}
+         */
+        IFETCH:
 #ifdef __AVR__
-            uint16_t u1 = tos.u;
-            uint16_t ud_msb = restDataStack++->u;
-            uint16_t ud_lsb = restDataStack++->u;
-            uint32_t ud = ((uint32_t)ud_msb << 16) | ud_lsb;
-
-            // FIXME Doesn't work on Arduino; maybe a compiler
-            // difference?  Meanwhile, ldiv seems to work in the vast
-            // majority of cases; only extreme situations ((65535 *
-            // 65535) / 65535) return the incorrect results.
-            //
-            // (--restDataStack)->u = ud % u1;
-            // tos.u = ud / u1;
-
-            ldiv_t result = ldiv(ud, u1);
-            (--restDataStack)->u = result.rem;
-            tos.u = result.quot;
+        {
+            CHECK_STACK(1, 1);
+            tos.u = pgm_read_word(tos.ram);
+        }
+        continue;
 #else
-            uint32_t u1 = tos.u;
-            uint32_t ud_msb = restDataStack++->u;
-            uint32_t ud_lsb = restDataStack++->u;
-            uint64_t ud = ((uint64_t)ud_msb << 32) | ud_lsb;
-            (--restDataStack)->u = ud % u1;
-            tos.u = ud / u1;
+        /* Fall through, since the other architectures use shared
+         * instruction and data space. */
 #endif
+        /* -------------------------------------------------------------
+        ***{:token :fetch
+        *** :name "@"}
+         */
+        FETCH:
+        {
+            CHECK_STACK(1, 1);
+            tos = *(EnforthCell*)tos.ram;
         }
         continue;
 
@@ -1271,93 +1124,12 @@ DISPATCH_TOKEN:
         continue;
 
         /* -------------------------------------------------------------
-        ***{:token :ugreaterthan
-        *** :name "U>"}
+        ***{:token :invert}
          */
-        UGREATERTHAN:
+        INVERT:
         {
-            CHECK_STACK(2, 1);
-            tos.i = restDataStack++->u > tos.u ? -1 : 0;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :ulessthan
-        *** :name "U<"}
-         */
-        ULESSTHAN:
-        {
-            CHECK_STACK(2, 1);
-            tos.i = restDataStack++->u < tos.u ? -1 : 0;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :and}
-         */
-        AND:
-        {
-            CHECK_STACK(2, 1);
-            tos.i &= restDataStack++->i;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :xor}
-         */
-        XOR:
-        {
-            CHECK_STACK(2, 1);
-            tos.i ^= restDataStack++->i;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :notequals
-        *** :name "<>"}
-         */
-        NOTEQUALS:
-        {
-            CHECK_STACK(2, 1);
-            tos.i = restDataStack++->i != tos.i ? -1 : 0;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :initrp
-        *** :flags #{:headerless}}
-         */
-        INITRP:
-        {
-            CHECK_STACK(0, 0);
-            returnTop = (EnforthCell *)&vm->return_stack[32];
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :over}
-         */
-        OVER:
-        {
-            CHECK_STACK(2, 3);
-            EnforthCell second = restDataStack[0];
-            *--restDataStack = tos;
-            tos = second;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :twoover
-        *** :name "2OVER"}
-         */
-        TWOOVER:
-        {
-            CHECK_STACK(4, 6);
-            *--restDataStack = tos;
-            EnforthCell x2 = restDataStack[2];
-            EnforthCell x1 = restDataStack[3];
-            *--restDataStack = x1;
-            tos = x2;
+            CHECK_STACK(1, 1);
+            tos.i = ~tos.i;
         }
         continue;
 
@@ -1373,98 +1145,6 @@ DISPATCH_TOKEN:
         continue;
 
         /* -------------------------------------------------------------
-        ***{:token :tor
-        *** :name ">R"}
-         */
-        TOR:
-        {
-            CHECK_STACK(1, 0);
-            *--returnTop = tos;
-            tos = *restDataStack++;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :rfrom
-        *** :name "R>"}
-         */
-        RFROM:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            tos = *returnTop++;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :i
-        *** :args [[] [:n]]}
-         */
-        I:
-
-        /* -------------------------------------------------------------
-        ***{:token :rfetch
-        *** :name "R@"}
-         */
-        RFETCH:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            tos = returnTop[0];
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :equals
-        *** :name "="}
-         */
-        EQUALS:
-        {
-            CHECK_STACK(2, 1);
-            tos.i = restDataStack++->i == tos.i ? -1 : 0;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :plusstore
-        *** :name "+!"}
-         */
-        PLUSSTORE:
-        {
-            CHECK_STACK(2, 0);
-            ((EnforthCell*)tos.ram)->i += restDataStack++->i;
-            tos = *restDataStack++;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :vm
-        *** :args [[] [:addr]]
-        *** :flags #{:headerless}}
-         */
-        VM:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            tos.ram = (uint8_t*)vm;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :tickromdef
-        *** :name "'ROMDEF"
-        *** :args [[] [:c-addr]]
-        *** :flags #{:headerless}}
-         */
-        TICKROMDEF:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            tos.ram = (uint8_t*)definitions;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
         ***{:token :lessthan
         *** :name "<"}
          */
@@ -1472,151 +1152,6 @@ DISPATCH_TOKEN:
         {
             CHECK_STACK(2, 1);
             tos.i = restDataStack++->i < tos.i ? -1 : 0;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :invert}
-         */
-        INVERT:
-        {
-            CHECK_STACK(1, 1);
-            tos.i = ~tos.i;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :twoswap
-        *** :name "2SWAP"}
-         */
-        TWOSWAP:
-        {
-            CHECK_STACK(4, 4);
-            EnforthCell x4 = tos;
-            EnforthCell x3 = restDataStack[0];
-            EnforthCell x2 = restDataStack[1];
-            EnforthCell x1 = restDataStack[2];
-
-            tos = x2;
-            restDataStack[0] = x1;
-            restDataStack[1] = x4;
-            restDataStack[2] = x3;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-         * UM* [CORE] 6.1.2360 "u-m-star" ( u1 u2 -- ud )
-         *
-         * Multiply u1 by u2, giving the unsigned double-cell product
-         * ud.  All values and arithmetic are unsigned
-         *
-        ***{:token :umstar
-        *** :name "UM*"}
-         */
-        UMSTAR:
-        {
-            CHECK_STACK(2, 2);
-#ifdef __AVR__
-            uint32_t result = (uint32_t)tos.u * (uint32_t)restDataStack[0].u;
-            restDataStack[0].u = (uint16_t)result;
-            tos.u = (uint16_t)(result >> 16);
-#else
-            uint64_t result = (uint64_t)tos.u * (uint64_t)restDataStack[0].u;
-            restDataStack[0].u = (uint32_t)result;
-            tos.u = (uint32_t)(result >> 32);
-#endif
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-         * M+ [DOUBLE] 8.6.1.1830 "m-plus" ( d1|ud1 n -- d2|ud2 )
-         *
-         * Add n to d1|ud1, giving the sum d2|ud2.
-         *
-        ***{:token :mplus
-        *** :name "M+"}
-         */
-        MPLUS:
-        {
-            CHECK_STACK(3, 2);
-#ifdef __AVR__
-            uint16_t n = tos.u;
-            uint16_t d1_msb = restDataStack++->u;
-            uint16_t d1_lsb = restDataStack++->u;
-            uint32_t ud1 = ((uint32_t)d1_msb << 16) | d1_lsb;
-            uint32_t result = ud1 + n;
-            (--restDataStack)->u = (uint16_t)result;
-            tos.u = (uint16_t)(result >> 16);
-#else
-            uint32_t n = tos.u;
-            uint32_t d1_msb = restDataStack++->u;
-            uint32_t d1_lsb = restDataStack++->u;
-            uint64_t ud1 = ((uint64_t)d1_msb << 32) | d1_lsb;
-            uint64_t result = ud1 + n;
-            (--restDataStack)->u = (uint32_t)result;
-            tos.u = (uint32_t)(result >> 32);
-#endif
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :twofetch
-        *** :name "2@"}
-         */
-        TWOFETCH:
-        {
-            CHECK_STACK(1, 2);
-            *--restDataStack = *(EnforthCell*)(tos.ram + kEnforthCellSize);
-            tos = *(EnforthCell*)tos.ram;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :twostore
-        *** :name "2!"}
-         */
-        TWOSTORE:
-        {
-            CHECK_STACK(3, 0);
-            EnforthCell * addr = (EnforthCell*)tos.ram;
-            *addr++ = *restDataStack++;
-            *addr = *restDataStack++;
-            tos = *restDataStack++;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :twostar
-        *** :name "2*"
-        *** :args [[:x1] [:x2]]}
-         */
-        TWOSTAR:
-        {
-            CHECK_STACK(1, 1);
-            tos.u = tos.u << 1;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :twoslash
-        *** :name "2/"
-        *** :args [[:x1] [:x2]]}
-         */
-        TWOSLASH:
-        {
-            CHECK_STACK(1, 1);
-            tos.i = tos.i >> 1;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :rshift
-        *** :args [[:x1 :u] [:x2]]}
-         */
-        RSHIFT:
-        {
-            CHECK_STACK(2, 1);
-            tos.u = restDataStack++->u >> tos.u;
         }
         continue;
 
@@ -1632,28 +1167,105 @@ DISPATCH_TOKEN:
         continue;
 
         /* -------------------------------------------------------------
-        ***{:token :tworfetch
-        *** :name "2R@"}
+        ***{:token :max
+        *** :args [[:n1 :n2] [:n3]]}
          */
-        TWORFETCH:
+        MAX:
         {
-            CHECK_STACK(0, 2);
-            *--restDataStack = tos;
-            tos = returnTop[0];
-            *--restDataStack = returnTop[1];
+            CHECK_STACK(2, 1);
+            tos.i = tos.i > restDataStack->i ? tos.i : restDataStack->i;
+            ++restDataStack;
         }
         continue;
 
         /* -------------------------------------------------------------
-        ***{:token :tworfrom
-        *** :name "2R>"}
+        ***{:token :min
+        *** :args [[:n1 :n2] [:n3]]}
          */
-        TWORFROM:
+        MIN:
         {
-            CHECK_STACK(0, 2);
+            CHECK_STACK(2, 1);
+            tos.i = tos.i < restDataStack->i ? tos.i : restDataStack->i;
+            ++restDataStack;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :minus
+        *** :name "-"}
+         */
+        MINUS:
+        {
+            CHECK_STACK(2, 1);
+            tos.i = restDataStack++->i - tos.i;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :move}
+         */
+        MOVE:
+        {
+            CHECK_STACK(3, 0);
+            EnforthCell arg3 = tos;
+            EnforthCell arg2 = *restDataStack++;
+            EnforthCell arg1 = *restDataStack++;
+            memcpy(arg2.ram, arg1.ram, arg3.u);
+            tos = *restDataStack++;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :negate}
+         */
+        NEGATE:
+        {
+            CHECK_STACK(1, 1);
+            tos.i = -tos.i;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :oneminus
+        *** :name "1-"}
+         */
+        ONEMINUS:
+        {
+            CHECK_STACK(1, 1);
+            tos.i--;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :oneplus
+        *** :name "1+"}
+         */
+        ONEPLUS:
+        {
+            CHECK_STACK(1, 1);
+            tos.i++;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :or}
+         */
+        OR:
+        {
+            CHECK_STACK(2, 1);
+            tos.i |= restDataStack++->i;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :over}
+         */
+        OVER:
+        {
+            CHECK_STACK(2, 3);
+            EnforthCell second = restDataStack[0];
             *--restDataStack = tos;
-            tos = *returnTop++;
-            *--restDataStack = *returnTop++;
+            tos = second;
         }
         continue;
 
@@ -1683,95 +1295,6 @@ DISPATCH_TOKEN:
             *--returnTop = *restDataStack++;
             *--returnTop = tos;
             tos = *restDataStack++;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :piqdo
-        *** :name "(I?DO)"
-        *** :flags #{:headerless}}
-         */
-        PIQDO:
-#ifdef __AVR__
-        {
-            CHECK_STACK(2, 0);
-            EnforthCell limit = *restDataStack++;
-            EnforthCell index = tos;
-            tos = *restDataStack++;
-
-            if (index.u == limit.u)
-            {
-                ip += (int8_t)pgm_read_byte(ip);
-            }
-            else
-            {
-                *--returnTop = limit;
-                *--returnTop = index;
-                ++ip;
-            }
-        }
-        continue;
-#else
-        /* Fall through, since the other architectures use shared
-         * instruction and data space. */
-#endif
-
-        /* -------------------------------------------------------------
-        ***{:token :pqdo
-        *** :name "(?DO)"
-        *** :flags #{:headerless}}
-         */
-        PQDO:
-        {
-            CHECK_STACK(2, 0);
-            EnforthCell limit = *restDataStack++;
-            EnforthCell index = tos;
-            tos = *restDataStack++;
-
-            if (index.u == limit.u)
-            {
-                ip += *(int8_t*)ip;
-            }
-            else
-            {
-                *--returnTop = limit;
-                *--returnTop = index;
-                ++ip;
-            }
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :unloop}
-         */
-        UNLOOP:
-        {
-            CHECK_STACK(0, 0);
-            returnTop++;
-            returnTop++;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :twonip
-        *** :name "2NIP"
-        *** :args [[:x1 :x2 :x3 :x4] [:x3 :x4]]}
-         */
-        TWONIP:
-        {
-            CHECK_STACK(4, 2);
-            EnforthCell x3 = *restDataStack++;
-            *++restDataStack = x3;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :negate}
-         */
-        NEGATE:
-        {
-            CHECK_STACK(1, 1);
-            tos.i = -tos.i;
         }
         continue;
 
@@ -1888,26 +1411,663 @@ DISPATCH_TOKEN:
         continue;
 
         /* -------------------------------------------------------------
-        ***{:token :max
-        *** :args [[:n1 :n2] [:n3]]}
+        ***{:token :plus
+        *** :name "+"}
          */
-        MAX:
+        PLUS:
         {
             CHECK_STACK(2, 1);
-            tos.i = tos.i > restDataStack->i ? tos.i : restDataStack->i;
-            ++restDataStack;
+            tos.i += restDataStack++->i;
         }
         continue;
 
         /* -------------------------------------------------------------
-        ***{:token :min
-        *** :args [[:n1 :n2] [:n3]]}
+        ***{:token :plusstore
+        *** :name "+!"}
          */
-        MIN:
+        PLUSSTORE:
+        {
+            CHECK_STACK(2, 0);
+            ((EnforthCell*)tos.ram)->i += restDataStack++->i;
+            tos = *restDataStack++;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :piqdo
+        *** :name "(I?DO)"
+        *** :flags #{:headerless}}
+         */
+        PIQDO:
+#ifdef __AVR__
+        {
+            CHECK_STACK(2, 0);
+            EnforthCell limit = *restDataStack++;
+            EnforthCell index = tos;
+            tos = *restDataStack++;
+
+            if (index.u == limit.u)
+            {
+                ip += (int8_t)pgm_read_byte(ip);
+            }
+            else
+            {
+                *--returnTop = limit;
+                *--returnTop = index;
+                ++ip;
+            }
+        }
+        continue;
+#else
+        /* Fall through, since the other architectures use shared
+         * instruction and data space. */
+#endif
+
+        /* -------------------------------------------------------------
+        ***{:token :pqdo
+        *** :name "(?DO)"
+        *** :flags #{:headerless}}
+         */
+        PQDO:
+        {
+            CHECK_STACK(2, 0);
+            EnforthCell limit = *restDataStack++;
+            EnforthCell index = tos;
+            tos = *restDataStack++;
+
+            if (index.u == limit.u)
+            {
+                ip += *(int8_t*)ip;
+            }
+            else
+            {
+                *--returnTop = limit;
+                *--returnTop = index;
+                ++ip;
+            }
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :pisquote
+        *** :name "(IS\")"
+        *** :args [[] [:icaddr :u]]
+        *** :flags #{:headerless}}
+         */
+        /* TODO Should probably just remove this since it is only used
+         * in COLD... */
+        PISQUOTE:
+#ifdef __AVR__
+        {
+            CHECK_STACK(0, 2);
+
+            /* Push existing TOS onto the stack. */
+            *--restDataStack = tos;
+
+            /* Instruction stream contains the length of the string as a
+             * byte and then the string itself.  Start out by getting
+             * the length into TOS. */
+            tos.u = pgm_read_byte(ip);
+            ip++;
+
+            /* Now push the address of the string (the newly-incremented
+             * IP) onto the stack. */
+            (--restDataStack)->ram = ip;
+
+            /* Advance IP over the string. */
+            ip = ip + tos.u;
+        }
+        continue;
+#else
+        /* Fall through, since the other architectures use shared
+         * instruction and data space. */
+#endif
+
+        /* -------------------------------------------------------------
+         * (s") [ENFORTH] "paren-s-quote-paren" ( -- c-addr u )
+         *
+         * Runtime behavior of S": return c-addr and u.
+         * NOTE: Cannot be used in program space!
+         *
+        ***{:token :psquote
+        *** :name "(S\")"
+        *** :flags #{:headerless}}
+         */
+        PSQUOTE:
+        {
+            CHECK_STACK(0, 2);
+
+            /* Push existing TOS onto the stack. */
+            *--restDataStack = tos;
+
+            /* Instruction stream contains the length of the string as a
+             * byte and then the string itself.  Start out by pushing
+             * the address of the string (ip+1) onto the stack. */
+            (--restDataStack)->ram = ip + 1;
+
+            /* Now get the string length into TOS. */
+            tos.i = *ip++;
+
+            /* Advance IP over the string. */
+            ip = ip + tos.i;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :qdup
+        *** :name "?DUP"}
+         */
+        QDUP:
+        {
+            CHECK_STACK(1, 2);
+
+            if (tos.i != 0)
+            {
+                *--restDataStack = tos;
+            }
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :i
+        *** :args [[] [:n]]}
+         */
+        I:
+
+        /* -------------------------------------------------------------
+        ***{:token :rfetch
+        *** :name "R@"}
+         */
+        RFETCH:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos = returnTop[0];
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :rfrom
+        *** :name "R>"}
+         */
+        RFROM:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos = *returnTop++;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+         * ROT [CORE] 6.1.2160 "rote" ( x1 x2 x3 -- x2 x3 x1 )
+         *
+         * Rotate the top three stack entries.
+         *
+        ***{:token :rot}
+         */
+        ROT:
+        {
+            CHECK_STACK(3, 3);
+            EnforthCell x3 = tos;
+            EnforthCell x2 = *restDataStack++;
+            EnforthCell x1 = *restDataStack++;
+            *--restDataStack = x2;
+            *--restDataStack = x3;
+            tos = x1;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :rshift
+        *** :args [[:x1 :u] [:x2]]}
+         */
+        RSHIFT:
         {
             CHECK_STACK(2, 1);
-            tos.i = tos.i < restDataStack->i ? tos.i : restDataStack->i;
-            ++restDataStack;
+            tos.u = restDataStack++->u >> tos.u;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+         * ! [CORE] 6.1.0010 "store" ( x a-addr -- )
+         *
+         * Store x at a-addr.
+         *
+        ***{:token :store
+        *** :name "!"}
+         */
+        STORE:
+        {
+            CHECK_STACK(2, 0);
+            *(EnforthCell*)tos.ram = *restDataStack++;
+            tos = *restDataStack++;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :swap}
+         */
+        SWAP:
+        {
+            CHECK_STACK(2, 2);
+            EnforthCell swap = restDataStack[0];
+            restDataStack[0] = tos;
+            tos = swap;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :tor
+        *** :name ">R"}
+         */
+        TOR:
+        {
+            CHECK_STACK(1, 0);
+            *--returnTop = tos;
+            tos = *restDataStack++;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :twodrop
+        *** :name "2DROP"}
+         */
+        TWODROP:
+        {
+            CHECK_STACK(2, 0);
+            restDataStack++;
+            tos = *restDataStack++;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :twodup
+        *** :name "2DUP"}
+         */
+        TWODUP:
+        {
+            CHECK_STACK(2, 4);
+            EnforthCell second = *restDataStack;
+            *--restDataStack = tos;
+            *--restDataStack = second;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :twofetch
+        *** :name "2@"}
+         */
+        TWOFETCH:
+        {
+            CHECK_STACK(1, 2);
+            *--restDataStack = *(EnforthCell*)(tos.ram + kEnforthCellSize);
+            tos = *(EnforthCell*)tos.ram;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :twoover
+        *** :name "2OVER"}
+         */
+        TWOOVER:
+        {
+            CHECK_STACK(4, 6);
+            *--restDataStack = tos;
+            EnforthCell x2 = restDataStack[2];
+            EnforthCell x1 = restDataStack[3];
+            *--restDataStack = x1;
+            tos = x2;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :twoslash
+        *** :name "2/"
+        *** :args [[:x1] [:x2]]}
+         */
+        TWOSLASH:
+        {
+            CHECK_STACK(1, 1);
+            tos.i = tos.i >> 1;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :twostar
+        *** :name "2*"
+        *** :args [[:x1] [:x2]]}
+         */
+        TWOSTAR:
+        {
+            CHECK_STACK(1, 1);
+            tos.u = tos.u << 1;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :twostore
+        *** :name "2!"}
+         */
+        TWOSTORE:
+        {
+            CHECK_STACK(3, 0);
+            EnforthCell * addr = (EnforthCell*)tos.ram;
+            *addr++ = *restDataStack++;
+            *addr = *restDataStack++;
+            tos = *restDataStack++;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :twoswap
+        *** :name "2SWAP"}
+         */
+        TWOSWAP:
+        {
+            CHECK_STACK(4, 4);
+            EnforthCell x4 = tos;
+            EnforthCell x3 = restDataStack[0];
+            EnforthCell x2 = restDataStack[1];
+            EnforthCell x1 = restDataStack[2];
+
+            tos = x2;
+            restDataStack[0] = x1;
+            restDataStack[1] = x4;
+            restDataStack[2] = x3;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :ulessthan
+        *** :name "U<"}
+         */
+        ULESSTHAN:
+        {
+            CHECK_STACK(2, 1);
+            tos.i = restDataStack++->u < tos.u ? -1 : 0;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+         * UM/MOD [CORE] 6.1.2370 "u-m-slash-mod" ( ud u1 -- u2 u3 )
+         *
+         * Divide ud by u1, giving the quotient u3 and the remainder u2.
+         * All values and arithmetic are unsigned.  An ambiguous
+         * condition exists if u1 is zero or if the quotient lies
+         * outside the range of a single-cell unsigned integer.
+         *
+        ***{:token :umslashmod
+        *** :name "UM/MOD"
+        *** :args [[:ud :u1] [:u2 :u3]]}
+         */
+        UMSLASHMOD:
+        {
+            CHECK_STACK(3, 2);
+#ifdef __AVR__
+            uint16_t u1 = tos.u;
+            uint16_t ud_msb = restDataStack++->u;
+            uint16_t ud_lsb = restDataStack++->u;
+            uint32_t ud = ((uint32_t)ud_msb << 16) | ud_lsb;
+
+            // FIXME Doesn't work on Arduino; maybe a compiler
+            // difference?  Meanwhile, ldiv seems to work in the vast
+            // majority of cases; only extreme situations ((65535 *
+            // 65535) / 65535) return the incorrect results.
+            //
+            // (--restDataStack)->u = ud % u1;
+            // tos.u = ud / u1;
+
+            ldiv_t result = ldiv(ud, u1);
+            (--restDataStack)->u = result.rem;
+            tos.u = result.quot;
+#else
+            uint32_t u1 = tos.u;
+            uint32_t ud_msb = restDataStack++->u;
+            uint32_t ud_lsb = restDataStack++->u;
+            uint64_t ud = ((uint64_t)ud_msb << 32) | ud_lsb;
+            (--restDataStack)->u = ud % u1;
+            tos.u = ud / u1;
+#endif
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+         * UM* [CORE] 6.1.2360 "u-m-star" ( u1 u2 -- ud )
+         *
+         * Multiply u1 by u2, giving the unsigned double-cell product
+         * ud.  All values and arithmetic are unsigned
+         *
+        ***{:token :umstar
+        *** :name "UM*"}
+         */
+        UMSTAR:
+        {
+            CHECK_STACK(2, 2);
+#ifdef __AVR__
+            uint32_t result = (uint32_t)tos.u * (uint32_t)restDataStack[0].u;
+            restDataStack[0].u = (uint16_t)result;
+            tos.u = (uint16_t)(result >> 16);
+#else
+            uint64_t result = (uint64_t)tos.u * (uint64_t)restDataStack[0].u;
+            restDataStack[0].u = (uint32_t)result;
+            tos.u = (uint32_t)(result >> 32);
+#endif
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :unloop}
+         */
+        UNLOOP:
+        {
+            CHECK_STACK(0, 0);
+            returnTop++;
+            returnTop++;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :xor}
+         */
+        XOR:
+        {
+            CHECK_STACK(2, 1);
+            tos.i ^= restDataStack++->i;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :zeroequals
+        *** :name "0="}
+         */
+        ZEROEQUALS:
+        {
+            CHECK_STACK(1, 1);
+            tos.i = tos.i == 0 ? -1 : 0;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+         * 0< [CORE] 6.1.0250 "zero-less" ( b -- flag )
+         *
+         * flag is true if and only if n is less than zero.
+         *
+        ***{:token :zeroless
+        *** :name "0<"}
+         */
+        ZEROLESS:
+        {
+            CHECK_STACK(1, 0);
+            tos.i = tos.i < 0 ? -1 : 0;
+        }
+        continue;
+
+
+
+        /* =============================================================
+         * CORE-EXT PRIMITIVES
+         */
+
+        /* -------------------------------------------------------------
+        ***{:token :nip}
+         */
+        NIP:
+        {
+            CHECK_STACK(2, 1);
+            restDataStack++;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :notequals
+        *** :name "<>"}
+         */
+        NOTEQUALS:
+        {
+            CHECK_STACK(2, 1);
+            tos.i = restDataStack++->i != tos.i ? -1 : 0;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :true}
+         */
+        TRUE:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos.i = -1;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :tuck}
+         */
+        TUCK:
+        {
+            EnforthCell second = *restDataStack;
+            *restDataStack = tos;
+            *--restDataStack = second;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :tworfetch
+        *** :name "2R@"}
+         */
+        TWORFETCH:
+        {
+            CHECK_STACK(0, 2);
+            *--restDataStack = tos;
+            tos = returnTop[0];
+            *--restDataStack = returnTop[1];
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :tworfrom
+        *** :name "2R>"}
+         */
+        TWORFROM:
+        {
+            CHECK_STACK(0, 2);
+            *--restDataStack = tos;
+            tos = *returnTop++;
+            *--restDataStack = *returnTop++;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :ugreaterthan
+        *** :name "U>"}
+         */
+        UGREATERTHAN:
+        {
+            CHECK_STACK(2, 1);
+            tos.i = restDataStack++->u > tos.u ? -1 : 0;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :false}
+         */
+        FALSE:
+
+        /* -------------------------------------------------------------
+        ***{:token :zero
+        *** :name "0"}
+         */
+        ZERO:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos.i = 0;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :zeronotequals
+        *** :name "0<>"
+        *** :args [[:x] [:f]]}
+         */
+        ZERONOTEQUALS:
+        {
+            CHECK_STACK(1, 1);
+            tos.i = tos.i != 0 ? -1 : 0;
+        }
+        continue;
+
+
+
+        /* =============================================================
+         * DOUBLE PRIMITIVES
+         */
+
+        /* -------------------------------------------------------------
+         * M+ [DOUBLE] 8.6.1.1830 "m-plus" ( d1|ud1 n -- d2|ud2 )
+         *
+         * Add n to d1|ud1, giving the sum d2|ud2.
+         *
+        ***{:token :mplus
+        *** :name "M+"}
+         */
+        MPLUS:
+        {
+            CHECK_STACK(3, 2);
+#ifdef __AVR__
+            uint16_t n = tos.u;
+            uint16_t d1_msb = restDataStack++->u;
+            uint16_t d1_lsb = restDataStack++->u;
+            uint32_t ud1 = ((uint32_t)d1_msb << 16) | d1_lsb;
+            uint32_t result = ud1 + n;
+            (--restDataStack)->u = (uint16_t)result;
+            tos.u = (uint16_t)(result >> 16);
+#else
+            uint32_t n = tos.u;
+            uint32_t d1_msb = restDataStack++->u;
+            uint32_t d1_lsb = restDataStack++->u;
+            uint64_t ud1 = ((uint64_t)d1_msb << 32) | d1_lsb;
+            uint64_t result = ud1 + n;
+            (--restDataStack)->u = (uint32_t)result;
+            tos.u = (uint32_t)(result >> 32);
+#endif
+        }
+        continue;
+
+
+
+        /* =============================================================
+         * ENFORTH PRIMITIVES
+         */
+
+        /* -------------------------------------------------------------
+        ***{:token :initrp
+        *** :flags #{:headerless}}
+         */
+        INITRP:
+        {
+            CHECK_STACK(0, 0);
+            returnTop = (EnforthCell *)&vm->return_stack[32];
         }
         continue;
 
@@ -1951,173 +2111,45 @@ DISPATCH_TOKEN:
         }
         continue;
 
-        DOCOLON:
+        /* -------------------------------------------------------------
+        ***{:token :tickromdef
+        *** :name "'ROMDEF"
+        *** :args [[] [:c-addr]]
+        *** :flags #{:headerless}}
+         */
+        TICKROMDEF:
         {
-            /* IP points to the next word in the PFA and that is the
-             * location to which we should return once this new word has
-             * executed. */
-#ifdef __AVR__
-            if (inProgramSpace)
-            {
-                /* Set the high bit on the return address so that we
-                 * know that this address is in ROM. */
-                ip = (uint8_t*)((unsigned int)ip | 0x8000);
-
-                /* We are no longer in program space since, by design,
-                 * DOCOLON is only ever used for user-defined words in
-                 * RAM. */
-                inProgramSpace = 0;
-            }
-#endif
-            (--returnTop)->ram = ip;
-
-            /* Now set the IP to the PFA of the word that is being
-             * called and continue execution inside of that word. */
-            ip = w;
-        }
-        continue;
-
-        DOCREATE:
-        DOVARIABLE:
-        {
-            /* W points at the PFA of this word; push that location onto
-             * the stack. */
+            CHECK_STACK(0, 1);
             *--restDataStack = tos;
-            tos.ram = w;
-        }
-        continue;
-
-        DOCONSTANT:
-        {
-            /* W points at the PFA of this word; push the address in
-             * that location onto the stack. */
-            *--restDataStack = tos;
-            tos = *(EnforthCell*)w;
-        }
-        continue;
-
-        DOCOLONROM:
-        {
-#if ENABLE_TRACING
-            gTraceLevel++;
-
-            int i;
-            for (i = 0; i < gTraceLevel; i++)
-            {
-                printf(">");
-            }
-
-            printf(" [%02x] ", token);
-
-            /* W points at the PFA; back up to the NFA. */
-            const char * curDef = (const char *)w - (1 + 2 + 1);
-
-            /* Is this a hidden definition (the name is length zero)?
-             * If so, output the XT instead of the name. */
-            if ((*curDef & 0x1f) == 0)
-            {
-                printf("<pfa=0x%04X>", 0xC000 | (uint16_t)((uint8_t*)curDef - (uint8_t*)definitions));
-            }
-            else
-            {
-                /* Normal definition; walk backwards and output the
-                 * name. */
-                for (i = 1; i <= (((unsigned int)*curDef) & 0x1f); --i)
-                {
-                    printf("%c", *(curDef + i) & 0x7f);
-                }
-            }
-
-            /* Print the data stack and top-of-stack. */
-            for (i = 0; i < &vm->data_stack[32] - restDataStack - 1; i++)
-            {
-                printf(" %x", vm->data_stack[30 - i].u);
-            }
-
-            if ((&vm->data_stack[32] - restDataStack) > 0)
-            {
-                printf(" %x", tos.u);
-            }
-
-            printf("\n");
-            fflush(stdout);
-#endif
-            /* IP points to the next word in the PFA and that is the
-             * location to which we should return once this new word has
-             * executed. */
-#ifdef __AVR__
-            if (inProgramSpace)
-            {
-                /* Set the high bit on the return address so that we
-                 * know that this address is in ROM. */
-                ip = (uint8_t*)((unsigned int)ip | 0x8000);
-            }
-#endif
-            (--returnTop)->ram = ip;
-
-            /* Now set the IP to the PFA of the word that is being
-             * called and continue execution inside of that word. */
-            ip = w;
-
-#ifdef __AVR__
-            /* We are obviously now in program space since, by design,
-             * DOCOLONROM is only ever used for ROM definitions. */
-            inProgramSpace = -1;
-#endif
+            tos.ram = (uint8_t*)definitions;
         }
         continue;
 
         /* -------------------------------------------------------------
-        ***{:token :exit}
+        ***{:token :twonip
+        *** :name "2NIP"
+        *** :args [[:x1 :x2 :x3 :x4] [:x3 :x4]]}
          */
-        EXIT:
+        /* TODO Can probably remove this since it is only used in one
+         * place (and can just be replaced by 2SWAP 2DROP). */
+        TWONIP:
         {
-#if ENABLE_TRACING
-            int i;
-            for (i = 0; i < gTraceLevel; i++)
-            {
-                printf("<");
-            }
+            CHECK_STACK(4, 2);
+            EnforthCell x3 = *restDataStack++;
+            *++restDataStack = x3;
+        }
+        continue;
 
-            printf(" (");
-            for (i = 0; i < &vm->data_stack[32] - restDataStack - 1; i++)
-            {
-                printf("%x ", vm->data_stack[30 - i].u);
-            }
-
-            if ((&vm->data_stack[32] - restDataStack) > 0)
-            {
-                printf("%x", tos.u);
-            }
-            printf(")");
-
-            printf(" (R:");
-            for (i = 0; i < &vm->return_stack[32] - returnTop; i++)
-            {
-                printf(" %x", vm->return_stack[31 - i].u);
-            }
-            printf(")");
-
-            printf("\n");
-
-            gTraceLevel--;
-#endif
-
-            ip = (uint8_t *)((returnTop++)->ram);
-
-#ifdef __AVR__
-            if (((unsigned int)ip & 0x8000) != 0)
-            {
-                /* This return address points at a ROM definition; strip
-                 * off that flag as part of popping the address. */
-                ip = (uint8_t*)((unsigned int)ip & 0x7FFF);
-                inProgramSpace = -1;
-            }
-            else
-            {
-                inProgramSpace = 0;
-            }
-#endif
+        /* -------------------------------------------------------------
+        ***{:token :vm
+        *** :args [[] [:addr]]
+        *** :flags #{:headerless}}
+         */
+        VM:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos.ram = (uint8_t*)vm;
         }
         continue;
     }

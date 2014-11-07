@@ -1,6 +1,5 @@
 # Before Release
 
-* Organize/Sort the Code Primitives (maybe group them into Kernel, Core, Enforth, etc., then alphabetize groups?).
 * Rewrite `DUMP` to use `BEGIN/REPEAT` instead of `DO/LOOP`; eliminates `PIQDO`, `PILOOP`, and `PIPLUSLOOP`.
 * Create some sort of iterate-over-the-dictionary word that takes an XT (`FOUND?`, in the case of `FIND-WORD`) and stops iterating when the word returns true?  Use this for both `FIND-WORD` and `WORDS`.
 * Most of `FOUND-FFIDEF?` is just `FOUND?`; we should find a way to merge that code.
