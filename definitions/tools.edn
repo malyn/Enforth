@@ -13,9 +13,6 @@
 ; |00000010  00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f  0123456789abcdef     |
 ; |...                                                                             |
 ; +--------------------------------------------------------------------------------+
-;
-; TODO Eliminate DO/LOOP and use BEGIN/REPEAT instead so that we can
-; remove the need for PIQDO, PILOOP, and PPLOOP.
 {:token :dump
  :args [[:addr :u] []]
  :source ": HEXCELL ( u --)  0 <# # # # # # # # # #> TYPE ;
@@ -28,12 +25,17 @@
             16 OVER - 3 * SPACES  SPACE               -- padding
             0 DO DUP I + C@ EMITVALID LOOP  DROP;
           : DUMP ( addr u --)
-            BASE @ >R  HEX
-            DUP 0 ?DO  CR  OVER I +  OVER I - 16 MIN  DUMPLINE  16 +LOOP
-            2DROP  R> BASE ! ;"
+            BASE @ >R  HEX ( addr u R:orig-base)
+            BEGIN
+              ?DUP
+            WHILE
+              2DUP 16 MIN ( addr u addr line-u) TUCK ( a u lu a lu)
+              CR DUMPLINE ( a u lu) /STRING
+            REPEAT
+            R> BASE ! ;"
  :pfa [:base :fetch :tor :hex
-       :dup :zero :piqdo 80
-         :cr :over :i :plus :over :i :minus :icharlit 16 :min
+       :qdup :izbranch 75
+         :twodup :icharlit 16 :min :tuck :cr
          ; DUMPLINE
            :over
            ; HEXCELL
@@ -53,8 +55,7 @@
                :izbranch 4 :drop :icharlit "'.'" :emit
              :piloop -20
            :drop
-         :icharlit 16 :piplusloop -78
-       :twodrop
+         :slashstring :ibranch -76
        :rfrom :base :store
        :exit]}
 

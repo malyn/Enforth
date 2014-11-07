@@ -1303,6 +1303,8 @@ DISPATCH_TOKEN:
         *** :name "(ILOOP)"
         *** :flags #{:headerless}}
          */
+        /* TODO We could remove this if we refactor DUMP, but I feel
+         * like it could be useful for other definitions later on. */
         PILOOP:
 #ifdef __AVR__
         {
@@ -1354,36 +1356,6 @@ DISPATCH_TOKEN:
         continue;
 
         /* -------------------------------------------------------------
-        ***{:token :piplusloop
-        *** :name "(I+LOOP)"
-        *** :flags #{:headerless}}
-         */
-        PIPLUSLOOP:
-#ifdef __AVR__
-        {
-            CHECK_STACK(1, 0);
-
-            returnTop[0].i += tos.i;
-            tos = *restDataStack++;
-
-            if (returnTop[0].i >= returnTop[1].i)
-            {
-                ++returnTop;
-                ++returnTop;
-                ++ip;
-            }
-            else
-            {
-                ip += (int8_t)pgm_read_byte(ip);
-            }
-        }
-        continue;
-#else
-        /* Fall through, since the other architectures use shared
-         * instruction and data space. */
-#endif
-
-        /* -------------------------------------------------------------
         ***{:token :pplusloop
         *** :name "(+LOOP)"
         *** :flags #{:headerless}}
@@ -1432,36 +1404,6 @@ DISPATCH_TOKEN:
             tos = *restDataStack++;
         }
         continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :piqdo
-        *** :name "(I?DO)"
-        *** :flags #{:headerless}}
-         */
-        PIQDO:
-#ifdef __AVR__
-        {
-            CHECK_STACK(2, 0);
-            EnforthCell limit = *restDataStack++;
-            EnforthCell index = tos;
-            tos = *restDataStack++;
-
-            if (index.u == limit.u)
-            {
-                ip += (int8_t)pgm_read_byte(ip);
-            }
-            else
-            {
-                *--returnTop = limit;
-                *--returnTop = index;
-                ++ip;
-            }
-        }
-        continue;
-#else
-        /* Fall through, since the other architectures use shared
-         * instruction and data space. */
-#endif
 
         /* -------------------------------------------------------------
         ***{:token :pqdo

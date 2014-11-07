@@ -1,6 +1,5 @@
 # Before Release
 
-* Rewrite `DUMP` to use `BEGIN/REPEAT` instead of `DO/LOOP`; eliminates `PIQDO`, `PILOOP`, and `PIPLUSLOOP`.
 * Create some sort of iterate-over-the-dictionary word that takes an XT (`FOUND?`, in the case of `FIND-WORD`) and stops iterating when the word returns true?  Use this for both `FIND-WORD` and `WORDS`.
 * Most of `FOUND-FFIDEF?` is just `FOUND?`; we should find a way to merge that code.
   * FFI definition names are stored normally (forward order) which means that `FOUND?` cannot use `STRING~XT` for comparing FFIs.  We should put definitions in forward order and then just do subtraction to jump to the start of the definition.  Then we can use `FOUND?` for everything.
