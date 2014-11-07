@@ -554,6 +554,12 @@ DISPATCH_TOKEN:
             CHECK_STACK(7, 1);
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :lit
+        *** :name "(LIT)"
+        *** :args [[] [:x]]
+        *** :flags #{:headerless}}
+         */
         /* Cannot be used in ROM definitions! */
         LIT:
         {
@@ -575,6 +581,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :drop
+        *** :args [[:x1 :x2] [:x1]]}
+         */
         DROP:
         {
             CHECK_STACK(1, 0);
@@ -582,6 +592,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :plus
+        *** :name "+"}
+         */
         PLUS:
         {
             CHECK_STACK(2, 1);
@@ -589,6 +603,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :minus
+        *** :name "-"}
+         */
         MINUS:
         {
             CHECK_STACK(2, 1);
@@ -596,6 +614,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :oneplus
+        *** :name "1+"}
+         */
         ONEPLUS:
         {
             CHECK_STACK(1, 1);
@@ -603,6 +625,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :oneminus
+        *** :name "1-"}
+         */
         ONEMINUS:
         {
             CHECK_STACK(1, 1);
@@ -610,6 +636,9 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :swap}
+         */
         SWAP:
         {
             CHECK_STACK(2, 2);
@@ -619,6 +648,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :ibranch
+        *** :flags #{:headerless}}
+         */
         /* TODO Add docs re: Note that (branch) and (0branch) offsets
          * are 8-bit relative offsets.  UNLIKE word addresses, the IP
          * points at the offset in BRANCH/ZBRANCH.  These offsets can be
@@ -636,6 +669,10 @@ DISPATCH_TOKEN:
          * instruction and data space. */
 #endif
 
+        /* -------------------------------------------------------------
+        ***{:token :branch
+        *** :flags #{:headerless}}
+         */
         /* TODO Add docs re: Note that (branch) and (0branch) offsets
          * are 8-bit relative offsets.  UNLIKE word addresses, the IP
          * points at the offset in BRANCH/ZBRANCH.  These offsets can be
@@ -687,7 +724,10 @@ DISPATCH_TOKEN:
          *
          * Empty the data stack and perform the function of QUIT, which
          * includes emptying the return stack, without displaying a
-         * message. */
+         * message.
+         *
+        ***{:token :abort}
+         */
         ABORT:
         {
             tos.i = 0;
@@ -703,6 +743,11 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :icharlit
+        *** :args [[] [:char]]
+        *** :flags #{:headerless}}
+         */
         ICHARLIT:
 #ifdef __AVR__
         {
@@ -717,6 +762,10 @@ DISPATCH_TOKEN:
          * instruction and data space. */
 #endif
 
+        /* -------------------------------------------------------------
+        ***{:token :charlit
+        *** :flags #{:headerless}}
+         */
         CHARLIT:
         {
             CHECK_STACK(0, 1);
@@ -725,6 +774,9 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :emit}
+         */
         EMIT:
         {
             CHECK_STACK(1, 0);
@@ -738,6 +790,15 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+         * EXECUTE [CORE] 6.1.1370 ( i*x xt -- j*x )
+         *
+         * Remove xt from the stack and perform the semantics identified
+         * by it.  Other stack effects are due to the word EXECUTEd.
+         *
+        ***{:token :execute
+        *** :args [[:xt] []]}
+         */
         EXECUTE:
         {
             xt = tos.u;
@@ -746,6 +807,12 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :ifetch
+        *** :name "I@"
+        *** :args [[:addr] [:x]]
+        *** :flags #{:headerless}}
+         */
         IFETCH:
 #ifdef __AVR__
         {
@@ -757,6 +824,10 @@ DISPATCH_TOKEN:
         /* Fall through, since the other architectures use shared
          * instruction and data space. */
 #endif
+        /* -------------------------------------------------------------
+        ***{:token :fetch
+        *** :name "@"}
+         */
         FETCH:
         {
             CHECK_STACK(1, 1);
@@ -764,6 +835,9 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :or}
+         */
         OR:
         {
             CHECK_STACK(2, 1);
@@ -771,6 +845,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :qdup
+        *** :name "?DUP"}
+         */
         QDUP:
         {
             CHECK_STACK(1, 2);
@@ -785,7 +863,11 @@ DISPATCH_TOKEN:
         /* -------------------------------------------------------------
          * ! [CORE] 6.1.0010 "store" ( x a-addr -- )
          *
-         * Store x at a-addr. */
+         * Store x at a-addr.
+         *
+        ***{:token :store
+        *** :name "!"}
+         */
         STORE:
         {
             CHECK_STACK(2, 0);
@@ -794,6 +876,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :twodrop
+        *** :name "2DROP"}
+         */
         TWODROP:
         {
             CHECK_STACK(2, 0);
@@ -802,6 +888,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :izbranch
+        *** :flags #{:headerless}}
+         */
         IZBRANCH:
 #ifdef __AVR__
         {
@@ -824,6 +914,11 @@ DISPATCH_TOKEN:
          * instruction and data space. */
 #endif
 
+        /* -------------------------------------------------------------
+        ***{:token :zbranch
+        *** :name "0BRANCH"
+        *** :flags #{:headerless}}
+         */
         ZBRANCH:
         {
             CHECK_STACK(1, 0);
@@ -841,6 +936,9 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :true}
+         */
         TRUE:
         {
             CHECK_STACK(0, 1);
@@ -849,7 +947,15 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :false}
+         */
         FALSE:
+
+        /* -------------------------------------------------------------
+        ***{:token :zero
+        *** :name "0"}
+         */
         ZERO:
         {
             CHECK_STACK(0, 1);
@@ -858,6 +964,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :zeroequals
+        *** :name "0="}
+         */
         ZEROEQUALS:
         {
             CHECK_STACK(1, 1);
@@ -865,6 +975,11 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :zeronotequals
+        *** :name "0<>"
+        *** :args [[:x] [:f]]}
+         */
         ZERONOTEQUALS:
         {
             CHECK_STACK(1, 1);
@@ -872,6 +987,14 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :pisquote
+        *** :name "(IS\")"
+        *** :args [[] [:icaddr :u]]
+        *** :flags #{:headerless}}
+         */
+        /* TODO Should probably just remove this since it is only used
+         * in COLD... */
         PISQUOTE:
 #ifdef __AVR__
         {
@@ -903,7 +1026,12 @@ DISPATCH_TOKEN:
          * (s") [ENFORTH] "paren-s-quote-paren" ( -- c-addr u )
          *
          * Runtime behavior of S": return c-addr and u.
-         * NOTE: Cannot be used in program space! */
+         * NOTE: Cannot be used in program space!
+         *
+        ***{:token :psquote
+        *** :name "(S\")"
+        *** :flags #{:headerless}}
+         */
         PSQUOTE:
         {
             CHECK_STACK(0, 2);
@@ -924,6 +1052,12 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :icfetch
+        *** :name "IC@"
+        *** :args [[:c-addr] [:c]]
+        *** :flags #{:headerless}}
+         */
         ICFETCH:
 #ifdef __AVR__
         {
@@ -935,6 +1069,10 @@ DISPATCH_TOKEN:
         /* Fall through, since the other architectures use shared
          * instruction and data space. */
 #endif
+        /* -------------------------------------------------------------
+        ***{:token :cfetch
+        *** :name "C@"}
+         */
         CFETCH:
         {
             CHECK_STACK(1, 1);
@@ -946,7 +1084,10 @@ DISPATCH_TOKEN:
          * DEPTH [CORE] 6.1.1200 ( -- +n )
          *
          * +n is the number of single-cell values contained in the data
-         * stack before +n was placed on the stack. */
+         * stack before +n was placed on the stack.
+         *
+        ***{:token :depth}
+         */
         DEPTH:
         {
             CHECK_STACK(0, 1);
@@ -961,6 +1102,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :twodup
+        *** :name "2DUP"}
+         */
         TWODUP:
         {
             CHECK_STACK(2, 4);
@@ -970,6 +1115,9 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :tuck}
+         */
         TUCK:
         {
             EnforthCell second = *restDataStack;
@@ -978,6 +1126,9 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :move}
+         */
         MOVE:
         {
             CHECK_STACK(3, 0);
@@ -989,6 +1140,9 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :nip}
+         */
         NIP:
         {
             CHECK_STACK(2, 1);
@@ -1001,7 +1155,11 @@ DISPATCH_TOKEN:
          *
          * Store char at c-addr.  When character size is smaller than
          * cell size, only the number of low-order bits corresponding to
-         * character size are transferred. */
+         * character size are transferred.
+         *
+        ***{:token :cstore
+        *** :name "C!"}
+         */
         CSTORE:
         {
             CHECK_STACK(2, 0);
@@ -1010,6 +1168,9 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :abs}
+         */
         ABS:
         {
             CHECK_STACK(1, 1);
@@ -1020,7 +1181,10 @@ DISPATCH_TOKEN:
         /* -------------------------------------------------------------
          * ROT [CORE] 6.1.2160 "rote" ( x1 x2 x3 -- x2 x3 x1 )
          *
-         * Rotate the top three stack entries. */
+         * Rotate the top three stack entries.
+         *
+        ***{:token :rot}
+         */
         ROT:
         {
             CHECK_STACK(3, 3);
@@ -1036,7 +1200,11 @@ DISPATCH_TOKEN:
         /* -------------------------------------------------------------
          * 0< [CORE] 6.1.0250 "zero-less" ( b -- flag )
          *
-         * flag is true if and only if n is less than zero. */
+         * flag is true if and only if n is less than zero.
+         *
+        ***{:token :zeroless
+        *** :name "0<"}
+         */
         ZEROLESS:
         {
             CHECK_STACK(1, 0);
@@ -1050,7 +1218,12 @@ DISPATCH_TOKEN:
          * Divide ud by u1, giving the quotient u3 and the remainder u2.
          * All values and arithmetic are unsigned.  An ambiguous
          * condition exists if u1 is zero or if the quotient lies
-         * outside the range of a single-cell unsigned integer. */
+         * outside the range of a single-cell unsigned integer.
+         *
+        ***{:token :umslashmod
+        *** :name "UM/MOD"
+        *** :args [[:ud :u1] [:u2 :u3]]}
+         */
         UMSLASHMOD:
         {
             CHECK_STACK(3, 2);
@@ -1085,7 +1258,11 @@ DISPATCH_TOKEN:
         /* -------------------------------------------------------------
          * > [CORE] 6.1.0540 "greater-than" ( n1 n2 -- flag )
          *
-         * flag is true if and only if n1 is greater than n2. */
+         * flag is true if and only if n1 is greater than n2.
+         *
+        ***{:token :greaterthan
+        *** :name ">"}
+         */
         GREATERTHAN:
         {
             CHECK_STACK(2, 1);
@@ -1093,6 +1270,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :ugreaterthan
+        *** :name "U>"}
+         */
         UGREATERTHAN:
         {
             CHECK_STACK(2, 1);
@@ -1100,6 +1281,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :ulessthan
+        *** :name "U<"}
+         */
         ULESSTHAN:
         {
             CHECK_STACK(2, 1);
@@ -1107,6 +1292,9 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :and}
+         */
         AND:
         {
             CHECK_STACK(2, 1);
@@ -1114,6 +1302,9 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :xor}
+         */
         XOR:
         {
             CHECK_STACK(2, 1);
@@ -1121,6 +1312,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :notequals
+        *** :name "<>"}
+         */
         NOTEQUALS:
         {
             CHECK_STACK(2, 1);
@@ -1128,6 +1323,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :initrp
+        *** :flags #{:headerless}}
+         */
         INITRP:
         {
             CHECK_STACK(0, 0);
@@ -1135,6 +1334,9 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :over}
+         */
         OVER:
         {
             CHECK_STACK(2, 3);
@@ -1144,6 +1346,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :twoover
+        *** :name "2OVER"}
+         */
         TWOOVER:
         {
             CHECK_STACK(4, 6);
@@ -1155,6 +1361,9 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :key}
+         */
         KEY:
         {
             CHECK_STACK(0, 1);
@@ -1163,6 +1372,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :tor
+        *** :name ">R"}
+         */
         TOR:
         {
             CHECK_STACK(1, 0);
@@ -1171,6 +1384,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :rfrom
+        *** :name "R>"}
+         */
         RFROM:
         {
             CHECK_STACK(0, 1);
@@ -1179,7 +1396,16 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :i
+        *** :args [[] [:n]]}
+         */
         I:
+
+        /* -------------------------------------------------------------
+        ***{:token :rfetch
+        *** :name "R@"}
+         */
         RFETCH:
         {
             CHECK_STACK(0, 1);
@@ -1188,6 +1414,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :equals
+        *** :name "="}
+         */
         EQUALS:
         {
             CHECK_STACK(2, 1);
@@ -1195,6 +1425,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :plusstore
+        *** :name "+!"}
+         */
         PLUSSTORE:
         {
             CHECK_STACK(2, 0);
@@ -1203,6 +1437,11 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :vm
+        *** :args [[] [:addr]]
+        *** :flags #{:headerless}}
+         */
         VM:
         {
             CHECK_STACK(0, 1);
@@ -1211,6 +1450,12 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :tickromdef
+        *** :name "'ROMDEF"
+        *** :args [[] [:c-addr]]
+        *** :flags #{:headerless}}
+         */
         TICKROMDEF:
         {
             CHECK_STACK(0, 1);
@@ -1219,6 +1464,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :lessthan
+        *** :name "<"}
+         */
         LESSTHAN:
         {
             CHECK_STACK(2, 1);
@@ -1226,6 +1475,9 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :invert}
+         */
         INVERT:
         {
             CHECK_STACK(1, 1);
@@ -1233,6 +1485,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :twoswap
+        *** :name "2SWAP"}
+         */
         TWOSWAP:
         {
             CHECK_STACK(4, 4);
@@ -1252,7 +1508,11 @@ DISPATCH_TOKEN:
          * UM* [CORE] 6.1.2360 "u-m-star" ( u1 u2 -- ud )
          *
          * Multiply u1 by u2, giving the unsigned double-cell product
-         * ud.  All values and arithmetic are unsigned */
+         * ud.  All values and arithmetic are unsigned
+         *
+        ***{:token :umstar
+        *** :name "UM*"}
+         */
         UMSTAR:
         {
             CHECK_STACK(2, 2);
@@ -1271,7 +1531,11 @@ DISPATCH_TOKEN:
         /* -------------------------------------------------------------
          * M+ [DOUBLE] 8.6.1.1830 "m-plus" ( d1|ud1 n -- d2|ud2 )
          *
-         * Add n to d1|ud1, giving the sum d2|ud2. */
+         * Add n to d1|ud1, giving the sum d2|ud2.
+         *
+        ***{:token :mplus
+        *** :name "M+"}
+         */
         MPLUS:
         {
             CHECK_STACK(3, 2);
@@ -1295,6 +1559,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :twofetch
+        *** :name "2@"}
+         */
         TWOFETCH:
         {
             CHECK_STACK(1, 2);
@@ -1303,6 +1571,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :twostore
+        *** :name "2!"}
+         */
         TWOSTORE:
         {
             CHECK_STACK(3, 0);
@@ -1313,6 +1585,11 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :twostar
+        *** :name "2*"
+        *** :args [[:x1] [:x2]]}
+         */
         TWOSTAR:
         {
             CHECK_STACK(1, 1);
@@ -1320,6 +1597,11 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :twoslash
+        *** :name "2/"
+        *** :args [[:x1] [:x2]]}
+         */
         TWOSLASH:
         {
             CHECK_STACK(1, 1);
@@ -1327,6 +1609,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :rshift
+        *** :args [[:x1 :u] [:x2]]}
+         */
         RSHIFT:
         {
             CHECK_STACK(2, 1);
@@ -1334,6 +1620,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :lshift
+        *** :args [[:x1 :u] [:x2]]}
+         */
         LSHIFT:
         {
             CHECK_STACK(2, 1);
@@ -1341,6 +1631,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :tworfetch
+        *** :name "2R@"}
+         */
         TWORFETCH:
         {
             CHECK_STACK(0, 2);
@@ -1350,6 +1644,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :tworfrom
+        *** :name "2R>"}
+         */
         TWORFROM:
         {
             CHECK_STACK(0, 2);
@@ -1359,7 +1657,26 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+         * (DO) [Enforth] "paren-do-paren" ( n1|u1 n2|u2 -- ) ( R: -- loop-sys )
+         *
+         * Set up loop control parameters with index n2|u2 and limit
+         * n1|u1. An ambiguous condition exists if n1|u1 and n2|u2 are
+         * not both the same type.  Anything already on the return stack
+         * becomes unavailable until the loop-control parameters are
+         * discarded.
+         *
+        ***{:token :pdo
+        *** :name "(DO)"
+        *** :args [[:n1 :n2] []]
+        *** :flags #{:headerless}}
+         */
         PDO:
+
+        /* -------------------------------------------------------------
+        ***{:token :twotor
+        *** :name "2>R"}
+         */
         TWOTOR:
         {
             CHECK_STACK(2, 0);
@@ -1369,6 +1686,11 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :piqdo
+        *** :name "(I?DO)"
+        *** :flags #{:headerless}}
+         */
         PIQDO:
 #ifdef __AVR__
         {
@@ -1394,6 +1716,11 @@ DISPATCH_TOKEN:
          * instruction and data space. */
 #endif
 
+        /* -------------------------------------------------------------
+        ***{:token :pqdo
+        *** :name "(?DO)"
+        *** :flags #{:headerless}}
+         */
         PQDO:
         {
             CHECK_STACK(2, 0);
@@ -1414,6 +1741,9 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :unloop}
+         */
         UNLOOP:
         {
             CHECK_STACK(0, 0);
@@ -1422,6 +1752,11 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :twonip
+        *** :name "2NIP"
+        *** :args [[:x1 :x2 :x3 :x4] [:x3 :x4]]}
+         */
         TWONIP:
         {
             CHECK_STACK(4, 2);
@@ -1430,6 +1765,9 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :negate}
+         */
         NEGATE:
         {
             CHECK_STACK(1, 1);
@@ -1437,6 +1775,11 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :piloop
+        *** :name "(ILOOP)"
+        *** :flags #{:headerless}}
+         */
         PILOOP:
 #ifdef __AVR__
         {
@@ -1465,7 +1808,12 @@ DISPATCH_TOKEN:
          * index is then equal to the loop limit, discard the loop
          * parameters and continue execution immediately following the
          * loop.  Otherwise continue execution at the beginning of the
-         * loop. */
+         * loop.
+         *
+        ***{:token :ploop
+        *** :name "(LOOP)"
+        *** :flags #{:headerless}}
+         */
         PLOOP:
         {
             ++(returnTop[0]).i;
@@ -1482,6 +1830,11 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :piplusloop
+        *** :name "(I+LOOP)"
+        *** :flags #{:headerless}}
+         */
         PIPLUSLOOP:
 #ifdef __AVR__
         {
@@ -1507,6 +1860,11 @@ DISPATCH_TOKEN:
          * instruction and data space. */
 #endif
 
+        /* -------------------------------------------------------------
+        ***{:token :pplusloop
+        *** :name "(+LOOP)"
+        *** :flags #{:headerless}}
+         */
         PPLUSLOOP:
         {
             CHECK_STACK(1, 0);
@@ -1529,6 +1887,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :max
+        *** :args [[:n1 :n2] [:n3]]}
+         */
         MAX:
         {
             CHECK_STACK(2, 1);
@@ -1537,6 +1899,10 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :min
+        *** :args [[:n1 :n2] [:n3]]}
+         */
         MIN:
         {
             CHECK_STACK(2, 1);
@@ -1545,6 +1911,9 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :load}
+         */
         LOAD:
         {
             CHECK_STACK(0, 1);
@@ -1562,6 +1931,9 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :save}
+         */
         SAVE:
         {
             CHECK_STACK(0, 1);
@@ -1695,6 +2067,9 @@ DISPATCH_TOKEN:
         }
         continue;
 
+        /* -------------------------------------------------------------
+        ***{:token :exit}
+         */
         EXIT:
         {
 #if ENABLE_TRACING

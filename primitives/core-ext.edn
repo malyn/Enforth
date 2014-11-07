@@ -9,19 +9,9 @@
  :source ": HEX ( --)  16 BASE ! ;"
  :pfa [:icharlit 16 :base :store :exit]}
 
-{:token :tworfetch :name "2R@" }
-
-{:token :tworfrom :name "2R>"}
-
-{:token :twotor :name "2>R"}
-
 {:token :unused
  :args [[] [:u]]
  :source ": UNUSED ( -- u )  'DICT @  'DICT-SIZE @ +  HERE - ;"
  :pfa [:vm :icharlit "offsetof(EnforthVM, dictionary)" :plus :fetch
        :vm :icharlit "offsetof(EnforthVM, dictionary_size)" :plus :fetch
        :plus :here :minus :exit]}
-
-{:token :zeronotequals
- :name "0<>"
- :args [[:x] [:f]]}

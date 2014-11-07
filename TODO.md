@@ -1,7 +1,8 @@
 # Before Release
 
-* Move all Code Primitive EDN data into `enforth.c`.
 * Rename the `primitives` directory to `definitions` now that it only contains ROM definitions.
+* Organize/Sort the Code Primitives (maybe group them into Kernel, Core, Enforth, etc., then alphabetize groups?).
+* Rewrite `DUMP` to use `BEGIN/REPEAT` instead of `DO/LOOP`; eliminates `PIQDO`, `PILOOP`, and `PIPLUSLOOP`.
 * Create some sort of iterate-over-the-dictionary word that takes an XT (`FOUND?`, in the case of `FIND-WORD`) and stops iterating when the word returns true?  Use this for both `FIND-WORD` and `WORDS`.
 * Most of `FOUND-FFIDEF?` is just `FOUND?`; we should find a way to merge that code.
   * FFI definition names are stored normally (forward order) which means that `FOUND?` cannot use `STRING~XT` for comparing FFIs.  We should put definitions in forward order and then just do subtraction to jump to the start of the definition.  Then we can use `FOUND?` for everything.
@@ -15,19 +16,21 @@
 * Improve the stack checking code.
   * First, the code is probably too aggressive and may not let us use the last stack item.
   * Second, we have the macro scattered everywhere, but it would be better if the stack sizes were in an extra byte in the definition header and then checked in a single place right before DISPATCH\_TOKEN.  This may make the logic small enough to include on AVRs (although it will add ~240 bytes to the size of the ROM Definition block).
-* Rewrite `DUMP` to use `BEGIN/REPEAT` instead of `DO/LOOP`; eliminates `PIQDO`, `PILOOP`, and `PIPLUSLOOP`.
 * Consider additional de-duplication of the Code Prims and ROM Definitions.
   * `I` could compile `R@` instead of providing its own token.  Same thing with `(DO)` and `2>R`
   * `TOKEN,` could be `C@`.
   * `(LOOP)` could maybe always be `(+LOOP)` with a `:charlit 1` in front?
   * DefGen could implement the above optimizations, that way the code always reads nicely, even though it is being rewritten during compilation.  Note that this doesn't work for `I`.
-  * Is there any benefit to defining `DOICONSTANT` for storing constants in ROM PFAs?  Currently we define tokens or words that calculate and return constants.
+  * Is there any benefit to defining `DOICONSTANT` for storing constants in ROM PFAs?  Currently we define tokens or words that calculate and return constants.  This would free up tokens, but then we would have to modify DefGen to know about int sizes...  Seems hard.
   * Can we eliminate some of the `DOUBLE` words that are used for things like parsing and output?
 * Fix tracing now that kDefinitionNames has gone away.
 * Create a `:profile` property on each word that lets us build smaller versions of the ROM.  For example, maybe you eliminate `DOUBLE` support or the `TOOLS` so that you can get down to something that fits on ATtiny85.  Code Primitives should be included in this as well and then jump table entries for elided primitives should not be generated (so that the compiler will remove that code).
 * Consider creating EnforthDuino.cpp/.h wrappers to make it easier to interact with Enforth in the Arduino environment.  Mostly just to wrap the serial code, allocate the dictionary block, implement EEPROM-backed load/save, etc.
-* Add comments to all of the `.edn` files.
+* Add comments to all of the EDN blocks (probably in a new property so that we can extract it during analysis for to generate docs).
+  * Should also add a `:usage` property that we can optionally compile into ROM.  Then a `HELP` word could be written to output that usage line.  Just the stack effects and a short description of the word.
 * Move to [Arduino 1.5 library format](https://github.com/arduino/Arduino/wiki/Arduino-IDE-1.5:-Library-specification) now that 1.0.6 supports that format?
+* Support 64-bit platforms (requires more `#ifdef`s and some trickiness in `*/MOD`).
+* Consider a switch-based version of the inner loop for compilers like Visual Studio that do not support jump-threading.  All of the labels will need to be come BEGIN\_CODEPRIM(DUP)/END\_CODEPRIM(DUP) or something like that.
 
 # After Release
 

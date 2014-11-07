@@ -1,5 +1,3 @@
-{:token :branch :flags #{:headerless}}
-
 ; C@XT [Enforth] ( xt -- c )
 ;
 ; Fetch a byte from the given XT, which may point anywhere in the header
@@ -53,8 +51,6 @@
  :args [[:c1 :c2] [:f]]
  :source ": C~ ( c1 c2 -- f )  >UPPER SWAP >UPPER = ;"
  :pfa [:toupper :swap :toupper :equals :exit]}
-
-{:token :charlit :flags #{:headerless}}
 
 ;; DIGIT? [Enforth] "digit-question" ( char -- u -1 | 0 )
 ;;
@@ -370,26 +366,6 @@
  :source ": HLDEND ( -- u)  [ 1 CELLS 8 * 3 * ] ;"
  :pfa [:icharlit "kEnforthCellSize * 8 * 3" :exit]}
 
-{:token :ibranch
- :args [[] []]
- :flags #{:headerless}}
-
-{:token :icfetch
- :name "IC@"
- :args [[:c-addr] [:c]]
- :flags #{:headerless}}
-
-{:token :icharlit
- :flags #{:headerless}
- :args [[] [:char]]}
-
-{:token :ifetch
- :name "I@"
- :args [[:addr] [:x]]
- :flags #{:headerless}}
-
-{:token :initrp :flags #{:headerless}}
-
 {:token :interpret
  :args [[:caddr :u] []]
  :flags #{:headerless}
@@ -436,10 +412,6 @@
        :twodrop
        :exit]}
 
-{:token :izbranch
- :args [[] []]
- :flags #{:headerless}}
-
 ;; The cell that contains the LATEST pointer is the second cell in the
 ;; dictionary (DP is the first); return that address.
 {:token :latest
@@ -457,13 +429,6 @@
  :pfa [:oneplus
        :dup :cfetchxt :icharlit 8 :lshift
        :swap :oneplus :cfetchxt :or :exit]}
-
-{:token :lit
- :name "(LIT)"
- :args [[] [:x]]
- :flags #{:headerless}}
-
-{:token :load}
 
 ;; Length of the definition name, not necessarily the NFA field (because
 ;; FFI trampolines have a zero-length NFA since the name is stored in
@@ -581,55 +546,6 @@
        :over :minus
        :exit]}
 
-; (DO) [Enforth] "paren-do-paren" ( n1|u1 n2|u2 -- ) ( R: -- loop-sys )
-;
-; Set up loop control parameters with index n2|u2 and limit n1|u1. An
-; ambiguous condition exists if n1|u1 and n2|u2 are not both the same
-; type.  Anything already on the return stack becomes unavailable until
-; the loop-control parameters are discarded.
-{:token :pdo
- :name "(DO)"
- :args [[:n1 :n2] []]
- :flags #{:headerless}}
-
-{:token :piqdo
- :name "(I?DO)"
- :flags #{:headerless}}
-
-{:token :piloop
- :name "(ILOOP)"
- :flags #{:headerless}}
-
-{:token :piplusloop
- :name "(I+LOOP)"
- :flags #{:headerless}}
-
-{:token :pisquote
- :name "(IS\")"
- :args [[] [:icaddr :u]]
- :flags #{:headerless}}
-
-; (LOOP) [Enforth] "paren-loop-paren" ( -- ) ( R: loop-sys1 -- | loop-sys2 )
-;
-; An ambiguous condition exists if the loop control parameters are
-; unavailable.  Add one to the loop index.  If the loop index is then
-; equal to the loop limit, discard the loop parameters and continue
-; execution immediately following the loop.  Otherwise continue
-; execution at the beginning of the loop.
-{:token :ploop
- :name "(LOOP)"
- :flags #{:headerless}}
-
-{:token :pplusloop
- :name "(+LOOP)"
- :flags #{:headerless}}
-
-{:token :pqdo
- :name "(?DO)"
- :flags #{:headerless}}
-
-{:token :psquote :name "(S\")" :flags #{:headerless}}
-
 ;; TODO Move to double.edn as part of cleaning up this file.
 {:token :qdnegate
  :name "?DNEGATE"
@@ -657,8 +573,6 @@
        :swap :cstore
        :exit]}
 
-{:token :save}
-
 {:token :tib
  :args [[] [:caadr]]
  :flags #{:headerless}
@@ -680,11 +594,6 @@
  :name "'PREVLEAVE"
  :flags #{:headerless}
  :pfa [:vm :icharlit "offsetof(EnforthVM, prev_leave)" :plus :exit]}
-
-{:token :tickromdef
- :name "'ROMDEF"
- :args [[] [:c-addr]]
- :flags #{:headerless}}
 
 {:token :toffidef
  :name ">FFIDEF"
@@ -726,10 +635,6 @@
  :source ": >XT ( a-addr -- xt)  'DICT - XTFLAG OR ;"
  :pfa [:tickdict :minus :xtflag :or :exit]}
 
-{:token :twonip
- :name "2NIP"
- :args [[:x1 :x2 :x3 :x4] [:x3 :x4]]}
-
 {:token :uddot
  :name "UD."
  :args [[:ud] []]
@@ -767,10 +672,6 @@
        :align :comma :drop
        :exit]}
 
-{:token :vm
- :args [[] [:addr]]
- :flags #{:headerless}}
-
 {:token :xtcomma
  :name "XT,"
  :args [[:xt] []]
@@ -787,7 +688,3 @@
  :args [[] [:u]]
  :flags #{:headerless}
  :pfa [:icharlit 0xff :icharlit 0x3f :icharlit 8 :lshift :or :exit]}
-
-{:token :zbranch :name "0BRANCH" :flags #{:headerless}}
-
-{:token :zero :name "0"}
