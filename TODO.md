@@ -1,9 +1,5 @@
 # Before Release
 
-* Add a single default task and move the stacks and BASE into that memory area.  No `PAUSE` yet.
-  * Tasks are 8 user cells (16/32 bytes; the first is the LFA to the previous task or zero; the second is SAVEDSP; the third is BASE); 32 return stack cells (64/128 bytes), and 24 data stack cells (48/96 bytes), for a total of 128/256 bytes per task.
-    * Note that tasks go into the dictionary and not at the end!  This allows dictionaries to be resized or only partially copied to storage.
-    * Need a global that points to the newest task (similar to the dictionary itself).
 * Add `TASK` to create tasks and `PAUSE` to task-switch.
 * Create some sort of iterate-over-the-dictionary word that takes an XT (`FOUND?`, in the case of `FIND-WORD`) and stops iterating when the word returns true?  Use this for both `FIND-WORD` and `WORDS`.
 * Most of `FOUND-FFIDEF?` is just `FOUND?`; we should find a way to merge that code.

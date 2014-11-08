@@ -1,10 +1,10 @@
 # Break inside of go and then type 'vmvars' to start the auto-display.
 define vmvars
-	display vm->data_stack[28]
-	display vm->data_stack[29]
-	display vm->data_stack[30]
+	display *(EnforthCell*)(vm->cur_task.ram + (32+128+96) - 16)
+	display *(EnforthCell*)(vm->cur_task.ram + (32+128+96) - 12)
+	display *(EnforthCell*)(vm->cur_task.ram + (32+128+96) - 8)
 	display tos
-	display &vm->data_stack[32] - restDataStack
+	display (EnforthCell*)(vm->cur_task.ram + (32+128+96)) - restDataStack
 	display w
 	display (enum EnforthToken)token
 end

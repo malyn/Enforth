@@ -66,10 +66,6 @@
  :source ": ALLOT ( n -- )  DP +! ;"
  :pfa [:dp :plusstore :exit]}
 
-{:token :base
- :args [[] [:aaddr]]
- :pfa [:vm :icharlit "offsetof(EnforthVM, base)" :plus :exit]}
-
 {:token :begin
  :args [[] []]
  :flags #{:immediate}

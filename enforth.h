@@ -189,11 +189,7 @@ typedef struct
     EnforthCell source;
     EnforthInt to_in;
 
-    /* Task vars */
-    EnforthCell saved_sp; /* Index of the SP from the base of the stack */
-    EnforthUnsigned base;
-    EnforthCell data_stack[32];
-    EnforthCell return_stack[32];
+    EnforthCell cur_task;
 } EnforthVM;
 
 

@@ -141,12 +141,24 @@ EnforthVM * const get_test_vm()
 
 static EnforthCell enforth_push(EnforthVM * const vm, const EnforthCell cell)
 {
-    vm->data_stack[31 - vm->saved_sp.u++] = cell;
+    EnforthCell * saved_sp = (EnforthCell*)(vm->cur_task.ram + kEnforthCellSize);
+    EnforthCell * sp = (EnforthCell*)(saved_sp->ram);
+
+    *(--sp) = cell;
+
+    saved_sp->ram = (uint8_t*)sp;
 }
 
 static EnforthCell enforth_pop(EnforthVM * const vm)
 {
-    return vm->data_stack[31 - vm->saved_sp.u--];
+    EnforthCell * saved_sp = (EnforthCell*)(vm->cur_task.ram + kEnforthCellSize);
+    EnforthCell * sp = (EnforthCell*)(saved_sp->ram);
+
+    EnforthCell tos = *sp++;
+
+    saved_sp->ram = (uint8_t*)sp;
+
+    return tos;
 }
 
 bool enforth_test(EnforthVM * const vm, const char * const text)
@@ -155,7 +167,10 @@ bool enforth_test(EnforthVM * const vm, const char * const text)
     enforth_evaluate(vm, text);
 
     /* Check the stack. */
-    if (vm->saved_sp.u < 3)
+    EnforthCell * saved_sp = (EnforthCell*)(vm->cur_task.ram + kEnforthCellSize);
+    EnforthCell * sp = (EnforthCell*)(saved_sp->ram);
+    int depth = (EnforthCell*)(vm->cur_task.ram + 256) - sp;
+    if (depth < 3)
     {
         return false;
     }

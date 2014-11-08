@@ -99,6 +99,13 @@ typedef enum EnforthToken
 static const int kNFAtoCFA = 1 /* PSF+namelen */ + 2 /* LFA */;
 static const int kNFAtoPFA = 1 /* PSF+namelen */ + 2 /* LFA */ + 1; /* CFA */
 
+static const int kTaskUserVariableSize = 8;
+static const int kTaskReturnStackSize = 32;
+static const int kTaskDataStackSize = 24;
+
+#define kTaskStartToReturnTop ((kEnforthCellSize * kTaskUserVariableSize) + (kEnforthCellSize * (kTaskReturnStackSize - 1)))
+#define kTaskStartToDataTop ((kEnforthCellSize * kTaskUserVariableSize) + (kEnforthCellSize * kTaskReturnStackSize) + (kEnforthCellSize * (kTaskDataStackSize - 1)))
+
 
 
 /* -------------------------------------
@@ -151,20 +158,40 @@ void enforth_init(
 
 void enforth_reset(EnforthVM * const vm)
 {
-    /* Reset the DP and LATEST cells, both of which are stored at the
-     * start of the dictionary.  The user-accessible portion of the
-     * dictionary starts after those two cells.  DP is reset to point
-     * after LATEST and LATEST is reset to point at ROMDEF_LAST. */
-    ((EnforthCell*)vm->dictionary.ram)[0].ram = vm->dictionary.ram + (kEnforthCellSize * 2);
-    ((EnforthCell*)vm->dictionary.ram)[1].u = ROMDEF_LAST;
+    /* Initialize the dictionary, which contains the DP, LATEST, and
+     * LASTTASK cells, and the default task.  The user-accessible
+     * portion of the dictionary starts after that block of data.  DP is
+     * reset to point after that block, LATEST points at ROMDEF_LAST,
+     * and LASTTASK points to the default task. */
+    /* TODO The DP and LASTTASK cells should be dictionary-relative so
+     * that the dictionary can be loaded into RAM at a different
+     * location across SAVE/LOADs. */
+    ((EnforthCell*)vm->dictionary.ram)[0].ram
+        = vm->dictionary.ram
+        + kEnforthCellSize /* DP */
+        + kEnforthCellSize /* LATEST */
+        + kEnforthCellSize /* LASTTASK */
+        + (kEnforthCellSize * 64); /* Task Control Block */
+
+    ((EnforthCell*)vm->dictionary.ram)[1].u
+        = ROMDEF_LAST;
+
+    vm->cur_task.ram
+        = vm->dictionary.ram
+        + (kEnforthCellSize * 3);
+    ((EnforthCell*)vm->dictionary.ram)[2].ram
+        = vm->cur_task.ram;
 
     /* Reset the globals. */
     vm->hld = NULL;
-
     vm->state = 0;
 
-    vm->saved_sp.u = 0;
-    vm->base = 10;
+    /* Reset the task. */
+    /* TODO These should be dictionary-relative so that they can
+     * relocate with the dictionary. */
+    ((EnforthCell*)vm->cur_task.ram)[0].u = 0; /* User: PREVTASK */
+    ((EnforthCell*)vm->cur_task.ram)[1].u = 0; /* User: SAVEDSP */
+    ((EnforthCell*)vm->cur_task.ram)[2].u = 10; /* User: BASE */
 
     /* TODO This entire block below isn't really necessary since people
      * aren't allowed to call enforth_resume on their own.  Instead,
@@ -179,8 +206,8 @@ void enforth_reset(EnforthVM * const vm)
      * enforth_evaluate doesn't need to clean anything up. */
 
     /* Clear both stacks. */
-    EnforthCell * sp = (EnforthCell*)&vm->data_stack[31];
-    EnforthCell * rsp = (EnforthCell*)&vm->return_stack[31];
+    EnforthCell * sp = (EnforthCell*)(vm->cur_task.ram + kTaskStartToDataTop - kEnforthCellSize);
+    EnforthCell * rsp = (EnforthCell*)(vm->cur_task.ram + kTaskStartToReturnTop - kEnforthCellSize);
 
     /* Set the IP to the beginning of COLD. */
 #ifdef __AVR__
@@ -194,13 +221,15 @@ void enforth_reset(EnforthVM * const vm)
     (--sp)->ram = ip;
 
     /* Save the stack pointer. */
-    vm->saved_sp.u = &vm->data_stack[31] - sp;
+    /* TODO This should be dictionary-relative so that it can relocate
+     * with the dictionary. */
+    ((EnforthCell*)vm->cur_task.ram)[1].ram = (uint8_t*)sp;
 }
 
 void enforth_evaluate(EnforthVM * const vm, const char * const text)
 {
     /* Clear the return stack. */
-    EnforthCell * rsp = (EnforthCell*)&vm->return_stack[31];
+    EnforthCell * rsp = (EnforthCell*)(vm->cur_task.ram + kTaskStartToReturnTop - kEnforthCellSize);
 
     /* Push the address of HALT onto the return stack so that we exit
      * the interpreter after EVALUATE is done. */
@@ -218,7 +247,7 @@ void enforth_evaluate(EnforthVM * const vm, const char * const text)
 #endif
 
     /* Restore the stack pointer. */
-    EnforthCell * sp = (EnforthCell*)&vm->data_stack[31 - vm->saved_sp.u];
+    EnforthCell * sp = (EnforthCell*)((EnforthCell*)vm->cur_task.ram)[1].ram;
 
     /* Pop the previous IP and RSP; we're about to replace them. */
     ++sp; /* IP */
@@ -234,7 +263,9 @@ void enforth_evaluate(EnforthVM * const vm, const char * const text)
 
     /* Update the saved the stack pointer now that we have modified the
      * stack. */
-    vm->saved_sp.u = &vm->data_stack[31] - sp;
+    /* TODO This should be dictionary-relative so that it can relocate
+     * with the dictionary. */
+    ((EnforthCell*)vm->cur_task.ram)[1].ram = (uint8_t*)sp;
 
     /* Resume the interpreter. */
     enforth_resume(vm);
@@ -261,9 +292,9 @@ void enforth_resume(EnforthVM * const vm)
      * register. */
 #define CHECK_STACK(numArgs, numResults) \
     { \
-        if ((&vm->data_stack[32] - restDataStack) < numArgs) { \
+        if (((EnforthCell*)(vm->cur_task.ram + kTaskStartToDataTop) - restDataStack) < numArgs) { \
             goto STACK_UNDERFLOW; \
-        } else if (((&vm->data_stack[32] - restDataStack) - numArgs) + numResults > 32) { \
+        } else if ((((EnforthCell*)(vm->cur_task.ram + kTaskStartToDataTop) - restDataStack) - numArgs) + numResults > 32) { \
             goto STACK_OVERFLOW; \
         } \
     }
@@ -298,7 +329,7 @@ void enforth_resume(EnforthVM * const vm)
     };
 
     /* Restore the stack pointer. */
-    restDataStack = (EnforthCell*)&vm->data_stack[31 - vm->saved_sp.u];
+    restDataStack = (EnforthCell*)((EnforthCell*)vm->cur_task.ram)[1].ram;
 
     /* Pop IP and RSP from the stack. */
     ip = (restDataStack++)->ram;
@@ -842,7 +873,7 @@ DISPATCH_TOKEN:
             (--restDataStack)->ram = ip;
 
             /* Save the stack pointer. */
-            vm->saved_sp.u = &vm->data_stack[31] - restDataStack;
+            ((EnforthCell*)vm->cur_task.ram)[1].ram = (uint8_t*)restDataStack;
 
             /* Exit the interpreter. */
             return;
@@ -914,8 +945,8 @@ DISPATCH_TOKEN:
         ABORT:
         {
             tos.i = 0;
-            restDataStack = (EnforthCell*)&vm->data_stack[32];
-            vm->base = 10;
+            restDataStack = (EnforthCell*)(vm->cur_task.ram + kTaskStartToDataTop);
+            ((EnforthCell*)vm->cur_task.ram)[2].u = 10; /* User: BASE */
 
             /* Set the IP to the beginning of QUIT */
 #ifdef __AVR__
@@ -943,6 +974,17 @@ DISPATCH_TOKEN:
         {
             CHECK_STACK(2, 1);
             tos.i &= restDataStack++->i;
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :base}
+         */
+        BASE:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos.ram = (uint8_t*)&((EnforthCell*)vm->cur_task.ram)[2];
         }
         continue;
 
@@ -1010,7 +1052,7 @@ DISPATCH_TOKEN:
              * count given that we calculate the depth *after* pushing
              * the old TOS onto the stack. */
             *--restDataStack = tos;
-            tos.i = &vm->data_stack[32] - restDataStack - 1;
+            tos.i = (EnforthCell*)(vm->cur_task.ram + kTaskStartToDataTop) - restDataStack - 1;
         }
         continue;
 
@@ -2009,7 +2051,7 @@ DISPATCH_TOKEN:
         INITRP:
         {
             CHECK_STACK(0, 0);
-            returnTop = (EnforthCell *)&vm->return_stack[32];
+            returnTop = (EnforthCell*)(vm->cur_task.ram + kTaskStartToReturnTop);
         }
         continue;
 
@@ -2100,8 +2142,8 @@ DISPATCH_TOKEN:
 void enforth_go(EnforthVM * const vm)
 {
     /* Clear both stacks. */
-    EnforthCell * sp = (EnforthCell*)&vm->data_stack[31];
-    EnforthCell * rsp = (EnforthCell*)&vm->return_stack[31];
+    EnforthCell * sp = (EnforthCell*)(vm->cur_task.ram + kTaskStartToDataTop - kEnforthCellSize);
+    EnforthCell * rsp = (EnforthCell*)(vm->cur_task.ram + kTaskStartToReturnTop - kEnforthCellSize);
 
     /* Set the IP to the beginning of COLD. */
 #ifdef __AVR__
@@ -2115,7 +2157,9 @@ void enforth_go(EnforthVM * const vm)
     (--sp)->ram = ip;
 
     /* Save the stack pointer. */
-    vm->saved_sp.u = &vm->data_stack[31] - sp;
+    /* TODO This should be dictionary-relative so that it can relocate
+     * with the dictionary. */
+    ((EnforthCell*)vm->cur_task.ram)[1].ram = (uint8_t*)sp;
 
     /* Resume the interpreter. */
     enforth_resume(vm);
