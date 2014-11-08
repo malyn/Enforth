@@ -1,5 +1,10 @@
 # Before Release
 
+* Add a single default task and move the stacks and BASE into that memory area.  No `PAUSE` yet.
+  * Tasks are 8 user cells (16/32 bytes; the first is the LFA to the previous task or zero; the second is SAVEDSP; the third is BASE); 32 return stack cells (64/128 bytes), and 24 data stack cells (48/96 bytes), for a total of 128/256 bytes per task.
+    * Note that tasks go into the dictionary and not at the end!  This allows dictionaries to be resized or only partially copied to storage.
+    * Need a global that points to the newest task (similar to the dictionary itself).
+* Add `TASK` to create tasks and `PAUSE` to task-switch.
 * Create some sort of iterate-over-the-dictionary word that takes an XT (`FOUND?`, in the case of `FIND-WORD`) and stops iterating when the word returns true?  Use this for both `FIND-WORD` and `WORDS`.
 * Most of `FOUND-FFIDEF?` is just `FOUND?`; we should find a way to merge that code.
   * FFI definition names are stored normally (forward order) which means that `FOUND?` cannot use `STRING~XT` for comparing FFIs.  We should put definitions in forward order and then just do subtraction to jump to the start of the definition.  Then we can use `FOUND?` for everything.
@@ -18,20 +23,19 @@
   * `TOKEN,` could be `C@`.
   * `(LOOP)` could maybe always be `(+LOOP)` with a `:charlit 1` in front?
   * DefGen could implement the above optimizations, that way the code always reads nicely, even though it is being rewritten during compilation.  Note that this doesn't work for `I`.
-  * Is there any benefit to defining `DOICONSTANT` for storing constants in ROM PFAs?  Currently we define tokens or words that calculate and return constants.  This would free up tokens, but then we would have to modify DefGen to know about int sizes...  Seems hard.
+  * Is there any benefit to defining `DOCONSTANTROM` for storing constants in ROM PFAs?  Currently we define tokens or words that calculate and return constants.  This would free up tokens, but then we would have to modify DefGen to know about int sizes...  Seems hard.  I suppose DOCONSTANTROM could always take 16-bit constants (as long as we didn't need negative numbers)?
   * Can we eliminate some of the `DOUBLE` words that are used for things like parsing and output?
 * Fix tracing now that kDefinitionNames has gone away.
 * Create a `:profile` property on each word that lets us build smaller versions of the ROM.  For example, maybe you eliminate `DOUBLE` support or the `TOOLS` so that you can get down to something that fits on ATtiny85.  Code Primitives should be included in this as well and then jump table entries for elided primitives should not be generated (so that the compiler will remove that code).
 * Consider creating EnforthDuino.cpp/.h wrappers to make it easier to interact with Enforth in the Arduino environment.  Mostly just to wrap the serial code, allocate the dictionary block, implement EEPROM-backed load/save, etc.
-* Add comments to all of the EDN blocks (probably in a new property so that we can extract it during analysis for to generate docs).
+* Add comments to all of the EDN blocks (probably in a new property so that we can extract it during analysis or to generate docs).
   * Should also add a `:usage` property that we can optionally compile into ROM.  Then a `HELP` word could be written to output that usage line.  Just the stack effects and a short description of the word.
 * Move to [Arduino 1.5 library format](https://github.com/arduino/Arduino/wiki/Arduino-IDE-1.5:-Library-specification) now that 1.0.6 supports that format?
 * Support 64-bit platforms (requires more `#ifdef`s and some trickiness in `*/MOD`).
 * Consider a switch-based version of the inner loop for compilers like Visual Studio that do not support jump-threading.  All of the labels will need to be come BEGIN\_CODEPRIM(DUP)/END\_CODEPRIM(DUP) or something like that.
+* Address all TODOs and FIXMEs in the code and definitions.
 
 # After Release
-
-(although maybe we want `PAUSE` and tasking in there...)
 
 * Consider further adjustments to the XT flags in order to reduce the size of XTs in certain situations.  For example, the XTs could support relative-RAM and relative-ROM variants for spanning definitions as large as 32-bytes (5-bits) if we could get away with dedicating an extra bit to that vs. an absolute (offset-based) address.
   * ROM XTs only need to be 11 bits (assuming that we align to two bytes), for example.
@@ -44,12 +48,7 @@
 * Do something about absolute RAM addresses on the stack, in variables, etc.  These prevent the VM from being saved to/from storage (such as EEPROM).
   * We can't relativize everything on save, because we don't always know what we are looking at -- how do we know that a dictionary variable contains a RAM address?  We could probably relativize all addresses in the VM though and then `@`, `!`, etc. would do the adjustment as necessary (and could offer bounds-checking).  All of these addresses are VM-relative and that VM base address will probably end up being stored in a constant register pair.  Access to memory-mapped CPU resources gets messy (this is mostly an ARM problem), although we could offer special fetch and store operations for those.  Similarly, FFI interop involving addresses is now a problem because we need to convert those back and forth.
   * Note that the VM itself has quite a few absolute addresses (DP, HERE, SOURCE, etc.) and we'll need to deal with those on load/save.  Most of these have to do with the text interpreter though and we could easily just say that persistence resets the state of the text interpreter and can only be performed when *not* in compilation mode.  That would leave a very small number of pointers in the VM and those could just be serialized as part of persisting the dictionary.
-* Add a single default task and move the stacks and BASE into that memory area.  No `PAUSE` yet.
-  * Tasks are 32 return stack cells (64/128 bytes), 16 data stack cells (32/64 bytes), 16 user cells (32/64 bytes) for a total of 128/256 bytes per task.
-    * Note that tasks go into the dictionary and not at the end!  This allows dictionaries to be resized or only partially copied to storage.
-    * Need one task cell to act as a link to the previously-created task as well as a global that points to the newest task (similar to the dictionary itself).
 * Forth200x updates (mostly just `TIB` and `#TIB`?, although numeric prefixes look very useful).
-* Add `PAUSE`, which spills the registers to global variables in `vm` and then returns from `go()` similar to what we did in Ficl.
 * Add dumb exceptions that just restart the VM?
 * Consider adding `PAD`, perhaps with a configurable size.  Do not use `PAD` in the kernel though so that we can avoid making it a requirement.
 * Since we have more free tokens now we can probably code in some of the most frequently used FFI functions (`pinWrite` and stuff) as tokens, perhaps through compiler directives.
