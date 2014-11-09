@@ -328,6 +328,8 @@ void enforth_resume(EnforthVM * const vm)
         &&DOFFI7,
     };
 
+UNPAUSE:
+
     /* Restore the stack pointer. */
     restDataStack = (EnforthCell*)((EnforthCell*)vm->cur_task.ram)[1].ram;
 
@@ -340,6 +342,10 @@ void enforth_resume(EnforthVM * const vm)
          * flag as part of popping the address. */
         ip = (uint8_t*)((unsigned int)ip & 0x7FFF);
         inProgramSpace = -1;
+    }
+    else
+    {
+        inProgramSpace = 0;
     }
 #endif
 
@@ -852,6 +858,54 @@ DISPATCH_TOKEN:
         continue;
 
         /* -------------------------------------------------------------
+         * PAUSE [Enforth] ( -- )
+         *
+         * Suspend the current task and resume execution of the next
+         * task in the task list.  PAUSE will return to the caller when
+         * all of the tasks in the task list have had a chance to
+         * execute (and called PAUSE in order to relinquish execution to
+         * their next task).
+         *
+        ***{:token :pause}
+         */
+        PAUSE:
+        {
+            /* Push TOS onto the stack. */
+            *--restDataStack = tos;
+
+            /* Push RSP and IP to the stack. */
+            /* TODO Both of these need to be relative addresses. */
+            (--restDataStack)->ram = (uint8_t*)returnTop;
+
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                /* Set the high bit on the current IP so that we know
+                 * that this address is in ROM. */
+                ip = (uint8_t*)((unsigned int)ip | 0x8000);
+            }
+#endif
+
+            (--restDataStack)->ram = ip;
+
+            /* Save the stack pointer. */
+            ((EnforthCell*)vm->cur_task.ram)[1].ram = (uint8_t*)restDataStack;
+
+            /* Make the previous task the current task. */
+            vm->cur_task.ram = ((EnforthCell*)vm->cur_task.ram)[0].ram;
+
+            /* Did we hit the beginning of the list?  If so, wrap around
+             * to the last task. */
+            if (vm->cur_task.ram == 0)
+            {
+                vm->cur_task.ram = ((EnforthCell*)vm->dictionary.ram)[2].ram;
+            }
+
+            /* Unpause the interpreter. */
+            goto UNPAUSE;
+        }
+
+        /* -------------------------------------------------------------
          * (HALT) [Enforth] ( i*x -- i*x ) ( R: j*x -- j*x )
          *
          * Stops and exits the VM.  State is preserved on the stack,
@@ -1172,17 +1226,6 @@ DISPATCH_TOKEN:
         {
             CHECK_STACK(1, 1);
             tos.i = ~tos.i;
-        }
-        continue;
-
-        /* -------------------------------------------------------------
-        ***{:token :key}
-         */
-        KEY:
-        {
-            CHECK_STACK(0, 1);
-            *--restDataStack = tos;
-            tos.i = vm->key();
         }
         continue;
 
@@ -2041,6 +2084,24 @@ DISPATCH_TOKEN:
 
 
         /* =============================================================
+         * FACILITY PRIMITIVES
+         */
+
+        /* -------------------------------------------------------------
+        ***{:token :keyq
+        *** :name "KEY?"}
+         */
+        KEYQ:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos.i = vm->keyq();
+        }
+        continue;
+
+
+
+        /* =============================================================
          * ENFORTH PRIMITIVES
          */
 
@@ -2072,6 +2133,19 @@ DISPATCH_TOKEN:
             {
                 tos.i = 0;
             }
+        }
+        continue;
+
+        /* -------------------------------------------------------------
+        ***{:token :pkey
+        *** :name "(KEY)"
+        *** :flags #{:headerless}}
+         */
+        PKEY:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos.i = vm->key();
         }
         continue;
 

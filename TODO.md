@@ -1,6 +1,8 @@
 # Before Release
 
-* Add `TASK` to create tasks and `PAUSE` to task-switch.
+* Drop enforth\_test back to 1KB so that it works with `LOAD` and `SAVE`, presumably by splitting up that one test so that it doesn't consume all of the RAM.
+* Modify `SAVE` so that it only saves up to `DP` (no reason to waste time saving unused bytes).
+  * We could modify the EEPROM load function to read the length and then read only that many bytes... EEPROM save would have to write that out and then reduce the actual number of used bytes...
 * Create some sort of iterate-over-the-dictionary word that takes an XT (`FOUND?`, in the case of `FIND-WORD`) and stops iterating when the word returns true?  Use this for both `FIND-WORD` and `WORDS`.
 * Most of `FOUND-FFIDEF?` is just `FOUND?`; we should find a way to merge that code.
   * FFI definition names are stored normally (forward order) which means that `FOUND?` cannot use `STRING~XT` for comparing FFIs.  We should put definitions in forward order and then just do subtraction to jump to the start of the definition.  Then we can use `FOUND?` for everything.

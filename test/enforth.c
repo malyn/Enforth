@@ -36,7 +36,9 @@
  */
 
 /* ANSI C includes. */
+#include <stdlib.h>
 #include <stdio.h>
+#include <fcntl.h>
 
 /* Curses includes. */
 #include <curses.h>
@@ -71,7 +73,16 @@ ENFORTH_EXTERN_VOID(srand, srand, 1)
 
 static int enforthCursesKeyQuestion(void)
 {
-    return -1;
+    int c = getch();
+    if (c == ERR)
+    {
+        return 0;
+    }
+    else
+    {
+        ungetch(c);
+        return -1;
+    }
 }
 
 /* 6.1.1750 KEY
@@ -95,7 +106,13 @@ static int enforthCursesKeyQuestion(void)
  */
 static char enforthCursesKey(void)
 {
-    return getch();
+    int c;
+    while ((c = getch()) == ERR)
+    {
+        /* Repeat. */
+    }
+
+    return c;
 }
 
 static void enforthCursesEmit(char ch)
@@ -103,6 +120,48 @@ static void enforthCursesEmit(char ch)
     /* Output the character and refresh the screen. */
     addch(ch);
     refresh();
+}
+
+
+
+/* -------------------------------------
+ * Enforth storage primitives.
+ */
+
+static int enforthLoad(uint8_t * dictionary, int size)
+{
+    int fd = open("enforth.img", O_RDONLY);
+    if (fd == -1)
+    {
+        return 0;
+    }
+
+    if (read(fd, dictionary, size) != size)
+    {
+        close(fd);
+        return 0;
+    }
+
+    close(fd);
+    return -1;
+}
+
+static int enforthSave(uint8_t * dictionary, int size)
+{
+    int fd = open("enforth.img", O_WRONLY|O_CREAT|O_TRUNC, 0644);
+    if (fd == -1)
+    {
+        return 0;
+    }
+
+    if (write(fd, dictionary, size) != size)
+    {
+        close(fd);
+        return 0;
+    }
+
+    close(fd);
+    return -1;
 }
 
 
@@ -123,19 +182,21 @@ static unsigned char enforthDict[512];
 int main(int argc, char **argv)
 {
     /* Initialize curses: disable line buffering and local echo, enable
-     * line-oriented scrolling. */
+     * line-oriented scrolling, do not block during reads. */
     initscr();
     cbreak();
     noecho();
     idlok(stdscr, TRUE);
     scrollok(stdscr, TRUE);
+    nodelay(stdscr, TRUE);
 
     /* Initialize Enforth. */
     enforth_init(
             &enforthVM,
             enforthDict, sizeof(enforthDict),
             LAST_FFI,
-            enforthCursesKeyQuestion, enforthCursesKey, enforthCursesEmit);
+            enforthCursesKeyQuestion, enforthCursesKey, enforthCursesEmit,
+            enforthLoad, enforthSave);
 
     /* Add a couple of definitions. */
     enforth_evaluate(&enforthVM, ": favnum 27 ;");

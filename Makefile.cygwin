@@ -1,9 +1,9 @@
 .PHONY: clean test sertest
 
-all: test/enforthsimple test/enforthtest test/enforthserialtest
+all: test/enforth test/enforthsimple test/enforthtest test/enforthserialtest
 
 clean:
-	rm -f utility/enforth_definitions.h utility/enforth_jumptable.h utility/enforth_tokens.h test/enforthtest.exe test/enforthserialtest.exe test/enforthsimple.exe
+	rm -f utility/enforth_definitions.h utility/enforth_jumptable.h utility/enforth_tokens.h test/enforth.exe test/enforthtest.exe test/enforthserialtest.exe test/enforthsimple.exe
 
 test: test/enforthtest
 	test/enforthtest --abort
@@ -19,6 +19,9 @@ utility/enforth_jumptable.h: enforth.c definitions/core.edn definitions/core-ext
 
 utility/enforth_tokens.h: enforth.c definitions/core.edn definitions/core-ext.edn definitions/double.edn definitions/enforth.edn definitions/string.edn definitions/tools.edn
 	cd DefGen && lein run ../utility $(addprefix ../, $+)
+
+test/enforth: enforth.h enforth.c utility/enforth_definitions.h utility/enforth_jumptable.h utility/enforth_tokens.h test/enforth.c
+	cc -g -I. -I./utility -o $@ -DENABLE_STACK_CHECKING=1 enforth.c test/enforth.c -lcurses
 
 test/enforthsimple: enforth.h enforth.c utility/enforth_definitions.h utility/enforth_jumptable.h utility/enforth_tokens.h test/enforthsimple.c
 	cc -g -I. -I./utility -o $@ -DENABLE_STACK_CHECKING=1 enforth.c test/enforthsimple.c

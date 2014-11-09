@@ -412,6 +412,14 @@
        :twodrop
        :exit]}
 
+;; The cell that contains the LASTTASK pointer is the third cell in the
+;; dictionary; return that address.
+{:token :lasttask
+ :args [[] [:addr]]
+ :flags #{:headerless}
+ :source ": LASTTASK ( -- addr )  'DICT CELL+ CELL+ ;"
+ :pfa [:tickdict :cellplus :cellplus :exit]}
+
 ;; The cell that contains the LATEST pointer is the second cell in the
 ;; dictionary (DP is the first); return that address.
 {:token :latest
@@ -571,6 +579,41 @@
  :pfa [:latest :fetch :tonfa
        :dup :cfetch :icharlit 0xBF :and
        :swap :cstore
+       :exit]}
+
+;; FIXME We have to put *two* dummy TOS entries on the stack, the first
+;; because UNPAUSE expects to pop TOS and the second to pacify the stack
+;; checking code.  We should fix both of those.  The challenge with the
+;; first one is that we need to put an IP (not an XT) onto the stack and
+;; yet on the AVR that IP has to be tagged as ROM or RAM.  We don't have
+;; an easy way of doing that here since we don't know how large a cell
+;; is and thus cannot compile the absolute address of the location of
+;; the relevant location (for EXECUTE, for example) in the definition
+;; block, so we just call the user-provided XT directly.  It would be
+;; better if we switched the IP on the stack to an XT and then just
+;; pushed the XT for EXECUTE onto the stack as the IP.
+{:token :task
+ :args [[:xt] []]
+ :source ": TASK ( xt -- )
+            HERE  LAST-TASK @ ,  DUP LAST-TASK ! \\ PREVTASK
+            ( xt task-start) 8 CELLS + 32 CELLS + 20 CELLS + , \\ SAVEDSP
+            10 , \\ BASE
+            5 CELLS ALLOT \\ Remaining (unused) user variables
+            32 CELLS ALLOT \\ Return stack
+            20 CELLS ALLOT \\ Empty part of data stack
+            ( xt) >BODY , \\ Initial IP
+            LAST-TASK @ 8 CELLS + 31 CELLS + , \\ Initial RSP
+            0 , 0 , ; \\ Dummy TOS "
+ :pfa [:here :lasttask :fetch :comma :dup :lasttask :store
+       :icharlit 8 :cells :plus :icharlit 32 :cells :plus :icharlit 20 :cells :plus :comma
+       :icharlit 10 :comma
+       :icharlit 5 :cells :allot
+       :icharlit 32 :cells :allot
+       :icharlit 20 :cells :allot
+       :tobody :comma
+       :lasttask :fetch :icharlit 8 :cells :plus :icharlit 31 :cells :plus :comma
+       :zero :comma
+       :zero :comma
        :exit]}
 
 {:token :tib
