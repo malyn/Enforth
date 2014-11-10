@@ -1,5 +1,7 @@
 # Before Release
 
+* Implement `.S`.
+* Improve task code (see OmniFocus notes).
 * Drop enforth\_test back to 1KB so that it works with `LOAD` and `SAVE`, presumably by splitting up that one test so that it doesn't consume all of the RAM.
 * Modify `SAVE` so that it only saves up to `DP` (no reason to waste time saving unused bytes).
   * We could modify the EEPROM load function to read the length and then read only that many bytes... EEPROM save would have to write that out and then reduce the actual number of used bytes...
@@ -7,11 +9,15 @@
 * Most of `FOUND-FFIDEF?` is just `FOUND?`; we should find a way to merge that code.
   * FFI definition names are stored normally (forward order) which means that `FOUND?` cannot use `STRING~XT` for comparing FFIs.  We should put definitions in forward order and then just do subtraction to jump to the start of the definition.  Then we can use `FOUND?` for everything.
   * As an FYI, we can't easily remove `FIND-FFIDEF` (even though it looks like `FIND-WORD`), because it is chaining through defs using absolute addresses and not XTs.
+* Do we need `I*` tokens or can normal tokens just use inProgramMemory?  (and if so, is that actually smaller from a compile perspective?)
 * Implement the remaining `CORE` words (the ones whose tests have been commented out in `test_core.cpp`).
+* Externs should be separate libraries and Git repos.
 * Create more `externs/enforth_*.h` files for various Arduino libs in order to validate the FFI code, workflow, etc.
   * Especially interesting to determine is the maximum number of FFI args that are actually need.  We currently support 8, but something like 4 would probably be better.
-  * Need to test with things take take/return long (such as Arduino's `randomSeed` and `random`) and see how those work.  We might need a variant of `ENFORTH_EXTERN` that pushes two cells, for example.
+  * Need to test with things take take/return long (such as Arduino's [randomSeed](http://arduino.cc/en/Reference/RandomSeed) and [random](http://arduino.cc/en/Reference/Random)) and see how those work.  We might need a variant of `ENFORTH_EXTERN` that pushes two cells, for example.
     * For example, `delay` takes a long, but it's not in the right (`100 S>D`) format.  This seems bad...
+    * Or do we wrap all of these in `ENFORTH_EXTERN_METHOD` (which then needs a better name...) and manually shift the values?
+    * Probably need a variant of the macro (or a `DOFFI*`?) that returns a long and does a double-push as well.
 * PARSE-WORD needs to treat all control characters as space if given a space as the delimiter.
 * Improve the stack checking code.
   * First, the code is probably too aggressive and may not let us use the last stack item.
@@ -26,6 +32,7 @@
 * Fix tracing now that kDefinitionNames has gone away.
 * Create a `:profile` property on each word that lets us build smaller versions of the ROM.  For example, maybe you eliminate `DOUBLE` support or the `TOOLS` so that you can get down to something that fits on ATtiny85.  Code Primitives should be included in this as well and then jump table entries for elided primitives should not be generated (so that the compiler will remove that code).
 * Consider creating EnforthDuino.cpp/.h wrappers to make it easier to interact with Enforth in the Arduino environment.  Mostly just to wrap the serial code, allocate the dictionary block, implement EEPROM-backed load/save, etc.
+  * Note that this should be a separate library/repo as well.
 * Add comments to all of the EDN blocks (probably in a new property so that we can extract it during analysis or to generate docs).
   * Should also add a `:usage` property that we can optionally compile into ROM.  Then a `HELP` word could be written to output that usage line.  Just the stack effects and a short description of the word.
 * Move to [Arduino 1.5 library format](https://github.com/arduino/Arduino/wiki/Arduino-IDE-1.5:-Library-specification) now that 1.0.6 supports that format?
