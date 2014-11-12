@@ -539,6 +539,11 @@
          :pisquote 3 "'o'" "'k'" "' '" :itype
          :ibranch -19]}
 
+{:token :recurse
+ :flags #{:immediate}
+ :source ": RECURSE ( --)  LATEST @ XT, ;"
+ :pfa [:latest :fetch :xtcomma :exit]}
+
 {:token :repeat
  :args [[] []]
  :flags #{:immediate}
@@ -760,6 +765,11 @@
  :args [[:u] []]
  :source ": U. ( u --)  0 <# #S #> TYPE SPACE ;"
  :pfa [:zero :lessnumsign :numsigns :numsigngrtr :type :space :exit]}
+
+{:token :until
+ :flags #{:immediate}
+ :source ": UNTIL ( --)  ['] 0branch COMPILE,  HERE - C, ; IMMEDIATE"
+ :pfa [:icharlit :zbranch :compilecomma :here :minus :ccomma :exit]}
 
 {:token :variable
  :args [[] []]

@@ -785,11 +785,10 @@ TEST_CASE( "IF ELSE THEN BEGIN WHILE REPEAT UNTIL RECURSE") {
     REQUIRE( enforth_test(vm, "T{ 5 GI3 -> 5 }T") );
     REQUIRE( enforth_test(vm, "T{ 6 GI3 -> 6 }T") );
 
-    // TODO Enable this once have UNTIL.
-    // REQUIRE( enforth_test(vm, "T{ : GI4 BEGIN DUP 1+ DUP 5 > UNTIL ; -> }T") );
-    // REQUIRE( enforth_test(vm, "T{ 3 GI4 -> 3 4 5 6 }T") );
-    // REQUIRE( enforth_test(vm, "T{ 5 GI4 -> 5 6 }T") );
-    // REQUIRE( enforth_test(vm, "T{ 6 GI4 -> 6 7 }T") );
+    REQUIRE( enforth_test(vm, "T{ : GI4 BEGIN DUP 1+ DUP 5 > UNTIL ; -> }T") );
+    REQUIRE( enforth_test(vm, "T{ 3 GI4 -> 3 4 5 6 }T") );
+    REQUIRE( enforth_test(vm, "T{ 5 GI4 -> 5 6 }T") );
+    REQUIRE( enforth_test(vm, "T{ 6 GI4 -> 6 7 }T") );
 
          enforth_evaluate(vm, "T{ : GI5 BEGIN DUP 2 > WHILE DUP 5 < WHILE DUP");
     REQUIRE( enforth_test(vm, "      1+ REPEAT 123 ELSE 345 THEN ; -> }T") );
@@ -799,13 +798,12 @@ TEST_CASE( "IF ELSE THEN BEGIN WHILE REPEAT UNTIL RECURSE") {
     REQUIRE( enforth_test(vm, "T{ 4 GI5 -> 4 5 123 }T") );
     REQUIRE( enforth_test(vm, "T{ 5 GI5 -> 5 123 }T") );
 
-    // TODO Enable this once have RECURSE.
-    // REQUIRE( enforth_test(vm, "T{ : GI6 ( N -- 0,1,..N ) DUP IF DUP >R 1- RECURSE R> THEN ; -> }T") );
-    // REQUIRE( enforth_test(vm, "T{ 0 GI6 -> 0 }T") );
-    // REQUIRE( enforth_test(vm, "T{ 1 GI6 -> 0 1 }T") );
-    // REQUIRE( enforth_test(vm, "T{ 2 GI6 -> 0 1 2 }T") );
-    // REQUIRE( enforth_test(vm, "T{ 3 GI6 -> 0 1 2 3 }T") );
-    // REQUIRE( enforth_test(vm, "T{ 4 GI6 -> 0 1 2 3 4 }T") );
+    REQUIRE( enforth_test(vm, "T{ : GI6 ( N -- 0,1,..N ) DUP IF DUP >R 1- RECURSE R> THEN ; -> }T") );
+    REQUIRE( enforth_test(vm, "T{ 0 GI6 -> 0 }T") );
+    REQUIRE( enforth_test(vm, "T{ 1 GI6 -> 0 1 }T") );
+    REQUIRE( enforth_test(vm, "T{ 2 GI6 -> 0 1 2 }T") );
+    REQUIRE( enforth_test(vm, "T{ 3 GI6 -> 0 1 2 3 }T") );
+    REQUIRE( enforth_test(vm, "T{ 4 GI6 -> 0 1 2 3 4 }T") );
 }
 
 TEST_CASE( "DO LOOP +LOOP I J UNLOOP LEAVE EXIT" ) {
@@ -825,30 +823,28 @@ TEST_CASE( "DO LOOP +LOOP I J UNLOOP LEAVE EXIT" ) {
     REQUIRE( enforth_test(vm, "T{ -1 2 GD2 -> 2 1 0 -1 }T") );
     REQUIRE( enforth_test(vm, "T{ MID-UINT MID-UINT+1 GD2 -> MID-UINT+1 MID-UINT }T") );
 
-    // TODO Enable this once have J.
-    // REQUIRE( enforth_test(vm, "T{ : GD3 DO 1 0 DO J LOOP LOOP ; -> }T") );
-    // REQUIRE( enforth_test(vm, "T{ 4 1 GD3 -> 1 2 3 }T") );
-    // REQUIRE( enforth_test(vm, "T{ 2 -1 GD3 -> -1 0 1 }T") );
-    // REQUIRE( enforth_test(vm, "T{ MID-UINT+1 MID-UINT GD3 -> MID-UINT }T") );
+    REQUIRE( enforth_test(vm, "T{ : GD3 DO 1 0 DO J LOOP LOOP ; -> }T") );
+    REQUIRE( enforth_test(vm, "T{ 4 1 GD3 -> 1 2 3 }T") );
+    REQUIRE( enforth_test(vm, "T{ 2 -1 GD3 -> -1 0 1 }T") );
+    REQUIRE( enforth_test(vm, "T{ MID-UINT+1 MID-UINT GD3 -> MID-UINT }T") );
 
-    // REQUIRE( enforth_test(vm, "T{ : GD4 DO 1 0 DO J LOOP -1 +LOOP ; -> }T") );
-    // REQUIRE( enforth_test(vm, "T{ 1 4 GD4 -> 4 3 2 1 }T") );
-    // REQUIRE( enforth_test(vm, "T{ -1 2 GD4 -> 2 1 0 -1 }T") );
-    // REQUIRE( enforth_test(vm, "T{ MID-UINT MID-UINT+1 GD4 -> MID-UINT+1 MID-UINT }T") );
+    REQUIRE( enforth_test(vm, "T{ : GD4 DO 1 0 DO J LOOP -1 +LOOP ; -> }T") );
+    REQUIRE( enforth_test(vm, "T{ 1 4 GD4 -> 4 3 2 1 }T") );
+    REQUIRE( enforth_test(vm, "T{ -1 2 GD4 -> 2 1 0 -1 }T") );
+    REQUIRE( enforth_test(vm, "T{ MID-UINT MID-UINT+1 GD4 -> MID-UINT+1 MID-UINT }T") );
 
     REQUIRE( enforth_test(vm, "T{ : GD5 123 SWAP 0 DO I 4 > IF DROP 234 LEAVE THEN LOOP ; -> }T") );
     REQUIRE( enforth_test(vm, "T{ 1 GD5 -> 123 }T") );
     REQUIRE( enforth_test(vm, "T{ 5 GD5 -> 123 }T") );
     REQUIRE( enforth_test(vm, "T{ 6 GD5 -> 234 }T") );
 
-    // TODO Enable this once have J.
-    //      enforth_evaluate(vm, "T{ : GD6  ( PAT: T{0 0}T,T{0 0}TT{1 0}TT{1 1}T,T{0 0}TT{1 0}TT{1 1}TT{2 0}TT{2 1}TT{2 2}T )");
-    //      enforth_evaluate(vm, "   0 SWAP 0 DO");
-    //      enforth_evaluate(vm, "      I 1+ 0 DO I J + 3 = IF I UNLOOP I UNLOOP EXIT THEN 1+ LOOP");
-    // REQUIRE( enforth_test(vm, "    LOOP ; -> }T") );
-    // REQUIRE( enforth_test(vm, "T{ 1 GD6 -> 1 }T") );
-    // REQUIRE( enforth_test(vm, "T{ 2 GD6 -> 3 }T") );
-    // REQUIRE( enforth_test(vm, "T{ 3 GD6 -> 4 1 2 }T") );
+         enforth_evaluate(vm, "T{ : GD6  ( PAT: T{0 0}T,T{0 0}TT{1 0}TT{1 1}T,T{0 0}TT{1 0}TT{1 1}TT{2 0}TT{2 1}TT{2 2}T )");
+         enforth_evaluate(vm, "   0 SWAP 0 DO");
+         enforth_evaluate(vm, "      I 1+ 0 DO I J + 3 = IF I UNLOOP I UNLOOP EXIT THEN 1+ LOOP");
+    REQUIRE( enforth_test(vm, "    LOOP ; -> }T") );
+    REQUIRE( enforth_test(vm, "T{ 1 GD6 -> 1 }T") );
+    REQUIRE( enforth_test(vm, "T{ 2 GD6 -> 3 }T") );
+    REQUIRE( enforth_test(vm, "T{ 3 GD6 -> 4 1 2 }T") );
 }
 
 TEST_CASE( "Defining Words: : ; CONSTANT VARIABLE CREATE DOES> >BODY") {

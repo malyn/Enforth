@@ -1230,6 +1230,18 @@ DISPATCH_TOKEN:
         continue;
 
         /* -------------------------------------------------------------
+        ***{:token :j
+        *** :args [[] [:n]]}
+         */
+        J:
+        {
+            CHECK_STACK(0, 1);
+            *--restDataStack = tos;
+            tos = returnTop[2];
+        }
+        continue;
+
+        /* -------------------------------------------------------------
         ***{:token :lessthan
         *** :name "<"}
          */
