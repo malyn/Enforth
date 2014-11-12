@@ -1,16 +1,15 @@
 # Before Release
 
+* Implement the remaining `CORE` words (the ones whose tests have been commented out in `test_core.cpp`).
+* Do we need `I*` tokens or can normal tokens just use inProgramSpace?  (and if so, is that actually smaller from a compile perspective?)
+  * Looks like we can make this change and that it will be (slightly) smaller, if not (slightly) slower.  We shouldn't make the change until we can run the tests on the Arduino though (just in case we break something).
 * Implement `.S`.
-* Improve task code (see OmniFocus notes).
 * Drop enforth\_test back to 1KB so that it works with `LOAD` and `SAVE`, presumably by splitting up that one test so that it doesn't consume all of the RAM.
-* Modify `SAVE` so that it only saves up to `DP` (no reason to waste time saving unused bytes).
-  * We could modify the EEPROM load function to read the length and then read only that many bytes... EEPROM save would have to write that out and then reduce the actual number of used bytes...
-* Create some sort of iterate-over-the-dictionary word that takes an XT (`FOUND?`, in the case of `FIND-WORD`) and stops iterating when the word returns true?  Use this for both `FIND-WORD` and `WORDS`.
 * Most of `FOUND-FFIDEF?` is just `FOUND?`; we should find a way to merge that code.
   * FFI definition names are stored normally (forward order) which means that `FOUND?` cannot use `STRING~XT` for comparing FFIs.  We should put definitions in forward order and then just do subtraction to jump to the start of the definition.  Then we can use `FOUND?` for everything.
+    * We should drop the terminal bit thing as well; we're not using that anywhere and it's just annoying to constantly mask off.
   * As an FYI, we can't easily remove `FIND-FFIDEF` (even though it looks like `FIND-WORD`), because it is chaining through defs using absolute addresses and not XTs.
-* Do we need `I*` tokens or can normal tokens just use inProgramMemory?  (and if so, is that actually smaller from a compile perspective?)
-* Implement the remaining `CORE` words (the ones whose tests have been commented out in `test_core.cpp`).
+* Dictionary search (probably `FIND-WORD` traversal) seems pretty slow.  We should profile it and see about moving that (back) to C.
 * Externs should be separate libraries and Git repos.
 * Create more `externs/enforth_*.h` files for various Arduino libs in order to validate the FFI code, workflow, etc.
   * Especially interesting to determine is the maximum number of FFI args that are actually need.  We currently support 8, but something like 4 would probably be better.
@@ -18,6 +17,7 @@
     * For example, `delay` takes a long, but it's not in the right (`100 S>D`) format.  This seems bad...
     * Or do we wrap all of these in `ENFORTH_EXTERN_METHOD` (which then needs a better name...) and manually shift the values?
     * Probably need a variant of the macro (or a `DOFFI*`?) that returns a long and does a double-push as well.
+    * Double-push may require an entire duplicate set of `DOFFI*` tokens, which is kind of lame.  Maybe we should have `ENFORTH_EXTERN_METHOD` (or its better-named replacement) just do the push and pop itself using enforth.h-provided `enforth_push` and `enforth_pop`?  That starts to mess with our register variables then...  I suppose duplicating `DOFFI*` is better?
 * PARSE-WORD needs to treat all control characters as space if given a space as the delimiter.
 * Improve the stack checking code.
   * First, the code is probably too aggressive and may not let us use the last stack item.
@@ -38,7 +38,13 @@
 * Move to [Arduino 1.5 library format](https://github.com/arduino/Arduino/wiki/Arduino-IDE-1.5:-Library-specification) now that 1.0.6 supports that format?
 * Support 64-bit platforms (requires more `#ifdef`s and some trickiness in `*/MOD`).
 * Consider a switch-based version of the inner loop for compilers like Visual Studio that do not support jump-threading.  All of the labels will need to be come BEGIN\_CODEPRIM(DUP)/END\_CODEPRIM(DUP) or something like that.
+* Make a tEnforthTask structure for easily accessing structures in the C code.
+* Improve task code (see OmniFocus notes).
+* Should the `OPERATOR` task be outside of the dictionary so that the dictionary can load/save without packing along the 128-byte task?  This could be in the VM structure and linked just like normal.  enforth\_interpret (which doesn't exist yet) could then start the interpreter on the `OPERATOR` task.  This would make it explicit that the operator state does not load/save.  Maybe we could even pack along some of the other variables this way... (`>IN` and `SOURCE` and stuff could be USER variables?).
+  * Users could still evaluate things (such as their turnkey word) on the operator task (although they wouldn't know that); it just wouldn't load/save with their dictionary.  That seems fine, since loading/saving your task state isn't going to work anyway since you re-run the turnkey word at startup.
 * Address all TODOs and FIXMEs in the code and definitions.
+* Create a 16-bit `r-addr` (relative address) concept and then use that everywhere instead of XTs?  Create a rel\_to\_absolute C function (and inverse) that can be used for mapping to/from relative addresses.  Also need a macro that can tell you if a relative address is in ROM (for AVR).
+  * Test this behavior/function by modifying the test code to create a new dictionary after every enforth\_evaluate and copy the old dictionary into that new one.  Forces every address to be relative or the tests will crash.
 
 # After Release
 
@@ -53,6 +59,9 @@
 * Do something about absolute RAM addresses on the stack, in variables, etc.  These prevent the VM from being saved to/from storage (such as EEPROM).
   * We can't relativize everything on save, because we don't always know what we are looking at -- how do we know that a dictionary variable contains a RAM address?  We could probably relativize all addresses in the VM though and then `@`, `!`, etc. would do the adjustment as necessary (and could offer bounds-checking).  All of these addresses are VM-relative and that VM base address will probably end up being stored in a constant register pair.  Access to memory-mapped CPU resources gets messy (this is mostly an ARM problem), although we could offer special fetch and store operations for those.  Similarly, FFI interop involving addresses is now a problem because we need to convert those back and forth.
   * Note that the VM itself has quite a few absolute addresses (DP, HERE, SOURCE, etc.) and we'll need to deal with those on load/save.  Most of these have to do with the text interpreter though and we could easily just say that persistence resets the state of the text interpreter and can only be performed when *not* in compilation mode.  That would leave a very small number of pointers in the VM and those could just be serialized as part of persisting the dictionary.
+  * The `r-addr` concept should make this possible.  Then all of the standard words would operate on relative addresses and we would provide fetch and store words for processors that actually need you to access memory outside of the dictionary.
+    * This is not great though, because we already have Arduino libraries (such as Microview) that have a big RAM block that we are probably going to want to poke at.  I think that we just won't be able to relativize addresses.
+    * Maybe this is okay though if `CREATE` and `VARIABLE` return absolute addresses based on the current dictionary address (which I think happens anyway).  Then all of the dictionary-relative address will in fact be relative and only things that are outside of that will be absolute.  Probably those things won't be changing anyway because, in general, we should say that `LOAD` and `SAVE` do not work if you recompile Enforth itself.
 * Forth200x updates (mostly just `TIB` and `#TIB`?, although numeric prefixes look very useful).
 * Add dumb exceptions that just restart the VM?
 * Consider adding `PAD`, perhaps with a configurable size.  Do not use `PAD` in the kernel though so that we can avoid making it a requirement.
