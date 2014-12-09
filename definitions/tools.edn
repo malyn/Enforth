@@ -32,6 +32,7 @@
               2DUP 16 MIN ( addr u addr line-u) TUCK ( a u lu a lu)
               CR DUMPLINE ( a u lu) /STRING
             REPEAT
+            ( addr R:orig-base) DROP
             R> BASE ! ;"
  :pfa [:base :fetch :tor :hex
        :qdup :izbranch 75
@@ -56,6 +57,7 @@
              :piloop -20
            :drop
          :slashstring :ibranch -76
+       :drop
        :rfrom :base :store
        :exit]}
 
