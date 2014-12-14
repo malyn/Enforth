@@ -118,8 +118,8 @@ EnforthVM * const get_test_vm()
 
 
     /* Clear out the dictionary and VM structure. */
-    memset(&enforthVM, sizeof(enforthVM), 0);
-    memset(&enforthDict, sizeof(enforthDict), 0);
+    memset(&enforthVM, 0, sizeof(enforthVM));
+    memset(&enforthDict, 0, sizeof(enforthDict));
 
     /* Initialize Enforth. */
     enforth_init(
