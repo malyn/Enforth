@@ -75,8 +75,8 @@ typedef enum EnforthToken
     DOCOLONROM,
     DOCONSTANT,
     DOCREATE,
-    DODOES,
     DOVARIABLE,
+    /* Unused */
     /* Unused */
     /* Unused */
 
@@ -97,7 +97,7 @@ typedef enum EnforthToken
  */
 
 static const int kNFAtoCFA = 1 /* PSF+namelen */ + 2 /* LFA */;
-static const int kNFAtoPFA = 1 /* PSF+namelen */ + 2 /* LFA */ + 1; /* CFA */
+static const int kNFAtoPFA = 1 /* PSF+namelen */ + 2 /* LFA */ + 2; /* CFA */
 
 static const int kTaskUserVariableSize = 8;
 static const int kTaskReturnStackSize = 32;
@@ -311,8 +311,8 @@ void enforth_resume(EnforthVM * const vm)
         &&DOCONSTANT,
         &&DOCREATE,
 
-        0, /* &&DODOES, */
         &&DOVARIABLE,
+        0, /* Unused */
         0, /* Unused */
         0, /* Unused */
 
@@ -399,12 +399,26 @@ UNPAUSE:
             }
 
 DISPATCH_XT:
-            /* Convert the XT into a Word Pointer depending on the type
-             * of XT (ROM definition or user definition) and then read
-             * the CFA. */
+            /* This is a two-byte XT that points at another word.  We
+             * need to find the word that is being targeted by this XT
+             * and set W to that word's PFA.  We then need to dispatch
+             * to the word's Code Field.  The Code Field will almost
+             * always contain a DO* token, *unless the word was modified
+             * by a defining word.*  In that case, the Code Field will
+             * contain a full, two-byte XT and that XT will point to the
+             * runtime behavior of the defining word (the code after
+             * DOES> in the defining word).
+             *
+             * Note that ROM Definitions never use DOES> and so we can
+             * assume that the Code Field in a ROM Definition will
+             * always contain a token. */
             if ((xt & 0xC000) == 0xC000) /* ROM Definition: 0xCxxx */
             {
-                w = (uint8_t*)((uint8_t*)definitions + (xt & 0x3FFF) + kNFAtoCFA);
+                /* Advance past the empty first byte in the Code Field,
+                 * then read the token in the second byte. */
+                /* TODO We could probably eliminate the first byte in
+                 * ROM Definitions. */
+                w = (uint8_t*)((uint8_t*)definitions + (xt & 0x3FFF) + kNFAtoCFA + 1);
 #ifdef __AVR__
                 token = pgm_read_byte(w++);
 #else
@@ -413,8 +427,24 @@ DISPATCH_XT:
             }
             else /* User Definition: 0x8xxx */
             {
+                /* Load the Code Field. */
                 w = (uint8_t*)(vm->dictionary.ram + (xt & 0x3FFF) + kNFAtoCFA);
-                token = *w++;
+                xt = *w++ << 8;
+                xt |= *w++;
+
+                /* We're done if this is a token. */
+                if (xt < 0x80)
+                {
+                    token = xt;
+                    goto DISPATCH_TOKEN;
+                }
+                else
+                {
+                    /* Not a token, which means that this word was
+                     * defined by DOES>; jump to DODOES to perform the
+                     * runtime behavior of the defining word. */
+                    goto DODOES;
+                }
             }
         }
 
@@ -510,6 +540,8 @@ DISPATCH_TOKEN:
 #ifdef __AVR__
             if (inProgramSpace)
             {
+                /* FIXME Can this ever happen?  How would a ROM word
+                 * know about a RAM word? */
                 /* Set the high bit on the return address so that we
                  * know that this address is in ROM. */
                 ip = (uint8_t*)((unsigned int)ip | 0x8000);
@@ -605,6 +637,45 @@ DISPATCH_TOKEN:
              * that location onto the stack. */
             *--restDataStack = tos;
             tos = *(EnforthCell*)w;
+        }
+        continue;
+
+        DODOES:
+        {
+            /* We're currently sitting in a word that is calling a word
+             * defined with DOES>.  IP has been advanced beyond that
+             * call and is still in the calling word.  XT contains the
+             * Code Field of the defined word (and thus points to the
+             * DOES> part of the defining word's thread).  We need to
+             * push IP to the stack, push the PFA of the defined word to
+             * the stack, and then continue execution at XT (the
+             * defining word's runtime behavior). */
+#ifdef __AVR__
+            if (inProgramSpace)
+            {
+                /* FIXME Can this ever happen?  How would a ROM word
+                 * know about a RAM word? */
+                /* Set the high bit on the return address so that we
+                 * know that this address is in ROM. */
+                ip = (uint8_t*)((unsigned int)ip | 0x8000);
+
+                /* We are no longer in program space since, by design,
+                 * DODOES is only ever used for user-defined words in
+                 * RAM. */
+                inProgramSpace = 0;
+            }
+#endif
+            (--returnTop)->ram = ip;
+
+            /* W points at the PFA of the defined word; push that to the
+             * stack per the runtime behavior of DOES>. */
+            *--restDataStack = tos;
+            tos.ram = w;
+
+            /* Point IP at the DOES> portion of the defining word (which
+             * is the target of the defined word's Code Field and is
+             * thus in XT). */
+            ip = (uint8_t*)(vm->dictionary.ram + (xt & 0x3FFF));
         }
         continue;
 

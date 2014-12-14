@@ -1,5 +1,8 @@
 # Before Release
 
+* Change XTs to point at the CFA (which is what a DOES>-inserted XT already targets...) instead of the NFA.  This will make all XTs immediately executable.
+  * This may make it possible to put real XTs on the return stack, which would avoid that bogus $8xxx thing that only happens to work because Arduino's have less than 32KB of RAM.
+* Change ROM Definitions to be $4xxx instead of $Cxxx; the later could show up if we have >16KB dictionary (since User Defintions are $8xxx and $Cxxx just means that the second-highest bit was set).
 * Implement the remaining `CORE` words (the ones whose tests have been commented out in `test_core.cpp`).
 * Do we need `I*` tokens or can normal tokens just use inProgramSpace?  (and if so, is that actually smaller from a compile perspective?)
   * Looks like we can make this change and that it will be (slightly) smaller, if not (slightly) slower.  We shouldn't make the change until we can run the tests on the Arduino though (just in case we break something).

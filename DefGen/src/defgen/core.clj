@@ -141,7 +141,7 @@
   (let [name-size (if hidden? 0 (count name))
         header-size (+ 1 ;; PSF+5bit name length
                        2 ;; LFA
-                       1)] ;; CFA
+                       2)] ;; CFA
     (assoc rom-def ::name-size name-size ::header-size header-size)))
 
 (defn token-byte-size
@@ -195,7 +195,7 @@
                                [(str (when immediate? "0x80|")
                                      (if hidden? 0 (count name)))]
                                [(xt-to-bytes (rom-def-prev-xts id))]
-                               [cfa])))
+                               [0 cfa])))
               rom-defs)))
 
 (defn extract-branch-span

@@ -866,24 +866,23 @@ TEST_CASE( "Defining Words: : ; CONSTANT VARIABLE CREATE DOES> >BODY") {
     REQUIRE( enforth_test(vm, "T{ NOP1 -> }T") );
     REQUIRE( enforth_test(vm, "T{ NOP2 -> }T") );
 
-    // TODO Enable this once have DOES>.
-    // REQUIRE( enforth_test(vm, "T{ : DOES1 DOES> @ 1 + ; -> }T") );
-    // REQUIRE( enforth_test(vm, "T{ : DOES2 DOES> @ 2 + ; -> }T") );
+    REQUIRE( enforth_test(vm, "T{ : DOES1 DOES> @ 1 + ; -> }T") );
+    REQUIRE( enforth_test(vm, "T{ : DOES2 DOES> @ 2 + ; -> }T") );
     REQUIRE( enforth_test(vm, "T{ CREATE CR1 -> }T") );
     REQUIRE( enforth_test(vm, "T{ CR1 -> HERE }T") );
     REQUIRE( enforth_test(vm, "T{ ' CR1 >BODY -> HERE }T") );
     REQUIRE( enforth_test(vm, "T{ 1 , -> }T") );
-    // REQUIRE( enforth_test(vm, "T{ CR1 @ -> 1 }T") );
-    // REQUIRE( enforth_test(vm, "T{ DOES1 -> }T") );
-    // REQUIRE( enforth_test(vm, "T{ CR1 -> 2 }T") );
-    // REQUIRE( enforth_test(vm, "T{ DOES2 -> }T") );
-    // REQUIRE( enforth_test(vm, "T{ CR1 -> 3 }T") );
+    REQUIRE( enforth_test(vm, "T{ CR1 @ -> 1 }T") );
+    REQUIRE( enforth_test(vm, "T{ DOES1 -> }T") );
+    REQUIRE( enforth_test(vm, "T{ CR1 -> 2 }T") );
+    REQUIRE( enforth_test(vm, "T{ DOES2 -> }T") );
+    REQUIRE( enforth_test(vm, "T{ CR1 -> 3 }T") );
 
-    // REQUIRE( enforth_test(vm, "T{ : WEIRD: CREATE DOES> 1 + DOES> 2 + ; -> }T") );
-    // REQUIRE( enforth_test(vm, "T{ WEIRD: W1 -> }T") );
-    // REQUIRE( enforth_test(vm, "T{ ' W1 >BODY -> HERE }T") );
-    // REQUIRE( enforth_test(vm, "T{ W1 -> HERE 1 + }T") );
-    // REQUIRE( enforth_test(vm, "T{ W1 -> HERE 2 + }T") );
+    REQUIRE( enforth_test(vm, "T{ : WEIRD: CREATE DOES> 1 + DOES> 2 + ; -> }T") );
+    REQUIRE( enforth_test(vm, "T{ WEIRD: W1 -> }T") );
+    REQUIRE( enforth_test(vm, "T{ ' W1 >BODY -> HERE }T") );
+    REQUIRE( enforth_test(vm, "T{ W1 -> HERE 1 + }T") );
+    REQUIRE( enforth_test(vm, "T{ W1 -> HERE 2 + }T") );
 }
 
 // TODO Enable this once we have Input Control Blocks.

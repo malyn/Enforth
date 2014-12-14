@@ -154,9 +154,9 @@
  :name ":"
  :args [[] []]
  :source ": : ( \"<spaces>name\" -- )
-            CREATE  HIDE  -1 ALLOT ['] DOCOLON C,  ]"
+            CREATE  HIDE  -2 ALLOT ['] DOCOLON XT,  ]"
  :pfa [:create :hide
-       :zero :oneminus :allot :icharlit "DOCOLON" :ccomma
+       :zero :oneminus :oneminus :allot :icharlit "DOCOLON" :xtcomma
        :rtbracket
        :exit]}
 
@@ -170,14 +170,18 @@
 ;; around and basically do a similar thing to decide if this is not a
 ;; DO* word.  We need some way to differentiate between these things: a
 ;; token and a definition.
+;; FIXME XT@XT should really be CFA@ (similar to LFA@) and then do the
+;; offset on its own (just like LFA@).  This will make it easier to
+;; eventually change target of an XT (to the CFA instead of the LFA, for
+;; example).
 {:token :compilecomma
  :name "COMPILE,"
  :args [[:xt] []]
  :source ": COMPILE, ( xt --)
             DUP TOKEN? IF C, EXIT THEN
-            DUP 3 + ( >CFA) C@XT  DUP $70 < IF C, DROP ELSE DROP XT, THEN ;"
+            DUP 3 + ( >CFA) XT@XT DUP $70 < IF C, DROP ELSE DROP XT, THEN ;"
  :pfa [:dup :tokenq :izbranch 3 :ccomma :exit
-       :dup :oneplus :oneplus :oneplus :cfetchxt
+       :dup :oneplus :oneplus :oneplus :xtfetchxt
        :dup :icharlit 0x70 :lessthan :izbranch 5
          :ccomma :drop :ibranch 3
          :drop :xtcomma
@@ -186,8 +190,8 @@
 {:token :constant
  :args [[:x] []]
  :source ": CONSTANT ( x \"<spaces>name\" -- )
-            CREATE  -1 ALLOT ['] DOCONSTANT C,  , ;"
- :pfa [:create :zero :oneminus :allot :icharlit "DOCONSTANT" :ccomma
+            CREATE  -2 ALLOT ['] DOCONSTANT XT,  , ;"
+ :pfa [:create :zero :oneminus :oneminus :allot :icharlit "DOCONSTANT" :xtcomma
        :comma
        :exit]}
 
@@ -215,7 +219,7 @@
             BL PARSE-WORD DUP 0= IF ABORT THEN ( ca u)
             TUCK ( u ca u) NAME, ( u)
             HERE >XT ( u this-xt)  SWAP C,  LATEST @ XT,  ( this-xt) LATEST !
-            ['] DOCREATE C,  ALIGN ;"
+            ['] DOCREATE XT,   ALIGN ;"
  :pfa [:bl :parseword :dup :zeroequals :izbranch 2 :abort
        :tuck
        ; NAME,
@@ -225,7 +229,10 @@
            :oneminus :dup :cfetch :ccomma :ibranch -9
          :twodrop
        :here :toxt :swap :ccomma :latest :fetch :xtcomma :latest :store
-       :icharlit "DOCREATE" :ccomma
+       :icharlit "DOCREATE" :xtcomma
+       ;; FIXME This ALIGN seems wrong; the VM will just point W right
+       ;; after the CFA, for example, and not take ALIGN into account.
+       ;; We should probably no-op ALIGN and then stop calling it.
        :align
        :exit]}
 
@@ -243,6 +250,72 @@
  :source ": DO ( C: -- do-sys )
             0 'PREVLEAVE !  ['] (DO) COMPILE,  HERE ; IMMEDIATE"
  :pfa [:zero :tickprevleave :store :icharlit :pdo :compilecomma :here :exit]}
+
+;; CREATE puts a two-byte XT containing the DOCREATE token into the Code
+;; Field.  Various other defining words (CONSTANT, VARIABLE, etc.)
+;; replace that token with a different token.  DOES> also needs to
+;; replace the Code Field, but needs to replace it with an XT and not a
+;; token.  That reason alone is why the Code Field is two bytes instead
+;; of one byte.
+;;
+;; What goes in this DOES>-modified Code Field?  The XT of the runtime
+;; behavior of the defining word -- the code after DOES> in other words.
+;;
+;; Here is how CREATE..DOES>.. works:
+;;
+;; Compile Time behavior:
+;; 1. Defining word is created that looks like: ": NAMEDZERO: CREATE 0 , DOES> @ ;".
+;; 2. DOES> is an immediate word that compiles (does>) into the defining
+;;    word's thread.
+;; 3. User calls this word to create a new word: "NAMEDZERO: nothing".
+;; 4. Defining word runs CREATE, which creates a new definition.  In
+;;    this case, the definition compiles a zero into the dictionary.
+;; 5. Then (does>) executes (remember, we are still in the NAMEDZERO:
+;;    thread at this point).  (does>) exits the current definition (which
+;;    is "NAMEDZERO:" in this example) by popping the return stack
+;;    pointer.  That pointer contains the address of the word after
+;;    (does>) from the NAMEDZERO: definition itself.  That pointer is
+;;    the start of the runtime behavior of the defining word.
+;; 6. (does>) then gets the address of the LATEST definition (which is
+;;    the one that we CREATEd in step 4) and advances to the CFA (which
+;;    so far is DOCREATE).
+;; 7. (does>) rewrites that CFA to point to the address after (does>),
+;;    which was popped in step 5.
+;;
+;; Runtime behavior:
+;; 1. The defined word ("nothing" in this example) runs.  Its CFA points
+;;    to the thread after (does>).  The Enforth inner interpreter has
+;;    special code that detects this situation -- a Code Field that
+;;    contains an XT and not a token -- and knows that the Code Field
+;;    was modified by (does>).  The inner interpreter jumps to DODOES.
+;; 2. DODOES pushes the IP to the return stack -- we're calling another
+;;    word here, just like in DOCOLON.  Then DODOES pushes W (the PFA of
+;;    the *defined* word, aka "nothing" in this example) to the data
+;;    stack.  Finally, DODOES sets IP to the runtime thread of the
+;;    defining word (from "NAMEDZERO:").
+;; 3. Execution continues in the body of the defining word.
+{:token :pdoes
+ :name "(does>)"
+ :flags #{:headerless}
+ :source ": (does>)
+            R> >XT ( XT of runtime behavior for the defining word)
+            LATEST @ >NFA kNFAtoCFA + ( addr of original CFA)
+            XT! ( rewrite CFA to point to runtime part of defining word) ;"
+ :pfa [:rfrom :toxt
+       :latest :fetch :tonfa :icharlit "kNFAtoCFA" :plus
+       :xtstore
+       :exit]}
+
+{:token :does
+ :name "DOES>"
+ :flags #{:immediate}
+ :source ": DOES> ( -- )  ['] (does>) XT, ; IMMEDIATE"
+ :pfa [:icharlit "((uint8_t)((ROMDEF_PDOES >> 8) & 0xff))"
+       :icharlit 8 :lshift
+       :icharlit "((uint8_t)((ROMDEF_PDOES     ) & 0xff))"
+       :or
+       :xtcomma
+       :exit]}
 
 {:token :dot
  :name "."
@@ -703,8 +776,8 @@
 {:token :tobody
  :name ">BODY"
  :args [[:xt] [:a-addr]]
- :source ": >BODY ( xt -- a-addr)  XTMASK AND 'DICT + 4 + ( NFA + LFA + CFA) ;"
- :pfa [:xtmask :and :tickdict :plus :icharlit 4 :plus
+ :source ": >BODY ( xt -- a-addr)  XTMASK AND 'DICT + kNFAtoPFA + ;"
+ :pfa [:xtmask :and :tickdict :plus :icharlit "kNFAtoPFA" :plus
        ;; TODO Add :align if we start aligning the PFA.
        :exit]}
 
@@ -774,8 +847,8 @@
 {:token :variable
  :args [[] []]
  :source ": VARIABLE ( \"<spaces>name\" -- )
-            CREATE  -1 ALLOT ['] DOVARIABLE C,  0 , ;"
- :pfa [:create :zero :oneminus :allot :icharlit "DOVARIABLE" :ccomma
+            CREATE  -2 ALLOT ['] DOVARIABLE XT,  0 , ;"
+ :pfa [:create :zero :oneminus :oneminus :allot :icharlit "DOVARIABLE" :xtcomma
        :zero :comma
        :exit]}
 

@@ -432,11 +432,8 @@
  :name "LFA@"
  :args [[:xt] [:xt]]
  :flags #{:headerless}
- :source ": LFA@ ( xt -- xt')
-            1+ ( NFA>LFA)  DUP C@XT 8 LSHIFT  SWAP 1+ C@XT  OR ;"
- :pfa [:oneplus
-       :dup :cfetchxt :icharlit 8 :lshift
-       :swap :oneplus :cfetchxt :or :exit]}
+ :source ": LFA@ ( xt -- xt')  1+ ( NFA>LFA)  XT@XT ;"
+ :pfa [:oneplus :xtfetchxt :exit]}
 
 ;; Length of the definition name, not necessarily the NFA field (because
 ;; FFI trampolines have a zero-length NFA since the name is stored in
@@ -704,14 +701,14 @@
             0= IF TYPE  SPACE  [CHAR] ? EMIT  CR  ABORT THEN ( ca u addr)
             HERE >XT ( ca u addr this-xt)  ROT %00100000 OR C, ( ca a xt)
             LATEST @ XT,  ( ca addr this-xt) LATEST !
-            ['] DOFFI0 ( ca addr ffitokenbase) OVER FFIDEF-ARITY + C,
+            ['] DOFFI0 ( ca addr ffitokenbase) OVER FFIDEF-ARITY + XT,
             ( ca addr) ALIGN ,  DROP ;"
  :pfa [:bl :parseword :dup :zeroequals :izbranch 2 :abort
        :twodup :findffidef :zeroequals :izbranch 8
          :type :space :icharlit "'?'" :emit :cr :abort
        :here :toxt :rot :icharlit 0x20 :or :ccomma
        :latest :fetch :xtcomma :latest :store
-       :icharlit "DOFFI0" :over :ffidefarity :plus :ccomma
+       :icharlit "DOFFI0" :over :ffidefarity :plus :xtcomma
        :align :comma :drop
        :exit]}
 
@@ -722,6 +719,14 @@
  :source ": XT, ( xt -- )  DUP 8 RSHIFT C,  C, ;"
  :pfa [:dup :icharlit 8 :rshift :ccomma :ccomma :exit]}
 
+{:token :xtfetchxt
+ :name "XT@XT"
+ :args [[:xt] [:xt]]
+ :flags #{:headerless}
+ :source ": XT@XT ( xt -- xt')  DUP C@XT 8 LSHIFT  SWAP 1+ C@XT  OR ;"
+ :pfa [:dup :cfetchxt :icharlit 8 :lshift
+       :swap :oneplus :cfetchxt :or :exit]}
+
 {:token :xtflag
  :args [[] [:u]]
  :flags #{:headerless}
@@ -731,3 +736,10 @@
  :args [[] [:u]]
  :flags #{:headerless}
  :pfa [:icharlit 0xff :icharlit 0x3f :icharlit 8 :lshift :or :exit]}
+
+{:token :xtstore
+ :name "XT!"
+ :args [[:xt :addr] []]
+ :flags #{:headerless}
+ :source ": XT! ( xt addr -- )  OVER 8 RSHIFT OVER C!  1+ C! ;"
+ :pfa [:over :icharlit 8 :rshift :over :cstore :oneplus :cstore :exit]}
