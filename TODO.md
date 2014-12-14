@@ -4,7 +4,6 @@
 * Do we need `I*` tokens or can normal tokens just use inProgramSpace?  (and if so, is that actually smaller from a compile perspective?)
   * Looks like we can make this change and that it will be (slightly) smaller, if not (slightly) slower.  We shouldn't make the change until we can run the tests on the Arduino though (just in case we break something).
 * Implement `.S`.
-* Drop enforth\_test back to 1KB so that it works with `LOAD` and `SAVE`, presumably by splitting up that one test so that it doesn't consume all of the RAM.
 * Most of `FOUND-FFIDEF?` is just `FOUND?`; we should find a way to merge that code.
   * FFI definition names are stored normally (forward order) which means that `FOUND?` cannot use `STRING~XT` for comparing FFIs.  We should put definitions in forward order and then just do subtraction to jump to the start of the definition.  Then we can use `FOUND?` for everything.
     * We should drop the terminal bit thing as well; we're not using that anywhere and it's just annoying to constantly mask off.

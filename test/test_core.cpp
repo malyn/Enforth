@@ -937,9 +937,9 @@ TEST_CASE( "SOURCE >IN WORD") {
     REQUIRE( enforth_test(vm, "-> }T") );
 }
 
-TEST_CASE( "<# # #S #> HOLD SIGN BASE >NUMBER HEX DECIMAL" ) {
+TEST_CASE( "<# # #S #> HOLD SIGN BASE" ) {
     EnforthVM * const vm = get_test_vm();
-    enforth_evaluate(vm, "TESTING <# # #S #> HOLD SIGN BASE >NUMBER HEX DECIMAL" );
+    enforth_evaluate(vm, "TESTING <# # #S #> HOLD SIGN BASE" );
          enforth_evaluate(vm, "0        CONSTANT 0S");
          enforth_evaluate(vm, "0 INVERT CONSTANT 1S");
          enforth_evaluate(vm, "0S CONSTANT <FALSE>");
@@ -1009,6 +1009,14 @@ TEST_CASE( "<# # #S #> HOLD SIGN BASE >NUMBER HEX DECIMAL" ) {
          enforth_evaluate(vm, "   LOOP");
          enforth_evaluate(vm, "   R> BASE ! ;");
     REQUIRE( enforth_test(vm, "T{ GP7 -> <TRUE> }T") );
+}
+
+TEST_CASE( ">NUMBER HEX DECIMAL" ) {
+    EnforthVM * const vm = get_test_vm();
+    enforth_evaluate(vm, "TESTING >NUMBER HEX DECIMAL" );
+
+         enforth_evaluate(vm, "0 INVERT                 CONSTANT MAX-UINT");
+         enforth_evaluate(vm, "24 CONSTANT MAX-BASE");
 
     /* >NUMBER TESTS */
          enforth_evaluate(vm, "CREATE GN-BUF 0 C,");
