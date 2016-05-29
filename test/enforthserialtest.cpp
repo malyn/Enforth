@@ -134,8 +134,8 @@ static int OpenEnforthConnection(const char * const path)
 	tios.c_cc[VMIN] = 0;
 	tios.c_cc[VTIME] = 0;
 
-	cfsetispeed(&tios, B115200);
-	cfsetospeed(&tios, B115200);
+	cfsetispeed(&tios, B9600);
+	cfsetospeed(&tios, B9600);
 
 	/* Change attributes after sending all data (there is none) and
 	 * flushing any input. */
