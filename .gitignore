@@ -4,7 +4,9 @@ DefGen/.lein-repl-history
 DefGen/.nrepl-port
 DefGen/target
 test/enforth
+test/enforthserialtest
 test/enforthsimple
+test/enforthtest
 *.atsuo
 *.core
 *.diff
