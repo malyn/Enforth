@@ -88,7 +88,7 @@ static int OpenEnforthConnection(const char * const path)
 	 * port. */
 	printf("*** Resetting Target ***\n");
 
-	int fd = open(path, O_RDWR | O_NOCTTY | O_TTY_INIT | O_NONBLOCK);
+	int fd = open(path, O_RDWR | O_NOCTTY | O_NONBLOCK);
 	if (fd == -1)
 	{
 		perror("open failed");
@@ -111,7 +111,7 @@ static int OpenEnforthConnection(const char * const path)
 	sleep(1);
 
 	printf("*** Opening Serial Port ***\n");
-	fd = open(path, O_RDWR | O_NOCTTY | O_TTY_INIT | O_NONBLOCK);
+	fd = open(path, O_RDWR | O_NOCTTY | O_NONBLOCK);
 	if (fd == -1)
 	{
 		perror("open failed");
