@@ -96,12 +96,14 @@ typedef enum EnforthToken
  * Enforth constants
  */
 
-static const int kNFAtoCFA = 1 /* PSF+namelen */ + 2 /* LFA */;
-static const int kNFAtoPFA = 1 /* PSF+namelen */ + 2 /* LFA */ + 2; /* CFA */
+/* Some compilers have issues with these things being constants (static
+ * const int), which is why they are #define'd instead. */
+#define kNFAtoCFA (1 /* PSF+namelen */ + 2 /* LFA */)
+#define kNFAtoPFA (1 /* PSF+namelen */ + 2 /* LFA */ + 2 /* CFA */)
 
-static const int kTaskUserVariableSize = 8;
-static const int kTaskReturnStackSize = 32;
-static const int kTaskDataStackSize = 24;
+#define kTaskUserVariableSize 8
+#define kTaskReturnStackSize 32
+#define kTaskDataStackSize 24
 
 #define kTaskStartToReturnTop ((kEnforthCellSize * kTaskUserVariableSize) + (kEnforthCellSize * (kTaskReturnStackSize - 1)))
 #define kTaskStartToDataTop ((kEnforthCellSize * kTaskUserVariableSize) + (kEnforthCellSize * kTaskReturnStackSize) + (kEnforthCellSize * (kTaskDataStackSize - 1)))
