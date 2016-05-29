@@ -141,6 +141,14 @@ static int OpenEnforthConnection(const char * const path)
 	 * flushing any input. */
 	tcsetattr(fd, TCSAFLUSH, &tios);
 
+    /* Set DTR high in order to take us out of reset.  This is not
+     * required on a USB-connected Arduino, but may be required on
+     * devices connected via FTDI chips or when the serial driver is
+     * automatically de-asserting DTR after open. */
+	ioctl(fd, TIOCMGET, &flags);
+	flags &= ~TIOCM_DTR;
+	ioctl(fd, TIOCMSET, &flags);
+
 	/* Drain the port watching for an "ok ", sending LFs every second. */
 	printf("*** Sending LFs; waiting for \"ok \" ***\n");
 	enum { waitingForO, waitingForK, waitingForSpace } okState = waitingForO;
