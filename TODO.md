@@ -1,8 +1,42 @@
+# WIP New FFI Concept
+
+* All FFI calls get the three TOS items and a "super TOS" value that is the value beyond the TOS (in case the FFI consumes nothing and pushes something).
+* FFI methods read from whatever args they want, optionally rewrite args, then return the stack adjustment.
+
+Examples:
+
+```c
+static int add(EnforthCell * stos, EnforthCell * tos, EnforthCell * second, EnforthCell * third)
+{
+    second->i += tos->i;
+    return -1; /* drop one item from the stack, making "second" the "tos" */
+}
+```
+
+```c
+static int random(EnforthCell * stos, EnforthCell * tos, EnforthCell * second, EnforthCell * third)
+{
+    stos->u = random();
+    return 1; /* add one item to the stack, making stos the tos */
+}
+```
+
+```c
+static int delay(EnforthCell * stos, EnforthCell * tos, EnforthCell * second, EnforthCell * third)
+{
+    delay(tos->u); /* not really, because of long vs int, but ignore that for now */
+    return -1; /* make second the tos */
+}
+```
+
+Seems to work fine, and means that we only need a single type of FFI opcode.  Probably causes all sorts of register churn, but that was going to happen anyway.  We long ago lost the value of FFIs that avoided register churn...  Now it is better to just make every type of FFI (long-taking/returning) work and to minimize enforth.c code and opcode usage.
+
 # Before Release
 
+* Considering dropping all of the arity-based variants of `DOFFI` and instead just have a single `DOFFI` that always provides three (four?) `EnforthCell` values to the FFI.  The FFI then references as many (or none) of those as desired and replaces whichever ones it desires.  Then it returns an int saying how much to adjust the stack.  So if it takes one and replaces one it returns zero.  If it takes one and does not replace one then it returns -1.  If it takes zero and places one then it returns 1.  **How do we** leave this extra space?  We can't just return the top three items of the stack, because then we have no space for extra stuff.  Maybe we always provide three cells and one "next TOS" cell?
+* Reorganize the directory, repo(s), etc. so that the test projects and stuff are not in a compile-visible location.  `ino` gets confused by seeing `test` for example.  Maybe move to the Arduino 1.5 library layout now that Arduino 1.0.6 (I think?) supports that layout?
 * Change XTs to point at the CFA (which is what a DOES>-inserted XT already targets...) instead of the NFA.  This will make all XTs immediately executable.
   * This may make it possible to put real XTs on the return stack, which would avoid that bogus $8xxx thing that only happens to work because Arduino's have less than 32KB of RAM.
-* Change ROM Definitions to be $4xxx instead of $Cxxx; the later could show up if we have >16KB dictionary (since User Defintions are $8xxx and $Cxxx just means that the second-highest bit was set).
 * Implement the remaining `CORE` words (the ones whose tests have been commented out in `test_core.cpp`).
 * Do we need `I*` tokens or can normal tokens just use inProgramSpace?  (and if so, is that actually smaller from a compile perspective?)
   * Looks like we can make this change and that it will be (slightly) smaller, if not (slightly) slower.  We shouldn't make the change until we can run the tests on the Arduino though (just in case we break something).
@@ -20,7 +54,11 @@
     * Or do we wrap all of these in `ENFORTH_EXTERN_METHOD` (which then needs a better name...) and manually shift the values?
     * Probably need a variant of the macro (or a `DOFFI*`?) that returns a long and does a double-push as well.
     * Double-push may require an entire duplicate set of `DOFFI*` tokens, which is kind of lame.  Maybe we should have `ENFORTH_EXTERN_METHOD` (or its better-named replacement) just do the push and pop itself using enforth.h-provided `enforth_push` and `enforth_pop`?  That starts to mess with our register variables then...  I suppose duplicating `DOFFI*` is better?
+    * Deal with `long` return values first, since we need that for `micros()` and stuff in order to implement `MS` in a task-friendly way.  Can we handle that by assuming that every FFI returns a `long` and then just pushing the two half-words onto the stack in the correct order?  Then an optional flag to the FFI would be the number of values to drop from the stack after the call (0, 1, 2 depending on the number of expected return values).  This could  be how `_VOID` is implemented (instead of with extra tokens).
 * PARSE-WORD needs to treat all control characters as space if given a space as the delimiter.
+* Can remove DOCOLONROM token and Code Field from ROM Definitions; the Inner Interpreter can just jump to DOCOLONROM on its own.
+* Range of User Definitions is only $0000..$3FFF (16KB), because we have to set the high bit for all definitions (User *and* ROM) in order to differentiate them from tokens, which never have the high bit set.  This means that we can't simplify have ROM Definitions be $4xxx, for example.  No real solution to this problem though...  Inverting the logic (tokens are %1xxxxxxx, User Definitions are %010xxxxxx) doesn't work either, because we still have to reserve bits for the ROM Definition.  Alignment might be the only way to make this bigger..?
+* Might be able to remove the Code Field given that we are now down to a very small number of DO\* tokens...  Put 2-bit flag field somewhere?  Then the Inner Interpreter can use that to determine how to set W and to which token (DOCOLON, DOCREATE, DODOES, DOCONSTANT) to jump?
 * Improve the stack checking code.
   * First, the code is probably too aggressive and may not let us use the last stack item.
   * Second, we have the macro scattered everywhere, but it would be better if the stack sizes were in an extra byte in the definition header and then checked in a single place right before DISPATCH\_TOKEN.  This may make the logic small enough to include on AVRs (although it will add ~240 bytes to the size of the ROM Definition block).
