@@ -12,13 +12,13 @@ sertest: test/enforthserialtest
 	test/enforthserialtest --abort
 
 utility/enforth_definitions.h: enforth.c definitions/core.edn definitions/core-ext.edn definitions/double.edn definitions/enforth.edn definitions/string.edn definitions/tools.edn
-	cd DefGen && lein run ../utility $(addprefix ../, $+)
+	cd DefGen && lein.bat run ../utility $(addprefix ../, $+)
 
 utility/enforth_jumptable.h: enforth.c definitions/core.edn definitions/core-ext.edn definitions/double.edn definitions/enforth.edn definitions/string.edn definitions/tools.edn
-	cd DefGen && lein run ../utility $(addprefix ../, $+)
+	cd DefGen && lein.bat run ../utility $(addprefix ../, $+)
 
 utility/enforth_tokens.h: enforth.c definitions/core.edn definitions/core-ext.edn definitions/double.edn definitions/enforth.edn definitions/string.edn definitions/tools.edn
-	cd DefGen && lein run ../utility $(addprefix ../, $+)
+	cd DefGen && lein.bat run ../utility $(addprefix ../, $+)
 
 test/enforth: enforth.h enforth.c utility/enforth_definitions.h utility/enforth_jumptable.h utility/enforth_tokens.h test/enforth.c
 	cc -g -Wno-narrowing -I. -I./utility -o $@ -DENABLE_STACK_CHECKING=1 enforth.c test/enforth.c -lcurses
