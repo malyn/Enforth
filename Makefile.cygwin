@@ -21,13 +21,13 @@ utility/enforth_tokens.h: enforth.c definitions/core.edn definitions/core-ext.ed
 	cd DefGen && lein run ../utility $(addprefix ../, $+)
 
 test/enforth: enforth.h enforth.c utility/enforth_definitions.h utility/enforth_jumptable.h utility/enforth_tokens.h test/enforth.c
-	cc -g -I. -I./utility -o $@ -DENABLE_STACK_CHECKING=1 enforth.c test/enforth.c -lcurses
+	cc -g -Wno-narrowing -I. -I./utility -o $@ -DENABLE_STACK_CHECKING=1 enforth.c test/enforth.c -lcurses
 
 test/enforthsimple: enforth.h enforth.c utility/enforth_definitions.h utility/enforth_jumptable.h utility/enforth_tokens.h test/enforthsimple.c
-	cc -g -I. -I./utility -o $@ -DENABLE_STACK_CHECKING=1 enforth.c test/enforthsimple.c
+	cc -g -Wno-narrowing -I. -I./utility -o $@ -DENABLE_STACK_CHECKING=1 enforth.c test/enforthsimple.c
 
 test/enforthtest: enforth.h enforth.c utility/enforth_definitions.h utility/enforth_jumptable.h utility/enforth_tokens.h test/catch.hpp test/enforthtesthelper.h test/enforthtesthelper.c test/test_core.cpp test/test_enforth.cpp test/enforthtest.cpp
-	c++ -g -I. -I./utility -o $@ -DENABLE_STACK_CHECKING=1 enforth.c test/enforthtesthelper.c test/test_enforth.cpp test/test_core.cpp test/enforthtest.cpp
+	c++ -g -Wno-narrowing -I. -I./utility -o $@ -DENABLE_STACK_CHECKING=1 enforth.c test/enforthtesthelper.c test/test_enforth.cpp test/test_core.cpp test/enforthtest.cpp
 
 test/enforthserialtest: test/catch.hpp test/enforthtesthelper.h test/enforthtesthelper.c test/test_core.cpp test/test_enforth.cpp test/enforthserialtest.cpp
-	c++ -g -o $@ test/enforthtesthelper.c test/test_enforth.cpp test/test_core.cpp test/enforthserialtest.cpp
+	c++ -g -Wno-narrowing -o $@ test/enforthtesthelper.c test/test_enforth.cpp test/test_core.cpp test/enforthserialtest.cpp
