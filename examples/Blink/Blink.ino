@@ -4,13 +4,13 @@
 
 
 // FFI definitions
-ENFORTH_EXTERN_VOID(delay, delay, 2)
-#undef LAST_FFI
-#define LAST_FFI GET_LAST_FFI(delay)
-
 ENFORTH_EXTERN_VOID(digitalWrite, digitalWrite, 2)
 #undef LAST_FFI
 #define LAST_FFI GET_LAST_FFI(digitalWrite)
+
+ENFORTH_EXTERN_METHOD(millis, { return (unsigned)millis(); }, 0)
+#undef LAST_FFI
+#define LAST_FFI GET_LAST_FFI(millis)
 
 ENFORTH_EXTERN_VOID(pinMode, pinMode, 2)
 #undef LAST_FFI
@@ -121,6 +121,9 @@ void setup()
   /* Add a couple of definitions. */
   enforth_evaluate(&enforthVM, ": favnum 27 ;");
   enforth_evaluate(&enforthVM, ": 2x dup + ;");
+
+  /* Define the FACILITY-EXT word MS in terms of the FFI `millis`. */
+  enforth_evaluate(&enforthVM, "USE: millis  : MS 1- millis BEGIN PAUSE 2DUP millis SWAP - < UNTIL 2DROP ;");
 }
 
 void loop()
